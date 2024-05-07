@@ -135,6 +135,7 @@ message ClaimInfo {
   google.protobuf.Timestamp withdraw_time = 8;
   aelf.Address account = 9;
   google.protobuf.Timestamp early_stake_time = 10;
+  aelf.Hash stake_id = 11;
 }
 
 message EarlyStakeInput {

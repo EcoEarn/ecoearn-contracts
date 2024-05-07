@@ -106,4 +106,12 @@ public partial class EcoEarnTokensContract
 
         return output;
     }
+
+    public override Int64Value GetUserStakeCount(GetUserStakeCountInput input)
+    {
+        return new Int64Value
+        {
+            Value = State.UserStakeCountMap[input.PoolId][input.Account]
+        };
+    }
 }

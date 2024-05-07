@@ -172,8 +172,15 @@ public partial class EcoEarnPointsContract
 
         var poolInfo = State.EcoEarnTokensContract.GetPoolInfo.Call(input.PoolId).PoolInfo;
         Assert(poolInfo != null, "Pool not exists.");
-        
-        var list = ProcessEarlyStake(input.ClaimIds.Distinct().ToList(), poolInfo.Config.StakingToken, out var amount);
+
+        var count = State.EcoEarnTokensContract.GetUserStakeCount.Call(new GetUserStakeCountInput
+        {
+            Account = Context.Sender,
+            PoolId = input.PoolId
+        }).Value;
+
+        var stakeId = GenerateStakeId(input.PoolId, Context.Sender, count);
+        var list = ProcessEarlyStake(input.ClaimIds.Distinct().ToList(), poolInfo.Config.StakingToken, stakeId, out var amount);
         
         Context.SendVirtualInline(HashHelper.ComputeFrom(Context.Sender), State.TokenContract.Value, "Transfer", new TransferInput
         {
@@ -264,9 +271,14 @@ public partial class EcoEarnPointsContract
             Assert(claimInfo != null, "Claim id not exists.");
             Assert(claimInfo.Account == Context.Sender, "No permission.");
             Assert(claimInfo.WithdrawTime == null, "Already withdrawn.");
-            Assert(claimInfo.EarlyStakeTime == null, "Already early staked.");
             Assert(Context.CurrentBlockTime >= claimInfo.UnlockTime, "Not unlock yet.");
-
+            
+            if (claimInfo.StakeId != null)
+            {
+                var stakeInfo = State.EcoEarnTokensContract.GetStakeInfo.Call(claimInfo.StakeId);
+                Assert(Context.CurrentBlockTime >= stakeInfo.WithdrawTime, "Not unlocked.");
+            }
+            
             claimInfo.WithdrawTime = Context.CurrentBlockTime;
             rewards.TryGetValue(claimInfo.ClaimedSymbol, out var value);
             rewards[claimInfo.ClaimedSymbol] = value.Add(claimInfo.ClaimedAmount);
@@ -277,7 +289,7 @@ public partial class EcoEarnPointsContract
         return result;
     }
     
-    private List<ClaimInfo> ProcessEarlyStake(List<Hash> claimIds, string token, out long amount)
+    private List<ClaimInfo> ProcessEarlyStake(List<Hash> claimIds, string token, Hash stakeId, out long amount)
     {
         var list = new List<ClaimInfo>();
         amount = 0L;
@@ -290,14 +302,19 @@ public partial class EcoEarnPointsContract
 
             var claimInfo = State.ClaimInfoMap[id];
             Assert(claimInfo != null, "Claim info not exists.");
-            Assert(claimInfo.EarlyStakeTime == null, "Already early staked.");
             Assert(claimInfo.WithdrawTime == null, "Already withdrawn.");
             Assert(claimInfo.Account == Context.Sender, "No permission.");
             Assert(claimInfo.ClaimedSymbol == token, "Token not matched.");
 
+            if (claimInfo.StakeId != null)
+            {
+                var stakeInfo = State.EcoEarnTokensContract.GetStakeInfo.Call(claimInfo.StakeId);
+                Assert(Context.CurrentBlockTime >= stakeInfo.WithdrawTime, "Not unlocked.");
+            }
+
             amount = amount.Add(claimInfo.ClaimedAmount);
             claimInfo.EarlyStakeTime = Context.CurrentBlockTime;
-            
+            claimInfo.StakeId = stakeId;
             list.Add(claimInfo);
         }
 
@@ -318,6 +335,12 @@ public partial class EcoEarnPointsContract
                 Memo = "withdraw"
             });
         }
+    }
+    
+    private Hash GenerateStakeId(Hash poolId, Address sender, long count)
+    {
+        return HashHelper.ConcatAndCompute(
+            HashHelper.ConcatAndCompute(HashHelper.ComputeFrom(count), HashHelper.ComputeFrom(sender)), poolId);
     }
 
     #endregion

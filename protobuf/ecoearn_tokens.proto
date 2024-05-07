@@ -34,7 +34,8 @@ service EcoEarnTokensContract {
   rpc GetStakeInfo (aelf.Hash) returns (StakeInfo) {option (aelf.is_view) = true;}
   rpc GetReward (aelf.Hash) returns (GetRewardOutput) {option (aelf.is_view) = true;}
   rpc Unlock (aelf.Hash) returns (google.protobuf.Empty) {}
-
+  rpc GetUserStakeCount (GetUserStakeCountInput) returns (google.protobuf.Int64Value) {}
+  
   rpc Claim (aelf.Hash) returns (google.protobuf.Empty) {}
   rpc GetClaimInfo (aelf.Hash) returns (ClaimInfo) {}
   rpc Withdraw (WithdrawInput) returns (google.protobuf.Empty) {}
@@ -137,18 +138,19 @@ message StakeInfo {
   aelf.Hash stake_id = 1;
   aelf.Hash pool_id = 2;
   int64 staked_amount = 3;
-  int64 staked_block_number = 4;
-  google.protobuf.Timestamp staked_time = 5;
-  int64 period = 6;
-  aelf.Address account = 7;
-  int64 boosted_amount = 8;
-  int64 reward_debt = 9;
-  google.protobuf.Timestamp withdraw_time = 10;
-  int64 reward_amount = 11;
-  int64 locked_reward_amount = 12;
-  int64 claimed_amount = 13;
-  string staking_token = 14;
-  google.protobuf.Timestamp last_operation_time = 15;
+  int64 early_staked_amount = 4;
+  int64 staked_block_number = 5;
+  google.protobuf.Timestamp staked_time = 6;
+  int64 period = 7;
+  aelf.Address account = 8;
+  int64 boosted_amount = 9;
+  int64 reward_debt = 10;
+  google.protobuf.Timestamp withdraw_time = 11;
+  int64 reward_amount = 12;
+  int64 locked_reward_amount = 13;
+  int64 claimed_amount = 14;
+  string staking_token = 15;
+  google.protobuf.Timestamp last_operation_time = 16;
 }
 
 message EarlyStakeInput {
@@ -228,6 +230,11 @@ message Config {
 message SetDappAdminInput {
   aelf.Hash dapp_id = 1;
   aelf.Address admin = 2;
+}
+
+message GetUserStakeCountInput {
+  aelf.Hash pool_id = 1;
+  aelf.Address account = 2;
 }
 
 // log event

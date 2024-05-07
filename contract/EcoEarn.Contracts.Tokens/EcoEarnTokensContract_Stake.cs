@@ -22,7 +22,7 @@ public partial class EcoEarnTokensContract
         Assert(input.Period >= 0, "Invalid period.");
         Assert(Context.CurrentHeight < poolInfo.Config.EndBlockNumber, "Pool closed.");
 
-        ProcessStake(poolInfo, input.Amount, input.Period, Context.Sender);
+        ProcessStake(poolInfo, input.Amount, 0, input.Period, Context.Sender);
 
         if (input.Amount > 0)
         {
@@ -114,7 +114,7 @@ public partial class EcoEarnTokensContract
         Assert(input.Period >= 0 && input.Period <= poolInfo.Config.MaximumStakeDuration, "Invalid period.");
         Assert(Context.CurrentHeight < poolInfo.Config.EndBlockNumber, "Pool closed.");
 
-        ProcessStake(poolInfo, input.Amount, input.Period, input.Address);
+        ProcessStake(poolInfo, 0, input.Amount, input.Period, input.Address);
 
         return new Empty();
     }
@@ -203,16 +203,18 @@ public partial class EcoEarnTokensContract
         return amount;
     }
 
-    private void ProcessStake(PoolInfo poolInfo, long amount, long period, Address address)
+    private void ProcessStake(PoolInfo poolInfo, long stakedAmount, long earlyStakedAmount, long period, Address address)
     {
         var existId = State.UserStakeIdMap[poolInfo.PoolId]?[address];
         var stakeInfo = existId == null ? new StakeInfo() : State.StakeInfoMap[existId];
-        long boostedAmount;
 
+        var amount = stakedAmount.Add(earlyStakedAmount);
+        
         if (amount > 0)
         {
             Assert(amount >= poolInfo.Config.MinimumAmount, "Amount not enough.");
-            stakeInfo.StakedAmount = stakeInfo.StakedAmount.Add(amount);
+            stakeInfo.StakedAmount = stakeInfo.StakedAmount.Add(stakedAmount);
+            stakeInfo.EarlyStakedAmount = stakeInfo.EarlyStakedAmount.Add(earlyStakedAmount);
         }
 
         if (period > 0)
@@ -236,7 +238,8 @@ public partial class EcoEarnTokensContract
                 StakedBlockNumber = Context.CurrentHeight,
                 StakedTime = Context.CurrentBlockTime,
                 Period = period,
-                StakedAmount = amount,
+                StakedAmount = stakedAmount,
+                EarlyStakedAmount = earlyStakedAmount,
                 LastOperationTime = Context.CurrentBlockTime,
                 StakingToken = poolInfo.Config.StakingToken
             };
@@ -249,7 +252,9 @@ public partial class EcoEarnTokensContract
         {
             Assert(stakeInfo.Account == address, "No permission.");
         }
-        boostedAmount = CalculateBoostedAmount(poolInfo.Config, stakeInfo.StakedAmount, stakeInfo.Period);
+
+        var boostedAmount = CalculateBoostedAmount(poolInfo.Config,
+            stakeInfo.StakedAmount.Add(stakeInfo.EarlyStakedAmount), stakeInfo.Period);
 
         var poolData = State.PoolDataMap[poolInfo.PoolId];
         UpdatePool(poolInfo, poolData);
