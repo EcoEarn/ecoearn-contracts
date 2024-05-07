@@ -1,0 +1,59 @@
+// the version of the language, use proto3 for contracts
+syntax = "proto3";
+
+import "aelf/core.proto";
+import "aelf/options.proto";
+import "acs12.proto";
+
+option csharp_namespace = "EcoEarn.Contracts.TestPointsContract";
+
+service TestPointsContract {
+  option (aelf.base) = "acs12.proto";
+  option (aelf.csharp_state) = "EcoEarn.Contracts.TestPointsContract.TestPointsContractState";
+
+  rpc Initialize(InitializeInput) returns (google.protobuf.Empty) {}
+  rpc GetPoint(GetPointInput) returns (PointInfo){ option (aelf.is_view) = true; }
+  rpc GetDappInformation(GetDappInformationInput) returns (GetDappInformationOutput) { option (aelf.is_view) = true; }
+}
+
+message InitializeInput {
+  string points_name = 1;
+}
+
+message GetPointInput {
+  aelf.Hash dapp_id = 1;
+  string points_name = 2;
+}
+
+message PointInfo {
+  string token_name = 1;
+  int32 decimals = 2;
+}
+
+message GetDappInformationInput {
+  aelf.Hash dapp_id = 1;
+}
+
+message GetDappInformationOutput {
+  DappInfo dapp_info = 1;
+}
+
+message DappInfo {
+  aelf.Address dapp_admin = 1;
+  string official_domain = 2;
+  PointsRuleList dapps_point_rules = 3;
+  aelf.Address dapp_contract_address = 4;
+}
+
+message PointsRuleList {
+  repeated PointsRule points_rules = 1;
+}
+
+message PointsRule {
+  string action_name = 1;
+  string point_name = 2;
+  int64 user_points = 3;
+  int64 kol_points_percent = 4;
+  int64 inviter_points_percent = 5;
+  bool enable_proportional_calculation = 6;
+}
