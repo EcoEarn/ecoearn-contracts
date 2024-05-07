@@ -182,6 +182,7 @@ message StakeForInput {
   int64 amount = 2;
   int64 period = 3;
   aelf.Address address = 4;
+  aelf.Address from_address = 5;
 }
 
 message GetRewardOutput {
@@ -235,6 +236,10 @@ message SetDappAdminInput {
 message GetUserStakeCountInput {
   aelf.Hash pool_id = 1;
   aelf.Address account = 2;
+}
+
+message EarlyStakeInfo {
+  map<string, int64> data = 1;
 }
 
 // log event

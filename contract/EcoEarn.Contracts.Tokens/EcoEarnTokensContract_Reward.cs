@@ -121,8 +121,10 @@ public partial class EcoEarnTokensContract
     private void ProcessClaim(PoolInfo poolInfo, StakeInfo stakeInfo)
     {
         var poolData = State.PoolDataMap[poolInfo.PoolId];
-        
-        var pending = ProcessCommissionFee(CalculateRewardAmount(poolInfo, poolData, stakeInfo.BoostedAmount, stakeInfo.RewardDebt), poolInfo);
+
+        var pending =
+            ProcessCommissionFee(
+                CalculateRewardAmount(poolInfo, poolData, stakeInfo.BoostedAmount, stakeInfo.RewardDebt), poolInfo);
         var actualReward = pending.Add(stakeInfo.RewardAmount);
         
         Assert(actualReward >= poolInfo.Config.MinimumClaimAmount, "Reward not enough.");
@@ -225,9 +227,7 @@ public partial class EcoEarnTokensContract
             var poolInfo = GetPool(stakeInfo.PoolId);
             Assert(poolInfo.Config.UpdateAddress == Context.Sender, "No permission.");
             var poolData = State.PoolDataMap[stakeInfo.PoolId];
-            poolData.TotalStakedAmount = poolData.TotalStakedAmount.Sub(stakeInfo.StakedAmount);
-
-            UpdatePool(poolInfo, poolData);
+            poolData.TotalStakedAmount = poolData.TotalStakedAmount.Sub(stakeInfo.BoostedAmount);
 
             result[stakeInfo.PoolId] = poolData;
         }

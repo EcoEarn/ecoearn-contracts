@@ -195,7 +195,8 @@ public partial class EcoEarnPointsContract
             Address = Context.Sender,
             PoolId = input.PoolId,
             Amount = amount,
-            Period = input.Period
+            Period = input.Period,
+            FromAddress = CalculateVirtualAddress(Context.Sender)
         });
         
         Context.Fire(new EarlyStaked
