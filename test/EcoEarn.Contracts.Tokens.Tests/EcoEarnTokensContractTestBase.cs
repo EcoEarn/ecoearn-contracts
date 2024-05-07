@@ -8,6 +8,7 @@ using AElf.Kernel;
 using AElf.Standards.ACS0;
 using AElf.Types;
 using EcoEarn.Contracts.Points;
+using EcoEarn.Contracts.TestPointsContract;
 using Google.Protobuf;
 using Volo.Abp.Threading;
 
@@ -25,6 +26,8 @@ public class EcoEarnTokensContractTestBase : DAppContractTestBase<EcoEarnTokensC
     internal EcoEarnTokensContractContainer.EcoEarnTokensContractStub EcoEarnTokensContractUserStub { get; set; }
     internal EcoEarnTokensContractContainer.EcoEarnTokensContractStub EcoEarnTokensContractUser2Stub { get; set; }
     internal EcoEarnPointsContractContainer.EcoEarnPointsContractStub EcoEarnPointsContractStub { get; set; }
+    
+    internal TestPointsContractContainer.TestPointsContractStub PointsContractStub { get; set; }
 
     protected ECKeyPair DefaultKeyPair => Accounts[0].KeyPair;
     protected Address DefaultAddress => Accounts[0].Address;
@@ -86,6 +89,8 @@ public class EcoEarnTokensContractTestBase : DAppContractTestBase<EcoEarnTokensC
             }));
         
         PointsContractAddress = Address.Parser.ParseFrom(result.TransactionResult.ReturnValue);
+        PointsContractStub =
+            GetContractStub<TestPointsContractContainer.TestPointsContractStub>(PointsContractAddress, DefaultKeyPair);
     }
 
     internal T GetContractStub<T>(Address contractAddress, ECKeyPair senderKeyPair) where T : ContractStubBase, new()

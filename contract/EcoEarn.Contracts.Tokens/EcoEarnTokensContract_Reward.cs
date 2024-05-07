@@ -124,7 +124,7 @@ public partial class EcoEarnTokensContract
         var pending = CalculateRewardAmount(poolInfo, poolData, stakeInfo.BoostedAmount, stakeInfo.RewardDebt);
         var actualReward = ProcessCommissionFee(pending, poolInfo).Add(stakeInfo.RewardAmount);
         
-        Assert(actualReward >= poolInfo.Config.MinimalClaimAmount, "Reward not enough.");
+        Assert(actualReward >= poolInfo.Config.MinimumClaimAmount, "Reward not enough.");
         
         if (actualReward == 0) return;
         stakeInfo.RewardAmount = 0;

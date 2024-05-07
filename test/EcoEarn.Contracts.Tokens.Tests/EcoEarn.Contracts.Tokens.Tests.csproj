@@ -55,6 +55,9 @@
         <ContractStub Include="..\..\protobuf\ecoearn_tokens.proto">
             <Link>Protobuf\Proto\ecoearn_tokens.proto</Link>
         </ContractStub>
+        <ContractStub Include="..\..\protobuf\test_points_contract.proto">
+            <Link>Protobuf\Proto\test_points_contract.proto</Link>
+        </ContractStub>
     </ItemGroup>
 
     <ItemGroup>

@@ -19,7 +19,7 @@ public partial class EcoEarnTokensContract
         Assert(input != null, "Invalid input.");
 
         var poolInfo = GetPool(input.PoolId);
-        Assert(input.Amount >= poolInfo.Config.MinimalAmount, "Invalid amount.");
+        Assert(input.Amount >= poolInfo.Config.MinimumAmount, "Invalid amount.");
         Assert(input.Period >= 0 && input.Period <= poolInfo.Config.MaximumStakeDuration, "Invalid period.");
         Assert(Context.CurrentHeight < poolInfo.Config.EndBlockNumber, "Pool closed.");
 
@@ -88,7 +88,7 @@ public partial class EcoEarnTokensContract
         // Assert(Context.CurrentHeight < poolInfo.Config.EndBlockNumber, "Pool closed.");
         //
         // var amount = ProcessEarlyStake(input.ClaimIds.ToList(), poolInfo);
-        // Assert(amount >= poolInfo.Config.MinimalAmount, "Invalid amount.");
+        // Assert(amount >= poolInfo.Config.MinimumAmount, "Invalid amount.");
         //
         // ProcessStake(poolInfo, amount, input.Period, Context.Sender);
         //
@@ -111,7 +111,7 @@ public partial class EcoEarnTokensContract
         Assert(IsAddressValid(input.Address), "Invalid address.");
         
         var poolInfo = GetPool(input.PoolId);
-        Assert(input.Amount >= poolInfo.Config.MinimalAmount, "Invalid amount.");
+        Assert(input.Amount >= poolInfo.Config.MinimumAmount, "Invalid amount.");
         Assert(input.Period >= 0 && input.Period <= poolInfo.Config.MaximumStakeDuration, "Invalid period.");
         Assert(Context.CurrentHeight < poolInfo.Config.EndBlockNumber, "Pool closed.");
         
@@ -227,7 +227,8 @@ public partial class EcoEarnTokensContract
                 StakedTime = Context.CurrentBlockTime,
                 Period = period,
                 StakedAmount = amount,
-                LastOperationTime = Context.CurrentBlockTime
+                LastOperationTime = Context.CurrentBlockTime,
+                StakingToken = poolInfo.Config.StakingToken
             };
 
             State.StakeInfoMap[stakeId] = stakeInfo;
@@ -240,7 +241,7 @@ public partial class EcoEarnTokensContract
 
             if (amount > 0)
             {
-                Assert(amount >= poolInfo.Config.MinimalAmount, "Amount not enough.");
+                Assert(amount >= poolInfo.Config.MinimumAmount, "Amount not enough.");
                 stakeInfo.StakedAmount = stakeInfo.StakedAmount.Add(amount);
             }
 

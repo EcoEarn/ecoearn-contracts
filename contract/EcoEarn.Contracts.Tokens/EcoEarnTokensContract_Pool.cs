@@ -79,9 +79,10 @@ public partial class EcoEarnTokensContract
         {
             DappId = input.DappId,
             PoolId = poolId,
-            Config = input.Config
+            Config = input.Config,
+            PoolAddress = CalculateVirtualAddress(poolId)
         };
-        poolInfo.Config.RewardTokenContract = State.TokenContract.Value;
+        poolInfo.Config.RewardTokenContract = input.Config.RewardTokenContract ?? State.TokenContract.Value;
         poolInfo.Config.StakeTokenContract = input.Config.StakeTokenContract ?? State.TokenContract.Value;
         
         State.PoolInfoMap[poolId] = poolInfo;
@@ -235,31 +236,31 @@ public partial class EcoEarnTokensContract
     public override Empty SetTokensPoolStakeConfig(SetTokensPoolStakeConfigInput input)
     {
         Assert(input != null, "Invalid input.");
-        Assert(input.MinimalAmount >= 0, "Invalid minimal amount.");
+        Assert(input.MinimumAmount >= 0, "Invalid minimal amount.");
         Assert(input.MaximumStakeDuration > 0, "Invalid maximum stake duration.");
-        Assert(input.MinimalClaimAmount >= 0, "Invalid minimal claim amount.");
+        Assert(input.MinimumClaimAmount >= 0, "Invalid minimal claim amount.");
         
         var poolInfo = GetPool(input.PoolId);
 
         CheckDAppAdminPermission(poolInfo.DappId);
 
-        if (poolInfo.Config.MinimalAmount == input.MinimalAmount &&
+        if (poolInfo.Config.MinimumAmount == input.MinimumAmount &&
             poolInfo.Config.MaximumStakeDuration == input.MaximumStakeDuration &&
-            poolInfo.Config.MinimalClaimAmount == input.MinimalClaimAmount)
+            poolInfo.Config.MinimumClaimAmount == input.MinimumClaimAmount)
         {
             return new Empty();
         }
 
-        poolInfo.Config.MinimalAmount = input.MinimalAmount;
+        poolInfo.Config.MinimumAmount = input.MinimumAmount;
         poolInfo.Config.MaximumStakeDuration = input.MaximumStakeDuration;
-        poolInfo.Config.MinimalClaimAmount = input.MinimalClaimAmount;
+        poolInfo.Config.MinimumClaimAmount = input.MinimumClaimAmount;
         
         Context.Fire(new TokensPoolStakeConfigSet
         {
             PoolId = input.PoolId,
-            MinimalClaimAmount = input.MinimalClaimAmount,
+            MinimumClaimAmount = input.MinimumClaimAmount,
             MaximumStakeDuration = input.MaximumStakeDuration,
-            MinimalAmount = input.MinimalAmount
+            MinimumAmount = input.MinimumAmount
         });
         
         return new Empty();
@@ -283,10 +284,10 @@ public partial class EcoEarnTokensContract
         Assert(config.RewardPerBlock > 0, "Invalid reward per block.");
         CheckTokenExists(config.StakingToken, config.StakeTokenContract);
         Assert(config.FixedBoostFactor >= 0, "Invalid fixed boost factor.");
-        Assert(config.MinimalAmount >= 0, "Invalid minimal amount.");
+        Assert(config.MinimumAmount >= 0, "Invalid minimal amount.");
         Assert(config.ReleasePeriod >= 0, "Invalid release period.");
         Assert(config.MaximumStakeDuration > 0, "Invalid maximum stake duration.");
-        Assert(config.MinimalClaimAmount >= 0, "Invalid minimal claim amount.");
+        Assert(config.MinimumClaimAmount >= 0, "Invalid minimal claim amount.");
     }
 
     private void CheckTokenExists(string symbol, Address tokenContract)

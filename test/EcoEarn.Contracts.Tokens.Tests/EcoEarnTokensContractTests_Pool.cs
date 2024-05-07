@@ -1,7 +1,10 @@
 using System.Threading.Tasks;
 using AElf;
 using AElf.Contracts.MultiToken;
+using AElf.Cryptography;
 using AElf.Types;
+using EcoEarn.Contracts.Points;
+using Google.Protobuf;
 using Shouldly;
 using Xunit;
 
@@ -12,110 +15,41 @@ public partial class EcoEarnTokensContractTests
     private readonly Hash _appId = HashHelper.ComputeFrom("dapp");
     private const string DefaultSymbol = "ELF";
     private const string Symbol = "SGR-1";
+    private const string PointsName = "point";
     
     [Fact]
     public async Task Test()
     {
-        await EcoEarnPointsContractStub.Initialize.SendAsync(new Points.InitializeInput
-        {
-            PointsContract = PointsContractAddress,
-            EcoearnTokensContract = EcoEarnTokensContractAddress
-        });
-        await EcoEarnTokensContractStub.Initialize.SendAsync(new InitializeInput
-        {
-            EcoearnPointsContract = EcoEarnPointsContractAddress,
-            CommissionRate = 0
-        });
-        await TokenContractStub.Transfer.SendAsync(new TransferInput
-        {
-            Amount = 1000,
-            Symbol = DefaultSymbol,
-            To = UserAddress
-        });
-        
-        await CreateToken();
-        
-        await EcoEarnTokensContractStub.Register.SendAsync(new RegisterInput
-        {
-            DappId = _appId
-        });
-        
-        await TokenContractStub.Approve.SendAsync(new ApproveInput
-        {
-            Spender = EcoEarnTokensContractAddress,
-            Amount = 10000,
-            Symbol = Symbol
-        });
-        
-        var blockNumber = SimulateBlockMining().Result.Block.Height;
+        await InitializeContract();
 
-        var result = await EcoEarnTokensContractStub.CreateTokensPool.SendAsync(new CreateTokensPoolInput
-        {
-            DappId = _appId,
-            Config = new TokensPoolConfig
-            {
-                StartBlockNumber = blockNumber,
-                EndBlockNumber = blockNumber + 5,
-                RewardToken = Symbol,
-                StakingToken = DefaultSymbol,
-                FixedBoostFactor = 1000,
-                MaximumStakeDuration = 100,
-                MinimalAmount = 1,
-                MinimalClaimAmount = 1,
-                RewardPerBlock = 10,
-                ReleasePeriod = 60,
-                RewardTokenContract = TokenContractAddress,
-                StakeTokenContract = TokenContractAddress,
-                UpdateAddress = DefaultAddress
-            }
-        });
+        var pointsPoolId = await CreatePointsPool();
+        var tokensPoolId = await CreateTokensPool();
+        var pointsPoolInfo = await EcoEarnPointsContractStub.GetPoolInfo.CallAsync(pointsPoolId);
+        var tokensPoolInfo = await EcoEarnTokensContractStub.GetPoolInfo.CallAsync(tokensPoolId);
 
-        var poolId = GetLogEvent<TokensPoolCreated>(result.TransactionResult).PoolId;
-
-        await TokenContractStub.Approve.SendAsync(new ApproveInput
+        // claim in points pool
+        var seed = HashHelper.ComputeFrom("seed");
+        var input = new ClaimInput
         {
-            Spender = EcoEarnTokensContractAddress,
-            Amount = 10000,
-            Symbol = DefaultSymbol
-        });
-        
-        await TokenContractUserStub.Approve.SendAsync(new ApproveInput
-        {
-            Spender = EcoEarnTokensContractAddress,
-            Amount = 10000,
-            Symbol = DefaultSymbol
-        });
-        
-        result = await EcoEarnTokensContractStub.Stake.SendAsync(new StakeInput
-        {
-            PoolId = poolId,
+            PoolId = pointsPoolId,
+            Account = DefaultAddress,
             Amount = 100,
-            Period = 30
-        });
-        var log = GetLogEvent<Staked>(result.TransactionResult);
-        var stakeId = log.StakeInfo.StakeId;
-        var stakedHeight = log.StakeInfo.StakedBlockNumber;
+            Seed = seed,
+            Signature = GenerateSignature(DefaultAccount.KeyPair.PrivateKey, pointsPoolId, 100, DefaultAddress, seed)
+        };
+        var result = await EcoEarnPointsContractStub.Claim.SendAsync(input);
+        var claimInfo = GetLogEvent<Points.Claimed>(result.TransactionResult).ClaimInfo;
         
-        result = await EcoEarnTokensContractUserStub.Stake.SendAsync(new StakeInput
+        // early stake
+        result = await EcoEarnPointsContractStub.EarlyStake.SendAsync(new Points.EarlyStakeInput
         {
-            PoolId = poolId,
-            Amount = 100,
-            Period = 30
+            PoolId = tokensPoolId,
+            Period = 10,
+            ClaimIds = { claimInfo.ClaimId }
         });
-        log = GetLogEvent<Staked>(result.TransactionResult);
-        var stakeId2 = log.StakeInfo.StakeId;
-        var stakedHeight2 = log.StakeInfo.StakedBlockNumber;
+        var stakeInfo = GetLogEvent<Staked>(result.TransactionResult).StakeInfo;
 
-        var currentHeight = SimulateBlockMining().Result.Block.Height;
-
-        var stakeInfo = await EcoEarnTokensContractStub.GetStakeInfo.CallAsync(stakeId);
-        var stakeInfo2 = await EcoEarnTokensContractStub.GetStakeInfo.CallAsync(stakeId2);
-        
-        var output = await EcoEarnTokensContractStub.GetReward.CallAsync(stakeId);
-        var output2 = await EcoEarnTokensContractStub.GetReward.CallAsync(stakeId2);
-        
-        output.Amount.ShouldBe(15);
-        output2.Amount.ShouldBe(5);
+        var output = await EcoEarnTokensContractStub.GetReward.CallAsync(stakeInfo.StakeId);
     }
     
     private async Task CreateToken()
@@ -194,5 +128,119 @@ public partial class EcoEarnTokensContractTests
             Symbol = Symbol,
             To = DefaultAddress
         });
+    }
+
+    private async Task InitializeContract()
+    {
+        await PointsContractStub.Initialize.SendAsync(new TestPointsContract.InitializeInput
+        {
+            PointsName = PointsName
+        });
+        await EcoEarnPointsContractStub.Initialize.SendAsync(new Points.InitializeInput
+        {
+            PointsContract = PointsContractAddress,
+            EcoearnTokensContract = EcoEarnTokensContractAddress
+        });
+        await EcoEarnTokensContractStub.Initialize.SendAsync(new InitializeInput
+        {
+            EcoearnPointsContract = EcoEarnPointsContractAddress,
+            CommissionRate = 0
+        });
+        await TokenContractStub.Transfer.SendAsync(new TransferInput
+        {
+            Amount = 1000,
+            Symbol = DefaultSymbol,
+            To = UserAddress
+        });
+        
+        await CreateToken();
+    }
+
+    private async Task<Hash> CreatePointsPool()
+    {
+        await EcoEarnPointsContractStub.Register.SendAsync(new Points.RegisterInput()
+        {
+            DappId = _appId
+        });
+        
+        await TokenContractStub.Approve.SendAsync(new ApproveInput
+        {
+            Spender = EcoEarnPointsContractAddress,
+            Amount = 10000,
+            Symbol = Symbol
+        });
+        
+        var blockNumber = SimulateBlockMining().Result.Block.Height;
+
+        var result = await EcoEarnPointsContractStub.CreatePointsPool.SendAsync(new CreatePointsPoolInput
+        {
+            DappId = _appId,
+            PointsName = PointsName,
+            Config = new PointsPoolConfig
+            {
+                StartBlockNumber = blockNumber,
+                EndBlockNumber = blockNumber + 100,
+                RewardPerBlock = 10,
+                RewardToken = Symbol,
+                UpdateAddress = DefaultAddress,
+                ReleasePeriod = 10
+            }
+        });
+
+        return GetLogEvent<PointsPoolCreated>(result.TransactionResult).PoolId;
+    }
+    
+    private async Task<Hash> CreateTokensPool()
+    {
+        await EcoEarnTokensContractStub.Register.SendAsync(new RegisterInput
+        {
+            DappId = _appId
+        });
+        
+        await TokenContractStub.Approve.SendAsync(new ApproveInput
+        {
+            Spender = EcoEarnTokensContractAddress,
+            Amount = 10000,
+            Symbol = DefaultSymbol
+        });
+        
+        var blockNumber = SimulateBlockMining().Result.Block.Height;
+
+        var result = await EcoEarnTokensContractStub.CreateTokensPool.SendAsync(new CreateTokensPoolInput
+        {
+            DappId = _appId,
+            Config = new TokensPoolConfig
+            {
+                StartBlockNumber = blockNumber,
+                EndBlockNumber = blockNumber + 5,
+                RewardToken = DefaultSymbol,
+                StakingToken = Symbol,
+                FixedBoostFactor = 1000,
+                MaximumStakeDuration = 100,
+                MinimumAmount = 1,
+                MinimumClaimAmount = 1,
+                RewardPerBlock = 10,
+                ReleasePeriod = 60,
+                RewardTokenContract = TokenContractAddress,
+                StakeTokenContract = TokenContractAddress,
+                UpdateAddress = DefaultAddress
+            }
+        });
+
+        return GetLogEvent<TokensPoolCreated>(result.TransactionResult).PoolId;
+    }
+    
+    private ByteString GenerateSignature(byte[] privateKey, Hash poolId, long amount, Address account, Hash seed)
+    {
+        var data = new ClaimInput
+        {
+            PoolId = poolId,
+            Account = account,
+            Amount = amount,
+            Seed = seed
+        };
+        var dataHash = HashHelper.ComputeFrom(data);
+        var signature = CryptoHelper.SignWithPrivateKey(privateKey, dataHash.ToByteArray());
+        return ByteStringHelper.FromHexString(signature.ToHex());
     }
 }

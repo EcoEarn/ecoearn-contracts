@@ -73,12 +73,12 @@ message TokensPoolConfig {
   aelf.Address update_address = 5;
   string staking_token = 6;
   int64 fixed_boost_factor = 7;
-  int64 minimal_amount = 8;
+  int64 minimum_amount = 8;
   int64 release_period = 9;
   int64 maximum_stake_duration = 10;
   aelf.Address reward_token_contract = 11;
   aelf.Address stake_token_contract = 12;
-  int64 minimal_claim_amount = 13;
+  int64 minimum_claim_amount = 13;
 }
 
 message SetTokensPoolEndBlockNumberInput {
@@ -103,9 +103,9 @@ message SetTokensPoolRewardReleasePeriodInput {
 
 message SetTokensPoolStakeConfigInput {
   aelf.Hash pool_id = 1;
-  int64 minimal_amount = 2;
+  int64 minimum_amount = 2;
   int64 maximum_stake_duration = 3;
-  int64 minimal_claim_amount = 4;
+  int64 minimum_claim_amount = 4;
 }
 
 message GetPoolInfoOutput {
@@ -147,6 +147,7 @@ message StakeInfo {
   int64 reward_amount = 11;
   int64 locked_reward_amount = 12;
   google.protobuf.Timestamp last_operation_time = 13;
+  string staking_token = 14;
 }
 
 message EarlyStakeInput {
@@ -279,9 +280,9 @@ message TokensPoolRewardReleasePeriodSet {
 message TokensPoolStakeConfigSet {
   option (aelf.is_event) = true;
   aelf.Hash pool_id = 1;
-  int64 minimal_amount = 2;
+  int64 minimum_amount = 2;
   int64 maximum_stake_duration = 3;
-  int64 minimal_claim_amount = 4;
+  int64 minimum_claim_amount = 4;
 }
 
 message Staked {

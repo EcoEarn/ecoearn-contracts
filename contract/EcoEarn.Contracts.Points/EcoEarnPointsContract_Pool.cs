@@ -25,7 +25,7 @@ public partial class EcoEarnPointsContract
         {
             DappId = input.DappId
         });
-        Assert(dappInformationOutput.DappInfo != null, "Dapp not exists.");
+        Assert(dappInformationOutput != null, "Dapp not exists.");
         Assert(dappInformationOutput.DappInfo.DappAdmin == Context.Sender, "No permission to register.");
 
         var info = new DappInfo
