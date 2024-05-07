@@ -121,8 +121,9 @@ public partial class EcoEarnTokensContract
     private void ProcessClaim(PoolInfo poolInfo, StakeInfo stakeInfo)
     {
         var poolData = State.PoolDataMap[poolInfo.PoolId];
-        var pending = CalculateRewardAmount(poolInfo, poolData, stakeInfo.BoostedAmount, stakeInfo.RewardDebt);
-        var actualReward = ProcessCommissionFee(pending, poolInfo).Add(stakeInfo.RewardAmount);
+        
+        var pending = ProcessCommissionFee(CalculateRewardAmount(poolInfo, poolData, stakeInfo.BoostedAmount, stakeInfo.RewardDebt), poolInfo);
+        var actualReward = pending.Add(stakeInfo.RewardAmount);
         
         Assert(actualReward >= poolInfo.Config.MinimumClaimAmount, "Reward not enough.");
         
@@ -141,13 +142,15 @@ public partial class EcoEarnTokensContract
             ClaimedSymbol = poolInfo.Config.RewardToken,
             ClaimedTime = Context.CurrentBlockTime,
             ClaimedBlockNumber = Context.CurrentHeight,
-            ClaimedAmount = stakeInfo.RewardAmount,
+            ClaimedAmount = actualReward,
             UnlockTime = Context.CurrentBlockTime.AddSeconds(poolInfo.Config.ReleasePeriod),
             PoolId = stakeInfo.PoolId,
             StakeId = stakeInfo.StakeId
         };
 
         State.ClaimInfoMap[claimId] = claimInfo;
+        stakeInfo.ClaimedAmount = stakeInfo.ClaimedAmount.Add(actualReward);
+        stakeInfo.RewardDebt = stakeInfo.RewardDebt.Add(pending);
         
         Context.SendVirtualInline(poolInfo.PoolId, poolInfo.Config.RewardTokenContract, "Transfer", new TransferInput
         {

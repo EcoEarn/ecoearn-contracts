@@ -70,8 +70,7 @@ public partial class EcoEarnPointsContractTests
             });
             result.TransactionResult.Error.ShouldContain("Dapp not exists.");
         }
-
-
+        
         {
             var result = await EcoEarnPointsContractUserStub.Register.SendWithExceptionAsync(new RegisterInput
             {

@@ -146,8 +146,9 @@ message StakeInfo {
   google.protobuf.Timestamp withdraw_time = 10;
   int64 reward_amount = 11;
   int64 locked_reward_amount = 12;
-  google.protobuf.Timestamp last_operation_time = 13;
+  int64 claimed_amount = 13;
   string staking_token = 14;
+  google.protobuf.Timestamp last_operation_time = 15;
 }
 
 message EarlyStakeInput {

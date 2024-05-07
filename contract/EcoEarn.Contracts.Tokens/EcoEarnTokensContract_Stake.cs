@@ -1,5 +1,4 @@
 using System.Collections.Generic;
-using System.Linq;
 using AElf;
 using AElf.Contracts.MultiToken;
 using AElf.CSharp.Core;
@@ -19,8 +18,8 @@ public partial class EcoEarnTokensContract
         Assert(input != null, "Invalid input.");
 
         var poolInfo = GetPool(input.PoolId);
-        Assert(input.Amount >= poolInfo.Config.MinimumAmount, "Invalid amount.");
-        Assert(input.Period >= 0 && input.Period <= poolInfo.Config.MaximumStakeDuration, "Invalid period.");
+        Assert(input.Amount >= 0, "Invalid amount.");
+        Assert(input.Period >= 0, "Invalid period.");
         Assert(Context.CurrentHeight < poolInfo.Config.EndBlockNumber, "Pool closed.");
 
         ProcessStake(poolInfo, input.Amount, input.Period, Context.Sender);
@@ -109,14 +108,14 @@ public partial class EcoEarnTokensContract
         Assert(State.EcoEarnPointsContract.Value == Context.Sender, "No permission.");
         Assert(IsHashValid(input.PoolId), "Invalid pool id.");
         Assert(IsAddressValid(input.Address), "Invalid address.");
-        
+
         var poolInfo = GetPool(input.PoolId);
         Assert(input.Amount >= poolInfo.Config.MinimumAmount, "Invalid amount.");
         Assert(input.Period >= 0 && input.Period <= poolInfo.Config.MaximumStakeDuration, "Invalid period.");
         Assert(Context.CurrentHeight < poolInfo.Config.EndBlockNumber, "Pool closed.");
-        
+
         ProcessStake(poolInfo, input.Amount, input.Period, input.Address);
-        
+
         return new Empty();
     }
 
@@ -134,9 +133,10 @@ public partial class EcoEarnTokensContract
         return stakeId;
     }
 
-    private long CalculateBoostedAmount(long fixedFactor, long amount, long period)
+    private long CalculateBoostedAmount(TokensPoolConfig config, long amount, long period)
     {
-        return amount.Mul(fixedFactor).Div(EcoEarnTokensContractConstants.Denominator).Mul(period)
+        period = period >= config.MaximumStakeDuration ? config.MaximumStakeDuration : period;
+        return amount.Mul(config.FixedBoostFactor).Div(EcoEarnTokensContractConstants.Denominator).Mul(period)
             .Add(amount);
     }
 
@@ -167,7 +167,7 @@ public partial class EcoEarnTokensContract
         if (from >= endBlockNumber) return 0;
         return endBlockNumber - from;
     }
-    
+
     private long CalculatePending(long amount, long accTokenPerShare, long debt)
     {
         return amount.Mul(accTokenPerShare).Div(EcoEarnTokensContractConstants.Denominator) - debt;
@@ -209,14 +209,24 @@ public partial class EcoEarnTokensContract
         var stakeInfo = existId == null ? new StakeInfo() : State.StakeInfoMap[existId];
         long boostedAmount;
 
+        if (amount > 0)
+        {
+            Assert(amount >= poolInfo.Config.MinimumAmount, "Amount not enough.");
+            stakeInfo.StakedAmount = stakeInfo.StakedAmount.Add(amount);
+        }
+
+        if (period > 0)
+        {
+            Assert(period <= poolInfo.Config.MaximumStakeDuration, "Period too long.");
+            stakeInfo.Period = stakeInfo.Period.Add(period);
+        }
+
         // create position
         if (existId == null || Context.CurrentBlockTime >= stakeInfo.StakedTime.AddDays(stakeInfo.Period))
         {
             Assert(amount > 0 && period > 0, "New position requires both amount and period.");
             var stakeId = GenerateStakeId(poolInfo.PoolId, address);
             Assert(State.StakeInfoMap[stakeId] == null, "Stake id exists.");
-
-            boostedAmount = CalculateBoostedAmount(poolInfo.Config.FixedBoostFactor, amount, period);
 
             stakeInfo = new StakeInfo
             {
@@ -238,33 +248,15 @@ public partial class EcoEarnTokensContract
         else
         {
             Assert(stakeInfo.Account == address, "No permission.");
-
-            if (amount > 0)
-            {
-                Assert(amount >= poolInfo.Config.MinimumAmount, "Amount not enough.");
-                stakeInfo.StakedAmount = stakeInfo.StakedAmount.Add(amount);
-            }
-
-            if (period > 0)
-            {
-                Assert(period <= poolInfo.Config.MaximumStakeDuration, "Period too long.");
-                stakeInfo.Period = stakeInfo.Period.Add(period);
-            }
-
-            boostedAmount = CalculateBoostedAmount(poolInfo.Config.FixedBoostFactor, stakeInfo.StakedAmount,
-                stakeInfo.Period);
         }
+        boostedAmount = CalculateBoostedAmount(poolInfo.Config, stakeInfo.StakedAmount, stakeInfo.Period);
 
         var poolData = State.PoolDataMap[poolInfo.PoolId];
         UpdatePool(poolInfo, poolData);
 
-        poolData.TotalStakedAmount = poolData.TotalStakedAmount.Add(boostedAmount);
-        stakeInfo.BoostedAmount = boostedAmount;
-        stakeInfo.RewardDebt = CalculateDebt(boostedAmount, poolData.AccTokenPerShare);
-
-        if (amount > 0)
+        if (stakeInfo.BoostedAmount > 0)
         {
-            var pending = CalculatePending(boostedAmount, poolData.AccTokenPerShare, stakeInfo.RewardDebt);
+            var pending = CalculatePending(stakeInfo.BoostedAmount, poolData.AccTokenPerShare, stakeInfo.RewardDebt);
             var actualReward = ProcessCommissionFee(pending, poolInfo);
             if (actualReward > 0)
             {
@@ -280,6 +272,10 @@ public partial class EcoEarnTokensContract
             }
         }
 
+        poolData.TotalStakedAmount = poolData.TotalStakedAmount.Add(boostedAmount).Sub(stakeInfo.BoostedAmount);
+        stakeInfo.BoostedAmount = boostedAmount;
+        stakeInfo.RewardDebt = CalculateDebt(boostedAmount, poolData.AccTokenPerShare);
+
         Context.Fire(new Staked
         {
             StakeInfo = stakeInfo,
@@ -290,10 +286,10 @@ public partial class EcoEarnTokensContract
     private long ProcessCommissionFee(long pending, PoolInfo poolInfo)
     {
         if (pending == 0) return 0;
-        
+
         var config = State.Config.Value;
         var commissionFee = CalculateCommissionFee(pending, config.CommissionRate);
-        
+
         if (commissionFee != 0)
         {
             Context.SendVirtualInline(poolInfo.PoolId, State.TokenContract.Value, "Transfer", new TransferInput
