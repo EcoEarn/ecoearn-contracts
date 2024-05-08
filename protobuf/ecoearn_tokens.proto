@@ -315,8 +315,9 @@ message EarlyStaked {
 message Unlocked {
   option (aelf.is_event) = true;
   aelf.Hash stake_id = 1;
-  int64 amount = 2;
-  PoolData pool_data = 3;
+  int64 staked_amount = 2;
+  int64 early_staked_amount = 3;
+  PoolData pool_data = 4;
 }
 
 message Claimed {

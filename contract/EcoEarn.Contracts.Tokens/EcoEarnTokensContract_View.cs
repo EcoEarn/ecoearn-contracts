@@ -39,7 +39,7 @@ public partial class EcoEarnTokensContract
 
         return output;
     }
-    
+
     public override Address GetPoolAddress(Hash input)
     {
         return IsHashValid(input) ? CalculateVirtualAddress(input) ?? new Address() : new Address();
@@ -75,7 +75,7 @@ public partial class EcoEarnTokensContract
 
         var stakeInfo = State.StakeInfoMap[input];
         if (stakeInfo == null) return output;
-        
+
         output.Account = stakeInfo.Account;
         output.StakeId = input;
 
@@ -86,10 +86,10 @@ public partial class EcoEarnTokensContract
 
         var poolData = State.PoolDataMap[stakeInfo.PoolId];
         if (poolData == null) return output;
-        
+
         var blockNumber = Context.CurrentHeight;
 
-        var reward = 0L;
+        long reward;
 
         if (blockNumber > poolData.LastRewardBlock && poolData.TotalStakedAmount != 0)
         {

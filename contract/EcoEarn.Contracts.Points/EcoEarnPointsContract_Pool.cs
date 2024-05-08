@@ -82,15 +82,19 @@ public partial class EcoEarnPointsContract
         Assert(State.PointsNameMap[input.DappId][input.PointsName] == null, "Points name taken.");
         State.PointsNameMap[input.DappId][input.PointsName] = poolId;
 
+        var poolAddress = CalculateVirtualAddress(poolId);
+
         State.PoolInfoMap[poolId] = new PoolInfo
         {
             DappId = input.DappId,
             PoolId = poolId,
             PointsName = input.PointsName,
-            Config = input.Config
+            Config = input.Config,
+            PoolAddress = poolAddress
         };
 
-        TransferReward(input.Config, poolId, out var amount);
+        // charge rewards to pool address
+        TransferReward(input.Config, poolAddress, out var amount);
 
         Context.Fire(new PointsPoolCreated
         {
@@ -98,7 +102,7 @@ public partial class EcoEarnPointsContract
             PoolId = poolId,
             PointsName = input.PointsName,
             Config = input.Config,
-            PoolAddress = CalculateVirtualAddress(poolId),
+            PoolAddress = poolAddress,
             Amount = amount
         });
 
@@ -136,6 +140,7 @@ public partial class EcoEarnPointsContract
 
         var amount = 0L;
 
+        // charge rewards if extends end block number
         if (input.EndBlockNumber > poolInfo.Config.EndBlockNumber)
         {
             amount = CalculateTotalRewardAmount(poolInfo.Config.EndBlockNumber, input.EndBlockNumber,
@@ -144,7 +149,7 @@ public partial class EcoEarnPointsContract
             State.TokenContract.TransferFrom.Send(new TransferFromInput
             {
                 From = Context.Sender,
-                To = CalculateVirtualAddress(input.PoolId),
+                To = poolInfo.PoolAddress,
                 Symbol = poolInfo.Config.RewardToken,
                 Amount = amount
             });
@@ -173,7 +178,8 @@ public partial class EcoEarnPointsContract
 
         poolInfo.Config = input.Config;
 
-        TransferReward(input.Config, input.PoolId, out var amount);
+        // charge rewards to pool address
+        TransferReward(input.Config, poolInfo.PoolAddress, out var amount);
 
         Context.Fire(new PointsPoolRestarted
         {
@@ -272,14 +278,14 @@ public partial class EcoEarnPointsContract
         return HashHelper.ComputeFrom(input);
     }
 
-    private void TransferReward(PointsPoolConfig config, Hash poolId, out long amount)
+    private void TransferReward(PointsPoolConfig config, Address poolAddress, out long amount)
     {
         amount = CalculateTotalRewardAmount(config.StartBlockNumber, config.EndBlockNumber, config.RewardPerBlock);
 
         State.TokenContract.TransferFrom.Send(new TransferFromInput
         {
             From = Context.Sender,
-            To = CalculateVirtualAddress(poolId),
+            To = poolAddress,
             Symbol = config.RewardToken,
             Amount = amount,
             Memo = "reward"
@@ -288,14 +294,14 @@ public partial class EcoEarnPointsContract
 
     private long CalculateTotalRewardAmount(long start, long end, long rewardPerBlock)
     {
-        return end.Sub(start) * rewardPerBlock;
+        return end.Sub(start).Mul(rewardPerBlock);
     }
 
     private Address CalculateVirtualAddress(Hash id)
     {
         return Context.ConvertVirtualAddressToContractAddress(id);
     }
-    
+
     private Address CalculateVirtualAddress(Address account)
     {
         return Context.ConvertVirtualAddressToContractAddress(HashHelper.ComputeFrom(account));

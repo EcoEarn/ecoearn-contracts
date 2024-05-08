@@ -22,12 +22,11 @@ public partial class EcoEarnPointsContract : EcoEarnPointsContractContainer.EcoE
 
         Assert(input.CommissionRate >= 0, "Invalid commission rate.");
         Assert(input.Recipient == null || !input.Recipient.Value.IsNullOrEmpty(), "Invalid recipient.");
-        
+
         State.Config.Value = new Config
         {
             CommissionRate = input.CommissionRate,
             Recipient = input.Recipient ?? Context.Sender,
-            
         };
         State.TokenContract.Value = Context.GetContractAddressByName(SmartContractConstants.TokenContractSystemName);
 
@@ -78,9 +77,9 @@ public partial class EcoEarnPointsContract : EcoEarnPointsContractContainer.EcoE
         Assert(input != null, "Invalid input.");
         Assert(IsAddressValid(input.PointsContract), "Invalid points contract.");
         Assert(IsAddressValid(input.EcoearnTokensContract), "Invalid ecoearn tokens contract.");
-        
+
         CheckAdminPermission();
-        
+
         if (State.PointsContract.Value == input.PointsContract &&
             State.EcoEarnTokensContract.Value == input.EcoearnTokensContract)
         {
@@ -89,13 +88,13 @@ public partial class EcoEarnPointsContract : EcoEarnPointsContractContainer.EcoE
 
         State.PointsContract.Value = input.PointsContract;
         State.EcoEarnTokensContract.Value = input.EcoearnTokensContract;
-        
+
         Context.Fire(new ContractConfigSet
         {
             PointsContract = input.PointsContract,
             EcoearnTokensContract = input.EcoearnTokensContract
         });
-        
+
         return new Empty();
     }
 }

@@ -62,14 +62,15 @@ public class EcoEarnPointsContractTestBase : DAppContractTestBase<EcoEarnPointsC
         EcoEarnPointsContractUser2Stub =
             GetContractStub<EcoEarnPointsContractContainer.EcoEarnPointsContractStub>(EcoEarnPointsContractAddress,
                 User2KeyPair);
-        
+
         result = AsyncHelper.RunSync(async () => await ZeroContractStub.DeploySmartContract.SendAsync(
             new ContractDeploymentInput
             {
                 Category = KernelConstants.CodeCoverageRunnerCategory,
-                Code = ByteString.CopyFrom(File.ReadAllBytes(typeof(TestPointsContract.TestPointsContract).Assembly.Location))
+                Code = ByteString.CopyFrom(
+                    File.ReadAllBytes(typeof(TestPointsContract.TestPointsContract).Assembly.Location))
             }));
-        
+
         PointsContractAddress = Address.Parser.ParseFrom(result.TransactionResult.ReturnValue);
         PointsContractStub =
             GetContractStub<TestPointsContractContainer.TestPointsContractStub>(PointsContractAddress, DefaultKeyPair);

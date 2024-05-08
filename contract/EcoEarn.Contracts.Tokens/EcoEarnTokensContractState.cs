@@ -1,4 +1,3 @@
-using System.Collections.Generic;
 using AElf.Sdk.CSharp.State;
 using AElf.Types;
 
@@ -25,16 +24,19 @@ public partial class EcoEarnTokensContractState : ContractState
 
     // <StakeId, StakeInfo>
     public MappedState<Hash, StakeInfo> StakeInfoMap { get; set; }
+
     // <StakeId, bool>
     public MappedState<Hash, bool> StakeInfoUpdateStatusMap { get; set; }
 
     // <PoolId, UserAddress, StakeId>
     public MappedState<Hash, Address, Hash> UserStakeIdMap { get; set; }
+
     // <PoolId, UserAddress, long>
     public MappedState<Hash, Address, long> UserStakeCountMap { get; set; }
 
     // <ClaimId, ClaimInfo>
     public MappedState<Hash, ClaimInfo> ClaimInfoMap { get; set; }
+
     // <StakeId, <FromAddress, amount>>
     public MappedState<Hash, EarlyStakeInfo> EarlyStakeInfoMap { get; set; }
 }

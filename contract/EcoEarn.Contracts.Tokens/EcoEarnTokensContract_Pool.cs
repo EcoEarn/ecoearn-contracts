@@ -84,7 +84,7 @@ public partial class EcoEarnTokensContract
         };
         poolInfo.Config.RewardTokenContract = input.Config.RewardTokenContract ?? State.TokenContract.Value;
         poolInfo.Config.StakeTokenContract = input.Config.StakeTokenContract ?? State.TokenContract.Value;
-        
+
         State.PoolInfoMap[poolId] = poolInfo;
 
         State.PoolDataMap[poolId] = new PoolData
@@ -100,7 +100,7 @@ public partial class EcoEarnTokensContract
             DappId = input.DappId,
             PoolId = poolId,
             Config = input.Config,
-            PoolAddress = CalculateVirtualAddress(poolId),
+            PoolAddress = poolInfo.PoolAddress,
             Amount = amount
         });
 
@@ -197,7 +197,7 @@ public partial class EcoEarnTokensContract
         var poolInfo = GetPool(input.PoolId);
 
         CheckDAppAdminPermission(poolInfo.DappId);
-        
+
         if (poolInfo.Config.UpdateAddress == input.UpdateAddress) return new Empty();
 
         poolInfo.Config.UpdateAddress = input.UpdateAddress;
@@ -219,7 +219,7 @@ public partial class EcoEarnTokensContract
         var poolInfo = GetPool(input.PoolId);
 
         CheckDAppAdminPermission(poolInfo.DappId);
-        
+
         if (poolInfo.Config.ReleasePeriod == input.ReleasePeriod) return new Empty();
 
         poolInfo.Config.ReleasePeriod = input.ReleasePeriod;
@@ -239,7 +239,7 @@ public partial class EcoEarnTokensContract
         Assert(input.MinimumAmount >= 0, "Invalid minimal amount.");
         Assert(input.MaximumStakeDuration > 0, "Invalid maximum stake duration.");
         Assert(input.MinimumClaimAmount >= 0, "Invalid minimal claim amount.");
-        
+
         var poolInfo = GetPool(input.PoolId);
 
         CheckDAppAdminPermission(poolInfo.DappId);
@@ -254,7 +254,7 @@ public partial class EcoEarnTokensContract
         poolInfo.Config.MinimumAmount = input.MinimumAmount;
         poolInfo.Config.MaximumStakeDuration = input.MaximumStakeDuration;
         poolInfo.Config.MinimumClaimAmount = input.MinimumClaimAmount;
-        
+
         Context.Fire(new TokensPoolStakeConfigSet
         {
             PoolId = input.PoolId,
@@ -262,7 +262,7 @@ public partial class EcoEarnTokensContract
             MaximumStakeDuration = input.MaximumStakeDuration,
             MinimumAmount = input.MinimumAmount
         });
-        
+
         return new Empty();
     }
 
@@ -332,7 +332,7 @@ public partial class EcoEarnTokensContract
     {
         return Context.ConvertVirtualAddressToContractAddress(id);
     }
-    
+
     private Address CalculateVirtualAddress(Address account)
     {
         return Context.ConvertVirtualAddressToContractAddress(HashHelper.ComputeFrom(account));

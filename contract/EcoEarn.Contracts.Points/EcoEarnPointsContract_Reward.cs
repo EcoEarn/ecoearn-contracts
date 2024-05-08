@@ -8,7 +8,6 @@ using AElf.Sdk.CSharp;
 using AElf.Types;
 using EcoEarn.Contracts.Tokens;
 using Google.Protobuf;
-using Google.Protobuf.Collections;
 using Google.Protobuf.WellKnownTypes;
 
 namespace EcoEarn.Contracts.Points;
@@ -61,9 +60,9 @@ public partial class EcoEarnPointsContract
 
         var config = State.Config.Value;
 
+        // calculate and charge commission fee
         var commissionFee = CalculateCommissionFee(input.Amount, config.CommissionRate);
-
-        if (commissionFee != 0)
+        if (commissionFee > 0)
         {
             Context.SendVirtualInline(input.PoolId, State.TokenContract.Value, "Transfer", new TransferInput
             {
@@ -90,6 +89,7 @@ public partial class EcoEarnPointsContract
 
         State.ClaimInfoMap[claimId] = claimInfo;
 
+        // transfer rewards to user's virtual address
         Context.SendVirtualInline(input.PoolId, State.TokenContract.Value, "Transfer", new TransferInput
         {
             To = CalculateVirtualAddress(Context.Sender),
@@ -112,7 +112,7 @@ public partial class EcoEarnPointsContract
         Assert(input.ClaimIds != null && input.ClaimIds.Count > 0, "Invalid claim ids.");
 
         var claimInfos = ProcessClaimInfos(input.ClaimIds.Distinct().ToList(), out var rewards);
-        
+
         ProcessTransfer(rewards);
 
         Context.Fire(new Withdrawn
@@ -144,14 +144,14 @@ public partial class EcoEarnPointsContract
 
         Assert(output.Balance > 0, "Invalid token.");
 
-        Context.SendVirtualInline(input.PoolId, State.TokenContract.Value,"Transfer",new TransferInput
+        Context.SendVirtualInline(input.PoolId, State.TokenContract.Value, "Transfer", new TransferInput
         {
             Amount = output.Balance,
             Symbol = input.Token,
             To = input.Recipient ?? Context.Sender,
             Memo = "recover"
         });
-        
+
         Context.Fire(new TokenRecovered
         {
             PoolId = input.PoolId,
@@ -180,14 +180,17 @@ public partial class EcoEarnPointsContract
         }).Value;
 
         var stakeId = GenerateStakeId(input.PoolId, Context.Sender, count);
-        var list = ProcessEarlyStake(input.ClaimIds.Distinct().ToList(), poolInfo.Config.StakingToken, stakeId, out var amount);
-        
-        Context.SendVirtualInline(HashHelper.ComputeFrom(Context.Sender), State.TokenContract.Value, "Approve", new ApproveInput
-        {
-            Spender = State.EcoEarnTokensContract.Value,
-            Amount = amount,
-            Symbol = poolInfo.Config.StakingToken,
-        });
+        var list = ProcessEarlyStake(input.ClaimIds.Distinct().ToList(), poolInfo.Config.StakingToken, stakeId,
+            out var amount);
+
+        // approve staked amount to EcoEarnTokensContract
+        Context.SendVirtualInline(HashHelper.ComputeFrom(Context.Sender), State.TokenContract.Value, "Approve",
+            new ApproveInput
+            {
+                Spender = State.EcoEarnTokensContract.Value,
+                Amount = amount,
+                Symbol = poolInfo.Config.StakingToken,
+            });
         
         Context.SendInline(State.EcoEarnTokensContract.Value, "StakeFor", new StakeForInput
         {
@@ -197,7 +200,7 @@ public partial class EcoEarnPointsContract
             Period = input.Period,
             FromAddress = CalculateVirtualAddress(Context.Sender)
         });
-        
+
         Context.Fire(new EarlyStaked
         {
             ClaimInfos = new ClaimInfos
@@ -208,7 +211,7 @@ public partial class EcoEarnPointsContract
             Period = input.Period,
             Amount = amount
         });
-        
+
         return new Empty();
     }
 
@@ -260,25 +263,25 @@ public partial class EcoEarnPointsContract
     {
         var result = new List<ClaimInfo>();
         rewards = new Dictionary<string, long>();
-        
+
         if (claimIds.Count == 0) return result;
 
         foreach (var id in claimIds)
         {
             Assert(IsHashValid(id), "Invalid claim id.");
-            
+
             var claimInfo = State.ClaimInfoMap[id];
             Assert(claimInfo != null, "Claim id not exists.");
             Assert(claimInfo.Account == Context.Sender, "No permission.");
             Assert(claimInfo.WithdrawTime == null, "Already withdrawn.");
             Assert(Context.CurrentBlockTime >= claimInfo.UnlockTime, "Not unlock yet.");
-            
+
             if (claimInfo.StakeId != null)
             {
                 var stakeInfo = State.EcoEarnTokensContract.GetStakeInfo.Call(claimInfo.StakeId);
                 Assert(Context.CurrentBlockTime >= stakeInfo.WithdrawTime, "Not unlocked.");
             }
-            
+
             claimInfo.WithdrawTime = Context.CurrentBlockTime;
             rewards.TryGetValue(claimInfo.ClaimedSymbol, out var value);
             rewards[claimInfo.ClaimedSymbol] = value.Add(claimInfo.ClaimedAmount);
@@ -288,7 +291,7 @@ public partial class EcoEarnPointsContract
 
         return result;
     }
-    
+
     private List<ClaimInfo> ProcessEarlyStake(List<Hash> claimIds, string token, Hash stakeId, out long amount)
     {
         var list = new List<ClaimInfo>();
@@ -327,16 +330,17 @@ public partial class EcoEarnPointsContract
         foreach (var reward in rewards)
         {
             if (reward.Value == 0) continue;
-            Context.SendVirtualInline(HashHelper.ComputeFrom(Context.Sender), State.TokenContract.Value, "Transfer", new TransferInput
-            {
-                To = Context.Sender,
-                Amount = reward.Value,
-                Symbol = reward.Key,
-                Memo = "withdraw"
-            });
+            Context.SendVirtualInline(HashHelper.ComputeFrom(Context.Sender), State.TokenContract.Value, "Transfer",
+                new TransferInput
+                {
+                    To = Context.Sender,
+                    Amount = reward.Value,
+                    Symbol = reward.Key,
+                    Memo = "withdraw"
+                });
         }
     }
-    
+
     private Hash GenerateStakeId(Hash poolId, Address sender, long count)
     {
         return HashHelper.ConcatAndCompute(

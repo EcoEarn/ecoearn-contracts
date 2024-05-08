@@ -1,7 +1,6 @@
 using System.Linq;
 using System.Threading.Tasks;
 using AElf;
-using AElf.Contracts.MultiToken;
 using AElf.Cryptography;
 using AElf.CSharp.Core.Extension;
 using AElf.Types;
@@ -19,7 +18,7 @@ public partial class EcoEarnPointsContractTests
         var root = HashHelper.ComputeFrom(1);
 
         await Initialize();
-        
+
         await Register(_appId);
         var poolId = await CreatePointsPool(_appId);
 
@@ -49,7 +48,7 @@ public partial class EcoEarnPointsContractTests
     public async Task UpdateSnapshotTests_Fail()
     {
         await Initialize();
-        
+
         await Register(_appId);
         var poolId = await CreatePointsPool(_appId);
 
@@ -95,7 +94,7 @@ public partial class EcoEarnPointsContractTests
         result.TransactionResult.Error.ShouldContain("No permission.");
 
         await EcoEarnPointsContractStub.ClosePointsPool.SendAsync(poolId);
-        
+
         result = await EcoEarnPointsContractStub.UpdateSnapshot.SendWithExceptionAsync(
             new UpdateSnapshotInput
             {
@@ -110,7 +109,7 @@ public partial class EcoEarnPointsContractTests
     {
         var seed = HashHelper.ComputeFrom(1);
         await Initialize();
-        
+
         await Register(_appId);
         var poolId = await CreatePointsPool(_appId);
 
@@ -147,38 +146,38 @@ public partial class EcoEarnPointsContractTests
     {
         var seed = HashHelper.ComputeFrom(1);
         await Initialize();
-        
+
         await Register(_appId);
         var poolId = await CreatePointsPool(_appId);
-        
+
         var result = await EcoEarnPointsContractUserStub.Claim.SendWithExceptionAsync(new ClaimInput());
         result.TransactionResult.Error.ShouldContain("Invalid account.");
-        
+
         result = await EcoEarnPointsContractUserStub.Claim.SendWithExceptionAsync(new ClaimInput
         {
             Account = new Address()
         });
         result.TransactionResult.Error.ShouldContain("Invalid account.");
-        
+
         result = await EcoEarnPointsContractUserStub.Claim.SendWithExceptionAsync(new ClaimInput
         {
             Account = DefaultAddress
         });
         result.TransactionResult.Error.ShouldContain("Invalid account.");
-        
+
         result = await EcoEarnPointsContractUserStub.Claim.SendWithExceptionAsync(new ClaimInput
         {
             Account = UserAddress
         });
         result.TransactionResult.Error.ShouldContain("Invalid amount.");
-        
+
         result = await EcoEarnPointsContractUserStub.Claim.SendWithExceptionAsync(new ClaimInput
         {
             Account = UserAddress,
             Amount = 1
         });
         result.TransactionResult.Error.ShouldContain("Invalid seed.");
-        
+
         result = await EcoEarnPointsContractUserStub.Claim.SendWithExceptionAsync(new ClaimInput
         {
             Account = UserAddress,
@@ -186,7 +185,7 @@ public partial class EcoEarnPointsContractTests
             Seed = new Hash()
         });
         result.TransactionResult.Error.ShouldContain("Invalid seed.");
-        
+
         result = await EcoEarnPointsContractUserStub.Claim.SendWithExceptionAsync(new ClaimInput
         {
             Account = UserAddress,
@@ -194,7 +193,7 @@ public partial class EcoEarnPointsContractTests
             Seed = seed
         });
         result.TransactionResult.Error.ShouldContain("Invalid signature.");
-        
+
         result = await EcoEarnPointsContractUserStub.Claim.SendWithExceptionAsync(new ClaimInput
         {
             Account = UserAddress,
@@ -203,7 +202,7 @@ public partial class EcoEarnPointsContractTests
             Signature = ByteString.Empty
         });
         result.TransactionResult.Error.ShouldContain("Invalid signature.");
-        
+
         result = await EcoEarnPointsContractUserStub.Claim.SendWithExceptionAsync(new ClaimInput
         {
             Account = UserAddress,
@@ -212,7 +211,7 @@ public partial class EcoEarnPointsContractTests
             Signature = Hash.Empty.ToByteString()
         });
         result.TransactionResult.Error.ShouldContain("Invalid pool id.");
-        
+
         result = await EcoEarnPointsContractUserStub.Claim.SendWithExceptionAsync(new ClaimInput
         {
             Account = UserAddress,
@@ -222,7 +221,7 @@ public partial class EcoEarnPointsContractTests
             PoolId = new Hash()
         });
         result.TransactionResult.Error.ShouldContain("Invalid pool id.");
-        
+
         result = await EcoEarnPointsContractUserStub.Claim.SendWithExceptionAsync(new ClaimInput
         {
             Account = UserAddress,
@@ -232,7 +231,7 @@ public partial class EcoEarnPointsContractTests
             PoolId = HashHelper.ComputeFrom(1)
         });
         result.TransactionResult.Error.ShouldContain("Pool not exists.");
-        
+
         result = await EcoEarnPointsContractUserStub.Claim.SendWithExceptionAsync(new ClaimInput
         {
             Account = UserAddress,
@@ -251,7 +250,7 @@ public partial class EcoEarnPointsContractTests
             PoolId = poolId,
             Signature = GenerateSignature(DefaultAccount.KeyPair.PrivateKey, poolId, 1, UserAddress, seed)
         });
-        
+
         result = await EcoEarnPointsContractUserStub.Claim.SendWithExceptionAsync(new ClaimInput
         {
             Account = UserAddress,
@@ -269,7 +268,7 @@ public partial class EcoEarnPointsContractTests
         var seed1 = HashHelper.ComputeFrom(1);
         var seed2 = HashHelper.ComputeFrom(2);
         await Initialize();
-        
+
         await Register(_appId);
         var poolId = await CreatePointsPool(_appId);
 
@@ -285,7 +284,7 @@ public partial class EcoEarnPointsContractTests
             Signature = GenerateSignature(DefaultAccount.KeyPair.PrivateKey, poolId, 100, UserAddress, seed1)
         });
         var claimId1 = GetLogEvent<Claimed>(result.TransactionResult).ClaimInfo.ClaimId;
-        
+
         result = await EcoEarnPointsContractUserStub.Claim.SendAsync(new ClaimInput
         {
             PoolId = poolId,
@@ -309,7 +308,7 @@ public partial class EcoEarnPointsContractTests
 
         var info = log.ClaimInfos.Data.First();
         info.WithdrawTime.ShouldBe(info.ClaimedTime.AddSeconds(20));
-        
+
         info = log.ClaimInfos.Data.Last();
         info.WithdrawTime.ShouldBe(info.ClaimedTime.AddSeconds(20));
 
@@ -326,10 +325,10 @@ public partial class EcoEarnPointsContractTests
         var seed1 = HashHelper.ComputeFrom(1);
         var seed2 = HashHelper.ComputeFrom(2);
         await Initialize();
-        
+
         await Register(_appId);
         var poolId = await CreatePointsPool(_appId);
-        
+
         var result = await EcoEarnPointsContractUserStub.Claim.SendAsync(new ClaimInput
         {
             PoolId = poolId,
@@ -339,9 +338,9 @@ public partial class EcoEarnPointsContractTests
             Signature = GenerateSignature(DefaultAccount.KeyPair.PrivateKey, poolId, 100, UserAddress, seed1)
         });
         var claimId1 = GetLogEvent<Claimed>(result.TransactionResult).ClaimInfo.ClaimId;
-        
+
         BlockTimeProvider.SetBlockTime(BlockTimeProvider.GetBlockTime().AddSeconds(5));
-        
+
         result = await EcoEarnPointsContractUserStub.Claim.SendAsync(new ClaimInput
         {
             PoolId = poolId,
@@ -354,27 +353,27 @@ public partial class EcoEarnPointsContractTests
 
         result = await EcoEarnPointsContractStub.Withdraw.SendWithExceptionAsync(new WithdrawInput());
         result.TransactionResult.Error.ShouldContain("Invalid claim ids.");
-        
+
         result = await EcoEarnPointsContractStub.Withdraw.SendWithExceptionAsync(new WithdrawInput
         {
             ClaimIds = { new Hash() }
         });
         result.TransactionResult.Error.ShouldContain("Invalid claim id.");
-        
+
         result = await EcoEarnPointsContractStub.Withdraw.SendWithExceptionAsync(new WithdrawInput
         {
             ClaimIds = { claimId1 }
         });
         result.TransactionResult.Error.ShouldContain("No permission.");
-        
+
         result = await EcoEarnPointsContractUserStub.Withdraw.SendWithExceptionAsync(new WithdrawInput
         {
             ClaimIds = { claimId1 }
         });
         result.TransactionResult.Error.ShouldContain("Not unlock yet.");
-        
+
         BlockTimeProvider.SetBlockTime(BlockTimeProvider.GetBlockTime().AddSeconds(5));
-        
+
         result = await EcoEarnPointsContractUserStub.Withdraw.SendWithExceptionAsync(new WithdrawInput
         {
             ClaimIds = { claimId1, claimId2 }
@@ -385,7 +384,7 @@ public partial class EcoEarnPointsContractTests
         {
             ClaimIds = { claimId1 }
         });
-        
+
         result = await EcoEarnPointsContractUserStub.Withdraw.SendWithExceptionAsync(new WithdrawInput
         {
             ClaimIds = { claimId1, claimId2 }
@@ -397,10 +396,10 @@ public partial class EcoEarnPointsContractTests
     public async Task RecoverTokenTests()
     {
         await Initialize();
-        
+
         await Register(_appId);
         var poolId = await CreatePointsPool(_appId);
-        
+
         {
             await EcoEarnPointsContractStub.ClosePointsPool.SendAsync(poolId);
 
@@ -476,46 +475,46 @@ public partial class EcoEarnPointsContractTests
     public async Task RecoverTokenTests_Fail()
     {
         await Initialize();
-        
+
         await Register(_appId);
         var poolId = await CreatePointsPool(_appId);
 
         var result = await EcoEarnPointsContractStub.RecoverToken.SendWithExceptionAsync(new RecoverTokenInput());
         result.TransactionResult.Error.ShouldContain("Invalid pool id.");
-        
+
         result = await EcoEarnPointsContractStub.RecoverToken.SendWithExceptionAsync(new RecoverTokenInput
         {
             PoolId = new Hash()
         });
         result.TransactionResult.Error.ShouldContain("Invalid pool id.");
-        
+
         result = await EcoEarnPointsContractStub.RecoverToken.SendWithExceptionAsync(new RecoverTokenInput
         {
             PoolId = HashHelper.ComputeFrom(1)
         });
         result.TransactionResult.Error.ShouldContain("Invalid token.");
-        
+
         result = await EcoEarnPointsContractStub.RecoverToken.SendWithExceptionAsync(new RecoverTokenInput
         {
             PoolId = HashHelper.ComputeFrom(1),
             Token = "TEST"
         });
         result.TransactionResult.Error.ShouldContain("Pool not exists.");
-        
+
         result = await EcoEarnPointsContractStub.RecoverToken.SendWithExceptionAsync(new RecoverTokenInput
         {
             PoolId = poolId,
             Token = "TEST"
         });
         result.TransactionResult.Error.ShouldContain("Invalid token.");
-        
+
         result = await EcoEarnPointsContractStub.RecoverToken.SendWithExceptionAsync(new RecoverTokenInput
         {
             PoolId = poolId,
             Token = "ELF"
         });
         result.TransactionResult.Error.ShouldContain("Invalid token.");
-        
+
         result = await EcoEarnPointsContractStub.RecoverToken.SendWithExceptionAsync(new RecoverTokenInput
         {
             PoolId = poolId,
@@ -523,7 +522,7 @@ public partial class EcoEarnPointsContractTests
             Recipient = new Address()
         });
         result.TransactionResult.Error.ShouldContain("Invalid recipient.");
-        
+
         result = await EcoEarnPointsContractUserStub.RecoverToken.SendWithExceptionAsync(new RecoverTokenInput
         {
             PoolId = poolId,

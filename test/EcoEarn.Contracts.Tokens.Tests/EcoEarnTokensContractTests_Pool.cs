@@ -17,7 +17,7 @@ public partial class EcoEarnTokensContractTests
     private const string DefaultSymbol = "ELF";
     private const string Symbol = "SGR-1";
     private const string PointsName = "point";
-    
+
     [Fact]
     public async Task Test()
     {
@@ -40,7 +40,7 @@ public partial class EcoEarnTokensContractTests
         };
         var result = await EcoEarnPointsContractStub.Claim.SendAsync(input);
         var claimInfo = GetLogEvent<Points.Claimed>(result.TransactionResult).ClaimInfo;
-        
+
         // early stake
         result = await EcoEarnPointsContractStub.EarlyStake.SendAsync(new Points.EarlyStakeInput
         {
@@ -89,29 +89,29 @@ public partial class EcoEarnTokensContractTests
             Amount = 0,
             Period = 10
         });
-        
+
         stakeInfo = GetLogEvent<Staked>(result.TransactionResult).StakeInfo;
         stakeInfo.BoostedAmount.ShouldBe(300);
         stakeInfo.RewardAmount.ShouldBe(35);
         stakeInfo.ClaimedAmount.ShouldBe(0);
-        
+
         var output4 = await EcoEarnTokensContractStub.GetReward.CallAsync(stakeInfo.StakeId);
         output4.Amount.ShouldBe(41);
         var output5 = await EcoEarnTokensContractStub.GetReward.CallAsync(stakeInfo2.StakeId);
         output5.Amount.ShouldBe(9);
-        
+
         result = await EcoEarnTokensContractStub.Stake.SendAsync(new StakeInput
         {
             PoolId = tokensPoolId,
             Amount = 0,
             Period = 50
         });
-        
+
         stakeInfo = GetLogEvent<Staked>(result.TransactionResult).StakeInfo;
         stakeInfo.BoostedAmount.ShouldBe(800);
         stakeInfo.RewardAmount.ShouldBe(41);
         stakeInfo.ClaimedAmount.ShouldBe(0);
-        
+
         var output6 = await EcoEarnTokensContractStub.GetReward.CallAsync(stakeInfo.StakeId);
         output6.Amount.ShouldBe(49);
         var output7 = await EcoEarnTokensContractStub.GetReward.CallAsync(stakeInfo2.StakeId);
@@ -126,14 +126,14 @@ public partial class EcoEarnTokensContractTests
         output8.Amount.ShouldBe(8);
         var output9 = await EcoEarnTokensContractStub.GetReward.CallAsync(stakeInfo2.StakeId);
         output9.Amount.ShouldBe(13);
-        
+
         await EcoEarnTokensContractStub.Claim.SendAsync(stakeInfo.StakeId);
         var output10 = await EcoEarnTokensContractStub.GetReward.CallAsync(stakeInfo.StakeId);
         output10.Amount.ShouldBe(8);
         var output11 = await EcoEarnTokensContractStub.GetReward.CallAsync(stakeInfo2.StakeId);
         output11.Amount.ShouldBe(15);
     }
-    
+
     [Fact]
     public async Task Test2()
     {
@@ -156,7 +156,7 @@ public partial class EcoEarnTokensContractTests
         };
         var result = await EcoEarnPointsContractStub.Claim.SendAsync(input);
         var claimInfo = GetLogEvent<Points.Claimed>(result.TransactionResult).ClaimInfo;
-        
+
         // early stake
         result = await EcoEarnPointsContractStub.EarlyStake.SendAsync(new Points.EarlyStakeInput
         {
@@ -173,7 +173,7 @@ public partial class EcoEarnTokensContractTests
         output.Amount.ShouldBe(9);
 
         BlockTimeProvider.SetBlockTime(BlockTimeProvider.GetBlockTime().AddDays(1));
-        
+
         result = await EcoEarnTokensContractStub.UpdateStakeInfo.SendAsync(new UpdateStakeInfoInput
         {
             StakeIds = { stakeInfo.StakeId }
@@ -181,8 +181,12 @@ public partial class EcoEarnTokensContractTests
         var stakeInfo2 = await EcoEarnTokensContractStub.GetStakeInfo.CallAsync(stakeInfo.StakeId);
         var output2 = await EcoEarnTokensContractStub.GetReward.CallAsync(stakeInfo.StakeId);
         output2.Amount.ShouldBe(9);
+
+        result = await EcoEarnTokensContractStub.Unlock.SendAsync(tokensPoolId);
+        var output3 = await EcoEarnTokensContractStub.GetReward.CallAsync(stakeInfo.StakeId);
+        output3.Amount.ShouldBe(0);
     }
-    
+
     private async Task CreateToken()
     {
         await TokenContractStub.Create.SendAsync(new CreateInput
@@ -283,7 +287,7 @@ public partial class EcoEarnTokensContractTests
             Symbol = DefaultSymbol,
             To = UserAddress
         });
-        
+
         await CreateToken();
     }
 
@@ -293,14 +297,14 @@ public partial class EcoEarnTokensContractTests
         {
             DappId = _appId
         });
-        
+
         await TokenContractStub.Approve.SendAsync(new ApproveInput
         {
             Spender = EcoEarnPointsContractAddress,
             Amount = 10000,
             Symbol = Symbol
         });
-        
+
         var blockNumber = SimulateBlockMining().Result.Block.Height;
 
         var result = await EcoEarnPointsContractStub.CreatePointsPool.SendAsync(new CreatePointsPoolInput
@@ -320,21 +324,21 @@ public partial class EcoEarnTokensContractTests
 
         return GetLogEvent<PointsPoolCreated>(result.TransactionResult).PoolId;
     }
-    
+
     private async Task<Hash> CreateTokensPool()
     {
         await EcoEarnTokensContractStub.Register.SendAsync(new RegisterInput
         {
             DappId = _appId
         });
-        
+
         await TokenContractStub.Approve.SendAsync(new ApproveInput
         {
             Spender = EcoEarnTokensContractAddress,
             Amount = 10000,
             Symbol = DefaultSymbol
         });
-        
+
         var blockNumber = SimulateBlockMining().Result.Block.Height;
 
         var result = await EcoEarnTokensContractStub.CreateTokensPool.SendAsync(new CreateTokensPoolInput
@@ -360,7 +364,7 @@ public partial class EcoEarnTokensContractTests
 
         return GetLogEvent<TokensPoolCreated>(result.TransactionResult).PoolId;
     }
-    
+
     private ByteString GenerateSignature(byte[] privateKey, Hash poolId, long amount, Address account, Hash seed)
     {
         var data = new ClaimInput

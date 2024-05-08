@@ -18,10 +18,11 @@ public partial class EcoEarnTokensContract
     public override Empty Stake(StakeInput input)
     {
         Assert(input != null, "Invalid input.");
-
-        var poolInfo = GetPool(input.PoolId);
         Assert(input.Amount >= 0, "Invalid amount.");
         Assert(input.Period >= 0, "Invalid period.");
+
+        var poolInfo = GetPool(input.PoolId);
+
         Assert(Context.CurrentHeight < poolInfo.Config.EndBlockNumber, "Pool closed.");
 
         ProcessStake(poolInfo, input.Amount, 0, input.Period, Context.Sender);
@@ -60,13 +61,16 @@ public partial class EcoEarnTokensContract
 
         ProcessClaim(poolInfo, stakeInfo);
 
-        Context.SendVirtualInline(stakeInfo.PoolId, poolInfo.Config.StakeTokenContract, "Transfer", new TransferInput
+        if (stakeInfo.StakedAmount > 0)
         {
-            Amount = stakeInfo.StakedAmount,
-            Memo = "withdraw",
-            Symbol = poolInfo.Config.StakingToken,
-            To = stakeInfo.Account
-        });
+            Context.SendVirtualInline(stakeInfo.PoolId, poolInfo.Config.StakeTokenContract, "Transfer", new TransferInput
+            {
+                Amount = stakeInfo.StakedAmount,
+                Memo = "withdraw",
+                Symbol = poolInfo.Config.StakingToken,
+                To = stakeInfo.Account
+            });
+        }
 
         if (stakeInfo.EarlyStakedAmount > 0)
         {
@@ -88,8 +92,12 @@ public partial class EcoEarnTokensContract
         {
             StakeId = existId,
             PoolData = State.PoolDataMap[stakeInfo.PoolId],
-            Amount = stakeInfo.StakedAmount
+            StakedAmount = stakeInfo.StakedAmount,
+            EarlyStakedAmount = stakeInfo.EarlyStakedAmount
         });
+
+        stakeInfo.StakedAmount = 0;
+        stakeInfo.EarlyStakedAmount = 0;
 
         return new Empty();
     }
@@ -107,9 +115,9 @@ public partial class EcoEarnTokensContract
         Assert(stakedAmount >= poolInfo.Config.MinimumAmount, "Invalid amount.");
 
         var stakeId = ProcessStake(poolInfo, 0, stakedAmount, input.Period, Context.Sender);
-        
+
         RecordEarlyStakeInfo(stakeId, stakedAmount);
-        
+
         Context.SendVirtualInline(HashHelper.ComputeFrom(Context.Sender), poolInfo.Config.RewardTokenContract,
             "Transfer", new TransferInput
             {
@@ -124,7 +132,7 @@ public partial class EcoEarnTokensContract
     public override Empty StakeFor(StakeForInput input)
     {
         Assert(input != null, "Invalid input.");
-        Assert(State.EcoEarnPointsContract.Value == Context.Sender, "No permission.");
+        CheckEcoEarnPointsPermission();
         Assert(IsHashValid(input.PoolId), "Invalid pool id.");
         Assert(IsAddressValid(input.Address), "Invalid address.");
         Assert(IsAddressValid(input.FromAddress), "Invalid from address.");
@@ -133,7 +141,7 @@ public partial class EcoEarnTokensContract
         Assert(input.Amount >= poolInfo.Config.MinimumAmount, "Invalid amount.");
         Assert(input.Period >= 0 && input.Period <= poolInfo.Config.MaximumStakeDuration, "Invalid period.");
         Assert(Context.CurrentHeight < poolInfo.Config.EndBlockNumber, "Pool closed.");
-        
+
         Context.SendInline(poolInfo.Config.StakeTokenContract, "TransferFrom", new TransferFromInput
         {
             From = input.FromAddress,
@@ -141,9 +149,9 @@ public partial class EcoEarnTokensContract
             Amount = input.Amount,
             Symbol = poolInfo.Config.StakingToken
         });
-        
+
         var stakeId = ProcessStake(poolInfo, 0, input.Amount, input.Period, input.Address);
-        
+
         RecordEarlyStakeInfo(stakeId, input.Amount);
 
         return new Empty();
@@ -306,12 +314,12 @@ public partial class EcoEarnTokensContract
         {
             Assert(stakeInfo.Account == address, "No permission.");
         }
-
-        var boostedAmount = CalculateBoostedAmount(poolInfo.Config,
-            stakeInfo.StakedAmount.Add(stakeInfo.EarlyStakedAmount), stakeInfo.Period);
-
+        
         var poolData = State.PoolDataMap[poolInfo.PoolId];
         UpdatePool(poolInfo, poolData);
+        
+        var boostedAmount = CalculateBoostedAmount(poolInfo.Config,
+            stakeInfo.StakedAmount.Add(stakeInfo.EarlyStakedAmount), stakeInfo.Period);
 
         if (stakeInfo.BoostedAmount > 0)
         {

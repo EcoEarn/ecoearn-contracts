@@ -26,7 +26,7 @@ public class EcoEarnTokensContractTestBase : DAppContractTestBase<EcoEarnTokensC
     internal EcoEarnTokensContractContainer.EcoEarnTokensContractStub EcoEarnTokensContractUserStub { get; set; }
     internal EcoEarnTokensContractContainer.EcoEarnTokensContractStub EcoEarnTokensContractUser2Stub { get; set; }
     internal EcoEarnPointsContractContainer.EcoEarnPointsContractStub EcoEarnPointsContractStub { get; set; }
-    
+
     internal TestPointsContractContainer.TestPointsContractStub PointsContractStub { get; set; }
 
     protected ECKeyPair DefaultKeyPair => Accounts[0].KeyPair;
@@ -80,14 +80,15 @@ public class EcoEarnTokensContractTestBase : DAppContractTestBase<EcoEarnTokensC
         EcoEarnPointsContractStub =
             GetContractStub<EcoEarnPointsContractContainer.EcoEarnPointsContractStub>(EcoEarnPointsContractAddress,
                 DefaultKeyPair);
-        
+
         result = AsyncHelper.RunSync(async () => await ZeroContractStub.DeploySmartContract.SendAsync(
             new ContractDeploymentInput
             {
                 Category = KernelConstants.CodeCoverageRunnerCategory,
-                Code = ByteString.CopyFrom(File.ReadAllBytes(typeof(TestPointsContract.TestPointsContract).Assembly.Location))
+                Code = ByteString.CopyFrom(
+                    File.ReadAllBytes(typeof(TestPointsContract.TestPointsContract).Assembly.Location))
             }));
-        
+
         PointsContractAddress = Address.Parser.ParseFrom(result.TransactionResult.ReturnValue);
         PointsContractStub =
             GetContractStub<TestPointsContractContainer.TestPointsContractStub>(PointsContractAddress, DefaultKeyPair);
