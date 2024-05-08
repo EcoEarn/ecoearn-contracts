@@ -198,6 +198,7 @@ public partial class EcoEarnTokensContract
     private long CalculateBoostedAmount(TokensPoolConfig config, long amount, long period)
     {
         period = period >= config.MaximumStakeDuration ? config.MaximumStakeDuration : period;
+        var days = period.Div(EcoEarnTokensContractConstants.SecondsPerDay);
         return amount.Mul(config.FixedBoostFactor).Div(EcoEarnTokensContractConstants.Denominator).Mul(period)
             .Add(amount);
     }
@@ -287,7 +288,7 @@ public partial class EcoEarnTokensContract
         }
 
         // create position
-        if (existId == null || Context.CurrentBlockTime >= stakeInfo.StakedTime.AddDays(stakeInfo.Period))
+        if (existId == null || Context.CurrentBlockTime >= stakeInfo.StakedTime.AddSeconds(stakeInfo.Period))
         {
             Assert(amount > 0 && period > 0, "New position requires both amount and period.");
             var stakeId = GenerateStakeId(poolInfo.PoolId, address);

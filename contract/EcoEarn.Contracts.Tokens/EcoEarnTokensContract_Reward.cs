@@ -202,7 +202,7 @@ public partial class EcoEarnTokensContract
             var stakeInfo = State.StakeInfoMap[id];
             Assert(stakeInfo != null, "Stake id not exists.");
 
-            Assert(Context.CurrentBlockTime >= stakeInfo.StakedTime.AddDays(stakeInfo.Period), "Not unlock yet.");
+            Assert(Context.CurrentBlockTime >= stakeInfo.StakedTime.AddSeconds(stakeInfo.Period), "Not unlock yet.");
 
             var poolInfo = GetPool(stakeInfo.PoolId);
             Assert(poolInfo.Config.UpdateAddress == Context.Sender, "No permission.");
