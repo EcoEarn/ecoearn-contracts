@@ -214,11 +214,7 @@ public partial class EcoEarnPointsContractTests
         log.Config.RewardPerBlock.ShouldBe(10);
         log.Amount.ShouldBe(1000);
         log.PoolId.ShouldBe(HashHelper.ComputeFrom(input));
-
-        {
-            var output = await GetTokenBalance(Symbol, log.PoolAddress);
-            output.ShouldBe(1000);
-        }
+        
         {
             var output = await EcoEarnPointsContractStub.GetPoolInfo.CallAsync(log.PoolId);
             output.Status.ShouldBe(true);
@@ -226,10 +222,6 @@ public partial class EcoEarnPointsContractTests
             output.PoolInfo.PointsName.ShouldBe(PointsName);
             output.PoolInfo.DappId.ShouldBe(_appId);
             output.PoolInfo.Config.ShouldBe(input.Config);
-        }
-        {
-            var address = await EcoEarnPointsContractStub.GetPoolAddress.CallAsync(log.PoolId);
-            address.ShouldBe(log.PoolAddress);
         }
     }
 

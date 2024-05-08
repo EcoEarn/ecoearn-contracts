@@ -25,7 +25,7 @@ service EcoEarnTokensContract {
   rpc SetTokensPoolStakeConfig (SetTokensPoolStakeConfigInput) returns (google.protobuf.Empty) {}
   rpc GetPoolInfo (aelf.Hash) returns (GetPoolInfoOutput) {option (aelf.is_view) = true;}
   rpc GetPoolData (aelf.Hash) returns (PoolData) {option (aelf.is_view) = true;}
-  rpc GetPoolAddress (aelf.Hash) returns (aelf.Address) {option (aelf.is_view) = true;}
+  rpc GetPoolAddress (aelf.Hash) returns (GetPoolAddressOutput) {option (aelf.is_view) = true;}
   rpc GetPoolCount (aelf.Hash) returns (google.protobuf.Int64Value) { option (aelf.is_view) = true; }
 
   rpc Stake (StakeInput) returns (google.protobuf.Empty) {}
@@ -118,7 +118,6 @@ message PoolInfo {
   aelf.Hash dapp_id = 1;
   aelf.Hash pool_id = 2;
   TokensPoolConfig config = 3;
-  aelf.Address pool_address = 4;
 }
 
 message PoolData {
@@ -242,6 +241,11 @@ message EarlyStakeInfo {
   map<string, int64> data = 1;
 }
 
+message GetPoolAddressOutput {
+  aelf.Address stake_address = 1;
+  aelf.Address reward_address = 2;
+}
+
 // log event
 message Registered {
   option (aelf.is_event) = true;
@@ -254,8 +258,7 @@ message TokensPoolCreated {
   aelf.Hash dapp_id = 1;
   TokensPoolConfig config = 2;
   aelf.Hash pool_id = 3;
-  aelf.Address pool_address = 4;
-  int64 amount = 5;
+  int64 amount = 4;
 }
 
 message TokensPoolClosed {

@@ -98,7 +98,6 @@ message PoolInfo {
   aelf.Hash pool_id = 2;
   string points_name = 3;
   PointsPoolConfig config = 4;
-  aelf.Address pool_address = 5;
 }
 
 message UpdateSnapshotInput {
@@ -223,8 +222,7 @@ message PointsPoolCreated {
   PointsPoolConfig config = 2;
   aelf.Hash pool_id = 3;
   string points_name = 4;
-  aelf.Address pool_address = 5;
-  int64 amount = 6;
+  int64 amount = 5;
 }
 
 message PointsPoolClosed {

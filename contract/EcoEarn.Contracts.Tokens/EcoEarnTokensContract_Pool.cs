@@ -79,8 +79,7 @@ public partial class EcoEarnTokensContract
         {
             DappId = input.DappId,
             PoolId = poolId,
-            Config = input.Config,
-            PoolAddress = CalculateVirtualAddress(poolId)
+            Config = input.Config
         };
         poolInfo.Config.RewardTokenContract = input.Config.RewardTokenContract ?? State.TokenContract.Value;
         poolInfo.Config.StakeTokenContract = input.Config.StakeTokenContract ?? State.TokenContract.Value;
@@ -100,7 +99,6 @@ public partial class EcoEarnTokensContract
             DappId = input.DappId,
             PoolId = poolId,
             Config = input.Config,
-            PoolAddress = poolInfo.PoolAddress,
             Amount = amount
         });
 
@@ -146,7 +144,7 @@ public partial class EcoEarnTokensContract
             Context.SendInline(poolInfo.Config.StakeTokenContract, "TransferFrom", new TransferFromInput
             {
                 From = Context.Sender,
-                To = CalculateVirtualAddress(input.PoolId),
+                To = CalculateVirtualAddress(GetStakeVirtualAddress(input.PoolId)),
                 Symbol = poolInfo.Config.RewardToken,
                 Amount = amount
             });
@@ -316,7 +314,7 @@ public partial class EcoEarnTokensContract
         Context.SendInline(config.RewardTokenContract, "TransferFrom", new TransferFromInput
         {
             From = Context.Sender,
-            To = CalculateVirtualAddress(poolId),
+            To = CalculateVirtualAddress(GetRewardVirtualAddress(poolId)),
             Symbol = config.RewardToken,
             Amount = amount,
             Memo = "reward"
@@ -336,6 +334,16 @@ public partial class EcoEarnTokensContract
     private Address CalculateVirtualAddress(Address account)
     {
         return Context.ConvertVirtualAddressToContractAddress(HashHelper.ComputeFrom(account));
+    }
+
+    private Hash GetStakeVirtualAddress(Hash id)
+    {
+        return HashHelper.ConcatAndCompute(id, HashHelper.ComputeFrom(EcoEarnTokensContractConstants.StakeAddress));
+    }
+    
+    private Hash GetRewardVirtualAddress(Hash id)
+    {
+        return HashHelper.ConcatAndCompute(id, HashHelper.ComputeFrom(EcoEarnTokensContractConstants.RewardAddress));
     }
 
     private PoolInfo GetPool(Hash poolId)

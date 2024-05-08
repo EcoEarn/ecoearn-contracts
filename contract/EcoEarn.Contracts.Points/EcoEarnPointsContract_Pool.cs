@@ -89,8 +89,7 @@ public partial class EcoEarnPointsContract
             DappId = input.DappId,
             PoolId = poolId,
             PointsName = input.PointsName,
-            Config = input.Config,
-            PoolAddress = poolAddress
+            Config = input.Config
         };
 
         // charge rewards to pool address
@@ -102,7 +101,6 @@ public partial class EcoEarnPointsContract
             PoolId = poolId,
             PointsName = input.PointsName,
             Config = input.Config,
-            PoolAddress = poolAddress,
             Amount = amount
         });
 
@@ -149,7 +147,7 @@ public partial class EcoEarnPointsContract
             State.TokenContract.TransferFrom.Send(new TransferFromInput
             {
                 From = Context.Sender,
-                To = poolInfo.PoolAddress,
+                To = CalculateVirtualAddress(input.PoolId),
                 Symbol = poolInfo.Config.RewardToken,
                 Amount = amount
             });
@@ -179,7 +177,7 @@ public partial class EcoEarnPointsContract
         poolInfo.Config = input.Config;
 
         // charge rewards to pool address
-        TransferReward(input.Config, poolInfo.PoolAddress, out var amount);
+        TransferReward(input.Config, CalculateVirtualAddress(input.PoolId), out var amount);
 
         Context.Fire(new PointsPoolRestarted
         {

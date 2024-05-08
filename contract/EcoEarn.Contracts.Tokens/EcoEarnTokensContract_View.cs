@@ -40,9 +40,15 @@ public partial class EcoEarnTokensContract
         return output;
     }
 
-    public override Address GetPoolAddress(Hash input)
+    public override GetPoolAddressOutput GetPoolAddress(Hash input)
     {
-        return IsHashValid(input) ? CalculateVirtualAddress(input) ?? new Address() : new Address();
+        return IsHashValid(input)
+            ? new GetPoolAddressOutput
+            {
+                StakeAddress = CalculateVirtualAddress(GetStakeVirtualAddress(input)),
+                RewardAddress = CalculateVirtualAddress(GetRewardVirtualAddress(input))
+            }
+            : new GetPoolAddressOutput();
     }
 
     public override PoolData GetPoolData(Hash input)

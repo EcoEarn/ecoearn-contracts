@@ -32,7 +32,7 @@ public partial class EcoEarnTokensContract
             Context.SendInline(poolInfo.Config.StakeTokenContract, "TransferFrom", new TransferFromInput
             {
                 From = Context.Sender,
-                To = CalculateVirtualAddress(input.PoolId),
+                To = CalculateVirtualAddress(GetStakeVirtualAddress(input.PoolId)),
                 Amount = input.Amount,
                 Memo = "stake",
                 Symbol = poolInfo.Config.StakingToken
@@ -63,13 +63,14 @@ public partial class EcoEarnTokensContract
 
         if (stakeInfo.StakedAmount > 0)
         {
-            Context.SendVirtualInline(stakeInfo.PoolId, poolInfo.Config.StakeTokenContract, "Transfer", new TransferInput
-            {
-                Amount = stakeInfo.StakedAmount,
-                Memo = "withdraw",
-                Symbol = poolInfo.Config.StakingToken,
-                To = stakeInfo.Account
-            });
+            Context.SendVirtualInline(GetStakeVirtualAddress(input), poolInfo.Config.StakeTokenContract, "Transfer",
+                new TransferInput
+                {
+                    Amount = stakeInfo.StakedAmount,
+                    Memo = "withdraw",
+                    Symbol = poolInfo.Config.StakingToken,
+                    To = stakeInfo.Account
+                });
         }
 
         if (stakeInfo.EarlyStakedAmount > 0)
@@ -77,7 +78,7 @@ public partial class EcoEarnTokensContract
             var dict = State.EarlyStakeInfoMap[stakeInfo.StakeId];
             foreach (var info in dict.Data)
             {
-                Context.SendVirtualInline(stakeInfo.PoolId, poolInfo.Config.StakeTokenContract, "Transfer",
+                Context.SendVirtualInline(GetStakeVirtualAddress(input), poolInfo.Config.StakeTokenContract, "Transfer",
                     new TransferInput
                     {
                         Amount = info.Value,
@@ -121,7 +122,7 @@ public partial class EcoEarnTokensContract
         Context.SendVirtualInline(HashHelper.ComputeFrom(Context.Sender), poolInfo.Config.RewardTokenContract,
             "Transfer", new TransferInput
             {
-                To = poolInfo.PoolAddress,
+                To = CalculateVirtualAddress(GetStakeVirtualAddress(input.PoolId)),
                 Amount = stakedAmount,
                 Symbol = poolInfo.Config.RewardToken
             });
@@ -145,7 +146,7 @@ public partial class EcoEarnTokensContract
         Context.SendInline(poolInfo.Config.StakeTokenContract, "TransferFrom", new TransferFromInput
         {
             From = input.FromAddress,
-            To = poolInfo.PoolAddress,
+            To = CalculateVirtualAddress(GetStakeVirtualAddress(input.PoolId)),
             Amount = input.Amount,
             Symbol = poolInfo.Config.StakingToken
         });
@@ -314,10 +315,10 @@ public partial class EcoEarnTokensContract
         {
             Assert(stakeInfo.Account == address, "No permission.");
         }
-        
+
         var poolData = State.PoolDataMap[poolInfo.PoolId];
         UpdatePool(poolInfo, poolData);
-        
+
         var boostedAmount = CalculateBoostedAmount(poolInfo.Config,
             stakeInfo.StakedAmount.Add(stakeInfo.EarlyStakedAmount), stakeInfo.Period);
 
@@ -328,8 +329,8 @@ public partial class EcoEarnTokensContract
             if (actualReward > 0)
             {
                 stakeInfo.RewardAmount = stakeInfo.RewardAmount.Add(actualReward);
-                Context.SendVirtualInline(stakeInfo.PoolId, poolInfo.Config.RewardTokenContract, "Transfer",
-                    new TransferInput
+                Context.SendVirtualInline(GetRewardVirtualAddress(stakeInfo.PoolId),
+                    poolInfo.Config.RewardTokenContract, "Transfer", new TransferInput
                     {
                         To = CalculateVirtualAddress(stakeInfo.StakeId),
                         Amount = actualReward,
@@ -361,13 +362,14 @@ public partial class EcoEarnTokensContract
 
         if (commissionFee != 0)
         {
-            Context.SendVirtualInline(poolInfo.PoolId, State.TokenContract.Value, "Transfer", new TransferInput
-            {
-                To = config.Recipient,
-                Amount = commissionFee,
-                Symbol = poolInfo.Config.RewardToken,
-                Memo = "commission"
-            });
+            Context.SendVirtualInline(GetRewardVirtualAddress(poolInfo.PoolId), State.TokenContract.Value, "Transfer",
+                new TransferInput
+                {
+                    To = config.Recipient,
+                    Amount = commissionFee,
+                    Symbol = poolInfo.Config.RewardToken,
+                    Memo = "commission"
+                });
         }
 
         return pending - commissionFee;

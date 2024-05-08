@@ -62,19 +62,20 @@ public partial class EcoEarnTokensContract
         var output = Context.Call<GetBalanceOutput>(poolInfo.Config.RewardTokenContract, "GetBalance",
             new GetBalanceInput
             {
-                Owner = CalculateVirtualAddress(input.PoolId),
+                Owner = CalculateVirtualAddress(GetRewardVirtualAddress(input.PoolId)),
                 Symbol = input.Token
             });
 
         Assert(output.Balance > 0, "Invalid token.");
 
-        Context.SendVirtualInline(input.PoolId, poolInfo.Config.RewardTokenContract, "Transfer", new TransferInput
-        {
-            Amount = output.Balance,
-            Symbol = input.Token,
-            To = input.Recipient ?? Context.Sender,
-            Memo = "recover"
-        });
+        Context.SendVirtualInline(GetRewardVirtualAddress(input.PoolId), poolInfo.Config.RewardTokenContract,
+            "Transfer", new TransferInput
+            {
+                Amount = output.Balance,
+                Symbol = input.Token,
+                To = input.Recipient ?? Context.Sender,
+                Memo = "recover"
+            });
 
         Context.Fire(new TokenRecovered
         {
@@ -130,13 +131,14 @@ public partial class EcoEarnTokensContract
         stakeInfo.ClaimedAmount = stakeInfo.ClaimedAmount.Add(actualReward);
         stakeInfo.RewardDebt = stakeInfo.RewardDebt.Add(pending);
 
-        Context.SendVirtualInline(poolInfo.PoolId, poolInfo.Config.RewardTokenContract, "Transfer", new TransferInput
-        {
-            Amount = claimInfo.ClaimedAmount,
-            Symbol = claimInfo.ClaimedSymbol,
-            To = CalculateVirtualAddress(Context.Sender),
-            Memo = "claim"
-        });
+        Context.SendVirtualInline(GetRewardVirtualAddress(poolInfo.PoolId), poolInfo.Config.RewardTokenContract,
+            "Transfer", new TransferInput
+            {
+                Amount = claimInfo.ClaimedAmount,
+                Symbol = claimInfo.ClaimedSymbol,
+                To = CalculateVirtualAddress(Context.Sender),
+                Memo = "claim"
+            });
 
         Context.Fire(new Claimed
         {
@@ -171,8 +173,8 @@ public partial class EcoEarnTokensContract
 
             var poolInfo = GetPool(claimInfo.PoolId);
 
-            Context.SendVirtualInline(claimInfo.PoolId, poolInfo.Config.RewardTokenContract, "Transfer",
-                new TransferInput
+            Context.SendVirtualInline(GetRewardVirtualAddress(claimInfo.PoolId), poolInfo.Config.RewardTokenContract,
+                "Transfer", new TransferInput
                 {
                     To = claimInfo.Account,
                     Symbol = claimInfo.ClaimedSymbol,
@@ -215,8 +217,8 @@ public partial class EcoEarnTokensContract
                 if (actualReward > 0)
                 {
                     stakeInfo.RewardAmount = stakeInfo.RewardAmount.Add(actualReward);
-                    Context.SendVirtualInline(stakeInfo.PoolId, poolInfo.Config.RewardTokenContract, "Transfer",
-                        new TransferInput
+                    Context.SendVirtualInline(GetRewardVirtualAddress(stakeInfo.PoolId),
+                        poolInfo.Config.RewardTokenContract, "Transfer", new TransferInput
                         {
                             To = CalculateVirtualAddress(stakeInfo.StakeId),
                             Amount = actualReward,
@@ -241,7 +243,6 @@ public partial class EcoEarnTokensContract
 
     private long CalculateRewardAmount(PoolInfo poolInfo, PoolData poolData, long amount, long debt)
     {
-        
         var multiplier = GetMultiplier(poolData.LastRewardBlock, Context.CurrentHeight, poolInfo.Config.EndBlockNumber);
         var rewards = multiplier.Mul(poolInfo.Config.RewardPerBlock);
         long adjustedTokenPerShare;
@@ -254,7 +255,7 @@ public partial class EcoEarnTokensContract
         {
             adjustedTokenPerShare = poolData.AccTokenPerShare;
         }
-        
+
         return CalculatePending(amount, adjustedTokenPerShare, debt);
     }
 
