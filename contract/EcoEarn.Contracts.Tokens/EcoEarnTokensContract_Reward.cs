@@ -86,29 +86,6 @@ public partial class EcoEarnTokensContract
         return new Empty();
     }
 
-    public override Empty UpdateStakeInfo(UpdateStakeInfoInput input)
-    {
-        Assert(input != null, "Invalid input.");
-        Assert(input.StakeIds != null && input.StakeIds.Count > 0, "Invalid stake ids.");
-
-        var list = input.StakeIds.Distinct().ToList();
-        var poolDatas = ProcessStakeInfos(list);
-
-        Context.Fire(new StakeInfoUpdated
-        {
-            StakeIds = new HashList
-            {
-                Data = { list }
-            },
-            PoolDatas = new PoolDatas
-            {
-                Data = { poolDatas }
-            }
-        });
-
-        return new Empty();
-    }
-
     #endregion
 
     #region private
@@ -227,8 +204,28 @@ public partial class EcoEarnTokensContract
             var poolInfo = GetPool(stakeInfo.PoolId);
             Assert(poolInfo.Config.UpdateAddress == Context.Sender, "No permission.");
             var poolData = State.PoolDataMap[stakeInfo.PoolId];
-            poolData.TotalStakedAmount = poolData.TotalStakedAmount.Sub(stakeInfo.BoostedAmount);
+            UpdatePool(poolInfo, poolData);
 
+            if (stakeInfo.BoostedAmount > 0)
+            {
+                var pending = CalculatePending(stakeInfo.BoostedAmount, poolData.AccTokenPerShare, stakeInfo.RewardDebt);
+                var actualReward = ProcessCommissionFee(pending, poolInfo);
+                if (actualReward > 0)
+                {
+                    stakeInfo.RewardAmount = stakeInfo.RewardAmount.Add(actualReward);
+                    Context.SendVirtualInline(stakeInfo.PoolId, poolInfo.Config.RewardTokenContract, "Transfer",
+                        new TransferInput
+                        {
+                            To = CalculateVirtualAddress(stakeInfo.StakeId),
+                            Amount = actualReward,
+                            Memo = "reward",
+                            Symbol = poolInfo.Config.RewardToken
+                        });
+                }
+            }
+            
+            poolData.TotalStakedAmount = poolData.TotalStakedAmount.Sub(stakeInfo.BoostedAmount);
+            
             result[stakeInfo.PoolId] = poolData;
         }
 

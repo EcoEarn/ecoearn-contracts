@@ -73,13 +73,14 @@ public partial class EcoEarnTokensContract
             var dict = State.EarlyStakeInfoMap[stakeInfo.StakeId];
             foreach (var info in dict.Data)
             {
-                Context.SendVirtualInline(stakeInfo.PoolId, poolInfo.Config.StakeTokenContract, "Transfer", new TransferInput
-                {
-                    Amount = info.Value,
-                    Memo = "early",
-                    Symbol = poolInfo.Config.StakingToken,
-                    To = Address.FromBase58(info.Key)
-                });
+                Context.SendVirtualInline(stakeInfo.PoolId, poolInfo.Config.StakeTokenContract, "Transfer",
+                    new TransferInput
+                    {
+                        Amount = info.Value,
+                        Memo = "early",
+                        Symbol = poolInfo.Config.StakingToken,
+                        To = Address.FromBase58(info.Key)
+                    });
             }
         }
 
@@ -95,26 +96,27 @@ public partial class EcoEarnTokensContract
 
     public override Empty EarlyStake(EarlyStakeInput input)
     {
-        // TODO Not needed for now
-        // Assert(input != null, "Invalid input.");
-        // Assert(input.ClaimIds != null && input.ClaimIds.Count > 0, "Invalid claim ids.");
-        //
-        // var poolInfo = GetPool(input.PoolId);
-        // Assert(input.Period >= 0 && input.Period <= poolInfo.Config.MaximumStakeDuration, "Invalid period.");
-        // Assert(Context.CurrentHeight < poolInfo.Config.EndBlockNumber, "Pool closed.");
-        //
-        // var amount = ProcessEarlyStake(input.ClaimIds.ToList(), poolInfo);
-        // Assert(amount >= poolInfo.Config.MinimumAmount, "Invalid amount.");
-        //
-        // ProcessStake(poolInfo, amount, input.Period, Context.Sender);
-        //
-        // var stakeId = State.UserStakeIdMap[input.PoolId][Context.Sender];
-        // Context.SendVirtualInline(stakeId, poolInfo.Config.RewardTokenContract, "Transfer", new TransferInput
-        // {
-        //     To = CalculateVirtualAddress(input.PoolId),
-        //     Amount = amount,
-        //     Symbol = poolInfo.Config.RewardToken
-        // });
+        Assert(input != null, "Invalid input.");
+        Assert(input.ClaimIds != null && input.ClaimIds.Count > 0, "Invalid claim ids.");
+
+        var poolInfo = GetPool(input.PoolId);
+        Assert(input.Period >= 0 && input.Period <= poolInfo.Config.MaximumStakeDuration, "Invalid period.");
+        Assert(Context.CurrentHeight < poolInfo.Config.EndBlockNumber, "Pool closed.");
+
+        var stakedAmount = ProcessEarlyStake(input.ClaimIds.ToList(), poolInfo);
+        Assert(stakedAmount >= poolInfo.Config.MinimumAmount, "Invalid amount.");
+
+        var stakeId = ProcessStake(poolInfo, 0, stakedAmount, input.Period, Context.Sender);
+        
+        RecordEarlyStakeInfo(stakeId, stakedAmount);
+        
+        Context.SendVirtualInline(HashHelper.ComputeFrom(Context.Sender), poolInfo.Config.RewardTokenContract,
+            "Transfer", new TransferInput
+            {
+                To = poolInfo.PoolAddress,
+                Amount = stakedAmount,
+                Symbol = poolInfo.Config.RewardToken
+            });
 
         return new Empty();
     }
@@ -131,18 +133,41 @@ public partial class EcoEarnTokensContract
         Assert(input.Amount >= poolInfo.Config.MinimumAmount, "Invalid amount.");
         Assert(input.Period >= 0 && input.Period <= poolInfo.Config.MaximumStakeDuration, "Invalid period.");
         Assert(Context.CurrentHeight < poolInfo.Config.EndBlockNumber, "Pool closed.");
-
-        var stakeId = ProcessStake(poolInfo, 0, input.Amount, input.Period, input.Address);
-        var key = input.FromAddress.ToBase58();
-        var earlyStakeInfo = State.EarlyStakeInfoMap[stakeId] ?? new EarlyStakeInfo();
-        var dict = earlyStakeInfo?.Data ?? new MapField<string, long>();
-        dict.TryGetValue(key, out var amount);
-        dict[key] = amount.Add(input.Amount);
-
-        State.EarlyStakeInfoMap[stakeId] = new EarlyStakeInfo
+        
+        Context.SendInline(poolInfo.Config.StakeTokenContract, "TransferFrom", new TransferFromInput
         {
-            Data = { dict }
-        };
+            From = input.FromAddress,
+            To = poolInfo.PoolAddress,
+            Amount = input.Amount,
+            Symbol = poolInfo.Config.StakingToken
+        });
+        
+        var stakeId = ProcessStake(poolInfo, 0, input.Amount, input.Period, input.Address);
+        
+        RecordEarlyStakeInfo(stakeId, input.Amount);
+
+        return new Empty();
+    }
+
+    public override Empty UpdateStakeInfo(UpdateStakeInfoInput input)
+    {
+        Assert(input != null, "Invalid input.");
+        Assert(input.StakeIds != null && input.StakeIds.Count > 0, "Invalid stake ids.");
+
+        var list = input.StakeIds.Distinct().ToList();
+        var poolDatas = ProcessStakeInfos(list);
+
+        Context.Fire(new StakeInfoUpdated
+        {
+            StakeIds = new HashList
+            {
+                Data = { list }
+            },
+            PoolDatas = new PoolDatas
+            {
+                Data = { poolDatas }
+            }
+        });
 
         return new Empty();
     }
@@ -231,13 +256,14 @@ public partial class EcoEarnTokensContract
         return amount;
     }
 
-    private Hash ProcessStake(PoolInfo poolInfo, long stakedAmount, long earlyStakedAmount, long period, Address address)
+    private Hash ProcessStake(PoolInfo poolInfo, long stakedAmount, long earlyStakedAmount, long period,
+        Address address)
     {
         var existId = State.UserStakeIdMap[poolInfo.PoolId]?[address];
         var stakeInfo = existId == null ? new StakeInfo() : State.StakeInfoMap[existId];
 
         var amount = stakedAmount.Add(earlyStakedAmount);
-        
+
         if (amount > 0)
         {
             Assert(amount >= poolInfo.Config.MinimumAmount, "Amount not enough.");
@@ -337,6 +363,19 @@ public partial class EcoEarnTokensContract
         }
 
         return pending - commissionFee;
+    }
+
+    private void RecordEarlyStakeInfo(Hash stakeId, long stakedAmount)
+    {
+        var key = CalculateVirtualAddress(Context.Sender).ToBase58();
+        var earlyStakeInfo = State.EarlyStakeInfoMap[stakeId] ?? new EarlyStakeInfo();
+        var dict = earlyStakeInfo?.Data ?? new MapField<string, long>();
+        dict.TryGetValue(key, out var amount);
+        dict[key] = amount.Add(stakedAmount);
+        State.EarlyStakeInfoMap[stakeId] = new EarlyStakeInfo
+        {
+            Data = { dict }
+        };
     }
 
     #endregion

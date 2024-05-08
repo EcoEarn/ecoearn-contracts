@@ -97,7 +97,8 @@ public partial class EcoEarnTokensContract
         }
         else
         {
-            reward = CalculatePending(stakeInfo.BoostedAmount, poolData.AccTokenPerShare, stakeInfo.RewardDebt);
+            output.Amount = stakeInfo.RewardAmount;
+            return output;
         }
 
         var config = State.Config.Value;

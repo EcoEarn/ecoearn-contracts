@@ -182,12 +182,11 @@ public partial class EcoEarnPointsContract
         var stakeId = GenerateStakeId(input.PoolId, Context.Sender, count);
         var list = ProcessEarlyStake(input.ClaimIds.Distinct().ToList(), poolInfo.Config.StakingToken, stakeId, out var amount);
         
-        Context.SendVirtualInline(HashHelper.ComputeFrom(Context.Sender), State.TokenContract.Value, "Transfer", new TransferInput
+        Context.SendVirtualInline(HashHelper.ComputeFrom(Context.Sender), State.TokenContract.Value, "Approve", new ApproveInput
         {
-            To = poolInfo.PoolAddress,
+            Spender = State.EcoEarnTokensContract.Value,
             Amount = amount,
             Symbol = poolInfo.Config.StakingToken,
-            Memo = "early"
         });
         
         Context.SendInline(State.EcoEarnTokensContract.Value, "StakeFor", new StakeForInput

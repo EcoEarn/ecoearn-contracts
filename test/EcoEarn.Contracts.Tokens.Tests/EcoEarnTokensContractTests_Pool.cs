@@ -2,6 +2,7 @@ using System.Threading.Tasks;
 using AElf;
 using AElf.Contracts.MultiToken;
 using AElf.Cryptography;
+using AElf.CSharp.Core.Extension;
 using AElf.Types;
 using EcoEarn.Contracts.Points;
 using Google.Protobuf;
@@ -131,6 +132,55 @@ public partial class EcoEarnTokensContractTests
         output10.Amount.ShouldBe(8);
         var output11 = await EcoEarnTokensContractStub.GetReward.CallAsync(stakeInfo2.StakeId);
         output11.Amount.ShouldBe(15);
+    }
+    
+    [Fact]
+    public async Task Test2()
+    {
+        await InitializeContract();
+
+        var pointsPoolId = await CreatePointsPool();
+        var tokensPoolId = await CreateTokensPool();
+        var pointsPoolInfo = await EcoEarnPointsContractStub.GetPoolInfo.CallAsync(pointsPoolId);
+        var tokensPoolInfo = await EcoEarnTokensContractStub.GetPoolInfo.CallAsync(tokensPoolId);
+
+        // claim in points pool
+        var seed = HashHelper.ComputeFrom("seed");
+        var input = new ClaimInput
+        {
+            PoolId = pointsPoolId,
+            Account = DefaultAddress,
+            Amount = 100,
+            Seed = seed,
+            Signature = GenerateSignature(DefaultAccount.KeyPair.PrivateKey, pointsPoolId, 100, DefaultAddress, seed)
+        };
+        var result = await EcoEarnPointsContractStub.Claim.SendAsync(input);
+        var claimInfo = GetLogEvent<Points.Claimed>(result.TransactionResult).ClaimInfo;
+        
+        // early stake
+        result = await EcoEarnPointsContractStub.EarlyStake.SendAsync(new Points.EarlyStakeInput
+        {
+            PoolId = tokensPoolId,
+            Period = 1,
+            ClaimIds = { claimInfo.ClaimId }
+        });
+        var stakeInfo = GetLogEvent<Staked>(result.TransactionResult).StakeInfo;
+        stakeInfo.BoostedAmount.ShouldBe(110);
+        stakeInfo.RewardAmount.ShouldBe(0);
+        stakeInfo.ClaimedAmount.ShouldBe(0);
+
+        var output = await EcoEarnTokensContractStub.GetReward.CallAsync(stakeInfo.StakeId);
+        output.Amount.ShouldBe(9);
+
+        BlockTimeProvider.SetBlockTime(BlockTimeProvider.GetBlockTime().AddDays(1));
+        
+        result = await EcoEarnTokensContractStub.UpdateStakeInfo.SendAsync(new UpdateStakeInfoInput
+        {
+            StakeIds = { stakeInfo.StakeId }
+        });
+        var stakeInfo2 = await EcoEarnTokensContractStub.GetStakeInfo.CallAsync(stakeInfo.StakeId);
+        var output2 = await EcoEarnTokensContractStub.GetReward.CallAsync(stakeInfo.StakeId);
+        output2.Amount.ShouldBe(9);
     }
     
     private async Task CreateToken()
