@@ -199,7 +199,7 @@ public partial class EcoEarnTokensContract
     {
         period = period >= config.MaximumStakeDuration ? config.MaximumStakeDuration : period;
         var days = period.Div(EcoEarnTokensContractConstants.SecondsPerDay);
-        return amount.Mul(config.FixedBoostFactor).Div(EcoEarnTokensContractConstants.Denominator).Mul(period)
+        return amount.Mul(config.FixedBoostFactor).Div(EcoEarnTokensContractConstants.Denominator).Mul(days)
             .Add(amount);
     }
 
@@ -283,6 +283,7 @@ public partial class EcoEarnTokensContract
 
         if (period > 0)
         {
+            Assert(period >= poolInfo.Config.MinimumStakeDuration, "Period too short.");
             Assert(period <= poolInfo.Config.MaximumStakeDuration, "Period too long.");
             stakeInfo.Period = stakeInfo.Period.Add(period);
         }

@@ -45,7 +45,7 @@ public partial class EcoEarnTokensContractTests
         result = await EcoEarnPointsContractStub.EarlyStake.SendAsync(new Points.EarlyStakeInput
         {
             PoolId = tokensPoolId,
-            Period = 10,
+            Period = 864000,
             ClaimIds = { claimInfo.ClaimId }
         });
         var stakeInfo = GetLogEvent<Staked>(result.TransactionResult).StakeInfo;
@@ -71,7 +71,7 @@ public partial class EcoEarnTokensContractTests
         {
             PoolId = tokensPoolId,
             Amount = 100,
-            Period = 10
+            Period = 864000
         });
         var stakeInfo2 = GetLogEvent<Staked>(result.TransactionResult).StakeInfo;
         stakeInfo2.BoostedAmount.ShouldBe(200);
@@ -87,7 +87,7 @@ public partial class EcoEarnTokensContractTests
         {
             PoolId = tokensPoolId,
             Amount = 0,
-            Period = 10
+            Period = 864000
         });
 
         stakeInfo = GetLogEvent<Staked>(result.TransactionResult).StakeInfo;
@@ -104,7 +104,7 @@ public partial class EcoEarnTokensContractTests
         {
             PoolId = tokensPoolId,
             Amount = 0,
-            Period = 50
+            Period = 864000 * 5
         });
 
         stakeInfo = GetLogEvent<Staked>(result.TransactionResult).StakeInfo;
@@ -161,7 +161,7 @@ public partial class EcoEarnTokensContractTests
         result = await EcoEarnPointsContractStub.EarlyStake.SendAsync(new Points.EarlyStakeInput
         {
             PoolId = tokensPoolId,
-            Period = 1,
+            Period = 86400,
             ClaimIds = { claimInfo.ClaimId }
         });
         var stakeInfo = GetLogEvent<Staked>(result.TransactionResult).StakeInfo;
@@ -351,14 +351,15 @@ public partial class EcoEarnTokensContractTests
                 RewardToken = DefaultSymbol,
                 StakingToken = Symbol,
                 FixedBoostFactor = 1000,
-                MaximumStakeDuration = 100,
+                MaximumStakeDuration = 1000000000,
                 MinimumAmount = 1,
                 MinimumClaimAmount = 1,
                 RewardPerBlock = 10,
                 ReleasePeriod = 60,
                 RewardTokenContract = TokenContractAddress,
                 StakeTokenContract = TokenContractAddress,
-                UpdateAddress = DefaultAddress
+                UpdateAddress = DefaultAddress,
+                MinimumStakeDuration = 1
             }
         });
 
