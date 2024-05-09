@@ -19,7 +19,6 @@ service EcoEarnTokensContract {
   rpc CreateTokensPool (CreateTokensPoolInput) returns (google.protobuf.Empty) {}
   rpc CloseTokensPool (aelf.Hash) returns (google.protobuf.Empty) {}
   rpc SetTokensPoolEndBlockNumber (SetTokensPoolEndBlockNumberInput) returns (google.protobuf.Empty) {}
-  rpc RestartTokensPool (RestartTokensPoolInput) returns (google.protobuf.Empty) {}
   rpc SetTokensPoolUpdateAddress (SetTokensPoolUpdateAddressInput) returns (google.protobuf.Empty) {}
   rpc SetTokensPoolRewardReleasePeriod (SetTokensPoolRewardReleasePeriodInput) returns (google.protobuf.Empty) {}
   rpc SetTokensPoolStakeConfig (SetTokensPoolStakeConfigInput) returns (google.protobuf.Empty) {}
@@ -88,11 +87,6 @@ message TokensPoolConfig {
 message SetTokensPoolEndBlockNumberInput {
   aelf.Hash pool_id = 1;
   int64 end_block_number = 2;
-}
-
-message RestartTokensPoolInput {
-  aelf.Hash pool_id = 1;
-  TokensPoolConfig config = 2;
 }
 
 message SetTokensPoolUpdateAddressInput {
@@ -286,13 +280,6 @@ message TokensPoolEndBlockNumberSet {
   option (aelf.is_event) = true;
   aelf.Hash pool_id = 1;
   int64 end_block_number = 2;
-  int64 amount = 3;
-}
-
-message TokensPoolRestarted {
-  option (aelf.is_event) = true;
-  aelf.Hash pool_id = 1;
-  TokensPoolConfig config = 2;
   int64 amount = 3;
 }
 

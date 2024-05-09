@@ -165,33 +165,6 @@ public partial class EcoEarnTokensContract
         return new Empty();
     }
 
-    public override Empty RestartTokensPool(RestartTokensPoolInput input)
-    {
-        Assert(input != null, "Invalid input.");
-        ValidateTokensPoolConfig(input.Config);
-        CheckTokenExists(input.Config.StakingToken, input.Config.StakeTokenContract, out var decimals);
-
-        var poolInfo = GetPool(input.PoolId);
-        Assert(!CheckPoolEnabled(poolInfo.Config.EndBlockNumber), "Can not restart yet.");
-        CheckDAppAdminPermission(poolInfo.DappId);
-
-        poolInfo.Config = input.Config;
-        poolInfo.Config.RewardTokenContract = input.Config.RewardTokenContract ?? State.TokenContract.Value;
-        poolInfo.Config.StakeTokenContract = input.Config.StakeTokenContract ?? State.TokenContract.Value;
-        poolInfo.PrecisionFactor = CalculatePrecisionFactor(decimals);
-
-        TransferReward(input.Config, input.PoolId, out var amount);
-
-        Context.Fire(new TokensPoolRestarted
-        {
-            PoolId = input.PoolId,
-            Amount = amount,
-            Config = input.Config
-        });
-
-        return new Empty();
-    }
-
     public override Empty SetTokensPoolUpdateAddress(SetTokensPoolUpdateAddressInput input)
     {
         Assert(input != null, "Invalid input.");
