@@ -38,7 +38,7 @@ service EcoEarnTokensContract {
   rpc GetUserStakeCount (GetUserStakeCountInput) returns (google.protobuf.Int64Value) {option (aelf.is_view) = true;}
 
   rpc Claim (aelf.Hash) returns (google.protobuf.Empty) {}
-  rpc GetClaimInfo (aelf.Hash) returns (ClaimInfo) {}
+  rpc GetClaimInfo (aelf.Hash) returns (ClaimInfo) {option (aelf.is_view) = true;}
   rpc Withdraw (WithdrawInput) returns (google.protobuf.Empty) {}
   rpc RecoverToken (RecoverTokenInput) returns (google.protobuf.Empty) {}
   rpc UpdateStakeInfo (UpdateStakeInfoInput) returns (google.protobuf.Empty) {}

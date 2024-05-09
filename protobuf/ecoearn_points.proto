@@ -12,34 +12,34 @@ option csharp_namespace = "EcoEarn.Contracts.Points";
 service EcoEarnPointsContract {
   option (aelf.base) = "acs12.proto";
   option (aelf.csharp_state) = "EcoEarn.Contracts.Points.EcoEarnPointsContractState";
-  
+
   // contract
   rpc Initialize (InitializeInput) returns (google.protobuf.Empty) {}
   rpc SetConfig (Config) returns (google.protobuf.Empty) {}
-  rpc GetConfig (google.protobuf.Empty) returns (Config) { option (aelf.is_view) = true; }
+  rpc GetConfig (google.protobuf.Empty) returns (Config) {option (aelf.is_view) = true;}
   rpc SetAdmin (aelf.Address) returns (google.protobuf.Empty) {}
-  rpc GetAdmin (google.protobuf.Empty) returns (aelf.Address) { option (aelf.is_view) = true; }
+  rpc GetAdmin (google.protobuf.Empty) returns (aelf.Address) {option (aelf.is_view) = true;}
   rpc SetContractConfig (SetContractConfigInput) returns (google.protobuf.Empty) {}
-  rpc GetContractConfig (google.protobuf.Empty) returns (GetContractConfigOutput) { option (aelf.is_view) = true; }
+  rpc GetContractConfig (google.protobuf.Empty) returns (GetContractConfigOutput) {option (aelf.is_view) = true;}
 
   // Pool
   rpc Register (RegisterInput) returns (google.protobuf.Empty) {}
   rpc SetDappAdmin (SetDappAdminInput) returns (google.protobuf.Empty) {}
-  rpc GetDappInfo (aelf.Hash) returns (DappInfo) { option (aelf.is_view) = true; }
+  rpc GetDappInfo (aelf.Hash) returns (DappInfo) {option (aelf.is_view) = true;}
   rpc CreatePointsPool (CreatePointsPoolInput) returns (google.protobuf.Empty) {}
   rpc ClosePointsPool (aelf.Hash) returns (google.protobuf.Empty) {}
   rpc SetPointsPoolEndBlockNumber (SetPointsPoolEndBlockNumberInput) returns (google.protobuf.Empty) {}
   rpc RestartPointsPool (RestartPointsPoolInput) returns (google.protobuf.Empty) {}
   rpc SetPointsPoolUpdateAddress (SetPointsPoolUpdateAddressInput) returns (google.protobuf.Empty) {}
   rpc SetPointsPoolRewardReleasePeriod (SetPointsPoolRewardReleasePeriodInput) returns (google.protobuf.Empty) {}
-  rpc GetPoolInfo (aelf.Hash) returns (GetPoolInfoOutput) { option (aelf.is_view) = true; }
-  rpc GetPoolAddress (aelf.Hash) returns (aelf.Address) { option (aelf.is_view) = true; }
-  
+  rpc GetPoolInfo (aelf.Hash) returns (GetPoolInfoOutput) {option (aelf.is_view) = true;}
+  rpc GetPoolAddress (aelf.Hash) returns (aelf.Address) {option (aelf.is_view) = true;}
+
   // reward
   rpc UpdateSnapshot (UpdateSnapshotInput) returns (google.protobuf.Empty) {}
-  rpc GetSnapshot (GetSnapshotInput) returns (Snapshot) { option (aelf.is_view) = true; }
+  rpc GetSnapshot (GetSnapshotInput) returns (Snapshot) {option (aelf.is_view) = true;}
   rpc Claim (ClaimInput) returns (google.protobuf.Empty) {}
-  rpc GetClaimInfo (aelf.Hash) returns (ClaimInfo) {}
+  rpc GetClaimInfo (aelf.Hash) returns (ClaimInfo) {option (aelf.is_view) = true;}
   rpc Withdraw (WithdrawInput) returns (google.protobuf.Empty) {}
   rpc EarlyStake (EarlyStakeInput) returns (google.protobuf.Empty) {}
   rpc RecoverToken (RecoverTokenInput) returns (google.protobuf.Empty) {}
@@ -120,7 +120,7 @@ message ClaimInput {
   aelf.Hash pool_id = 1;
   aelf.Address account = 2;
   int64 amount = 3;
-  aelf.Hash seed = 4;      
+  aelf.Hash seed = 4;
   bytes signature = 10000;
 }
 
