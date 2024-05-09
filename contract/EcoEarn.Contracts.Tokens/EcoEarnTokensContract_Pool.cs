@@ -273,6 +273,28 @@ public partial class EcoEarnTokensContract
         return new Empty();
     }
 
+    public override Empty SetTokensPoolFixedBoostFactor(SetTokensPoolFixedBoostFactorInput input)
+    {
+        Assert(input != null, "Invalid input.");
+        Assert(input.FixedBoostFactor >= 0, "Invalid fixed boost factor.");
+
+        var poolInfo = GetPool(input.PoolId);
+
+        CheckDAppAdminPermission(poolInfo.DappId);
+
+        if (poolInfo.Config.FixedBoostFactor == input.FixedBoostFactor) return new Empty();
+
+        poolInfo.Config.FixedBoostFactor = input.FixedBoostFactor;
+
+        Context.Fire(new TokensPoolFixedBoostFactorSet
+        {
+            PoolId = input.PoolId,
+            FixedBoostFactor = input.FixedBoostFactor
+        });
+
+        return new Empty();
+    }
+
     #endregion
 
     #region private
