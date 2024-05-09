@@ -4,6 +4,7 @@ using AElf.CSharp.Core;
 using AElf.Sdk.CSharp;
 using AElf.Types;
 using Google.Protobuf.WellKnownTypes;
+using static System.Int64;
 
 namespace EcoEarn.Contracts.Tokens;
 
@@ -71,6 +72,7 @@ public partial class EcoEarnTokensContract
         Assert(IsHashValid(input.DappId), "Invalid dapp id.");
         CheckDAppAdminPermission(input.DappId);
         ValidateTokensPoolConfig(input.Config);
+        CheckTokenExists(input.Config.StakingToken, input.Config.StakeTokenContract, out var decimals);
 
         var poolId = GeneratePoolId(input);
         Assert(State.PoolInfoMap[poolId] == null, "Pool exists.");
@@ -79,7 +81,8 @@ public partial class EcoEarnTokensContract
         {
             DappId = input.DappId,
             PoolId = poolId,
-            Config = input.Config
+            Config = input.Config,
+            PrecisionFactor = CalculatePrecisionFactor(decimals)
         };
         poolInfo.Config.RewardTokenContract = input.Config.RewardTokenContract ?? State.TokenContract.Value;
         poolInfo.Config.StakeTokenContract = input.Config.StakeTokenContract ?? State.TokenContract.Value;
@@ -166,6 +169,7 @@ public partial class EcoEarnTokensContract
     {
         Assert(input != null, "Invalid input.");
         ValidateTokensPoolConfig(input.Config);
+        CheckTokenExists(input.Config.StakingToken, input.Config.StakeTokenContract, out var decimals);
 
         var poolInfo = GetPool(input.PoolId);
         Assert(Context.CurrentHeight >= poolInfo.Config.EndBlockNumber, "Can not restart yet.");
@@ -174,6 +178,7 @@ public partial class EcoEarnTokensContract
         poolInfo.Config = input.Config;
         poolInfo.Config.RewardTokenContract = input.Config.RewardTokenContract ?? State.TokenContract.Value;
         poolInfo.Config.StakeTokenContract = input.Config.StakeTokenContract ?? State.TokenContract.Value;
+        poolInfo.PrecisionFactor = CalculatePrecisionFactor(decimals);
 
         TransferReward(input.Config, input.PoolId, out var amount);
 
@@ -280,11 +285,10 @@ public partial class EcoEarnTokensContract
             "Invalid reward token contract.");
         Assert(config.StakeTokenContract == null || !config.StakeTokenContract.Value.IsNullOrEmpty(),
             "Invalid stake token contract.");
-        CheckTokenExists(config.RewardToken, config.RewardTokenContract);
+        CheckTokenExists(config.RewardToken, config.RewardTokenContract, out _);
         Assert(config.StartBlockNumber >= Context.CurrentHeight, "Invalid start block number.");
         Assert(config.EndBlockNumber > config.StartBlockNumber, "Invalid end block number.");
         Assert(config.RewardPerBlock > 0, "Invalid reward per block.");
-        CheckTokenExists(config.StakingToken, config.StakeTokenContract);
         Assert(config.FixedBoostFactor >= 0, "Invalid fixed boost factor.");
         Assert(config.MinimumAmount >= 0, "Invalid minimum amount.");
         Assert(config.ReleasePeriod >= 0, "Invalid release period.");
@@ -293,7 +297,7 @@ public partial class EcoEarnTokensContract
         Assert(config.MinimumStakeDuration > 0, "Invalid minimum stake duration.");
     }
 
-    private void CheckTokenExists(string symbol, Address tokenContract)
+    private void CheckTokenExists(string symbol, Address tokenContract, out int decimals)
     {
         Assert(IsStringValid(symbol), "Invalid reward token.");
         var info = Context.Call<TokenInfo>(tokenContract, "GetTokenInfo", new GetTokenInfoInput
@@ -301,6 +305,7 @@ public partial class EcoEarnTokensContract
             Symbol = symbol
         });
         Assert(IsStringValid(info.Symbol), $"{symbol} not exists.");
+        decimals = info.Decimals;
     }
 
     private Hash GeneratePoolId(CreateTokensPoolInput input)
@@ -359,6 +364,12 @@ public partial class EcoEarnTokensContract
         Assert(poolInfo != null, "Pool not exists.");
 
         return poolInfo;
+    }
+
+    private long CalculatePrecisionFactor(int decimals)
+    {
+        var tryParse = TryParse(new BigIntValue(EcoEarnTokensContractConstants.Ten).Pow(decimals).Value, out var value);
+        return !tryParse || value <= 1 ? EcoEarnTokensContractConstants.Denominator : value;
     }
 
     #endregion

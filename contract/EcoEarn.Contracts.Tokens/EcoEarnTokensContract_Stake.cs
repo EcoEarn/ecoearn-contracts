@@ -203,7 +203,7 @@ public partial class EcoEarnTokensContract
             .Add(amount);
     }
 
-    private void UpdatePool(PoolInfo info, PoolData poolData)
+    private void UpdatePool(PoolInfo poolInfo, PoolData poolData)
     {
         var blockNumber = Context.CurrentHeight;
 
@@ -217,10 +217,10 @@ public partial class EcoEarnTokensContract
             return;
         }
 
-        var multiplier = GetMultiplier(poolData.LastRewardBlock, blockNumber, info.Config.EndBlockNumber);
-        var rewards = multiplier.Mul(info.Config.RewardPerBlock);
-        poolData.AccTokenPerShare = rewards.Mul(EcoEarnTokensContractConstants.Denominator)
-            .Div(poolData.TotalStakedAmount).Add(poolData.AccTokenPerShare);
+        var multiplier = GetMultiplier(poolData.LastRewardBlock, blockNumber, poolInfo.Config.EndBlockNumber);
+        var rewards = multiplier.Mul(poolInfo.Config.RewardPerBlock);
+        poolData.AccTokenPerShare = rewards.Mul(poolInfo.PrecisionFactor).Div(poolData.TotalStakedAmount)
+            .Add(poolData.AccTokenPerShare);
         poolData.LastRewardBlock = blockNumber;
     }
 
@@ -231,14 +231,14 @@ public partial class EcoEarnTokensContract
         return endBlockNumber - from;
     }
 
-    private long CalculatePending(long amount, long accTokenPerShare, long debt)
+    private long CalculatePending(long amount, long accTokenPerShare, long debt, long precisionFactor)
     {
-        return amount.Mul(accTokenPerShare).Div(EcoEarnTokensContractConstants.Denominator) - debt;
+        return amount.Mul(accTokenPerShare).Div(precisionFactor) - debt;
     }
 
-    private long CalculateDebt(long amount, long accTokenPerShare)
+    private long CalculateDebt(long amount, long accTokenPerShare, long precisionFactor)
     {
-        return amount.Mul(accTokenPerShare).Div(EcoEarnTokensContractConstants.Denominator);
+        return amount.Mul(accTokenPerShare).Div(precisionFactor);
     }
 
     private long ProcessEarlyStake(List<Hash> claimIds, PoolInfo poolInfo)
@@ -326,7 +326,8 @@ public partial class EcoEarnTokensContract
 
         if (stakeInfo.BoostedAmount > 0)
         {
-            var pending = CalculatePending(stakeInfo.BoostedAmount, poolData.AccTokenPerShare, stakeInfo.RewardDebt);
+            var pending = CalculatePending(stakeInfo.BoostedAmount, poolData.AccTokenPerShare, stakeInfo.RewardDebt,
+                poolInfo.PrecisionFactor);
             var actualReward = ProcessCommissionFee(pending, poolInfo);
             if (actualReward > 0)
             {
@@ -344,7 +345,7 @@ public partial class EcoEarnTokensContract
 
         poolData.TotalStakedAmount = poolData.TotalStakedAmount.Add(boostedAmount).Sub(stakeInfo.BoostedAmount);
         stakeInfo.BoostedAmount = boostedAmount;
-        stakeInfo.RewardDebt = CalculateDebt(boostedAmount, poolData.AccTokenPerShare);
+        stakeInfo.RewardDebt = CalculateDebt(boostedAmount, poolData.AccTokenPerShare, poolInfo.PrecisionFactor);
 
         Context.Fire(new Staked
         {

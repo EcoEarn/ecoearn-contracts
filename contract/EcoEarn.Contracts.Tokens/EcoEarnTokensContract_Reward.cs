@@ -212,7 +212,7 @@ public partial class EcoEarnTokensContract
             if (stakeInfo.BoostedAmount > 0)
             {
                 var pending = CalculatePending(stakeInfo.BoostedAmount, poolData.AccTokenPerShare,
-                    stakeInfo.RewardDebt);
+                    stakeInfo.RewardDebt, poolInfo.PrecisionFactor);
                 var actualReward = ProcessCommissionFee(pending, poolInfo);
                 if (actualReward > 0)
                 {
@@ -248,15 +248,15 @@ public partial class EcoEarnTokensContract
         long adjustedTokenPerShare;
         if (poolData.TotalStakedAmount > 0)
         {
-            adjustedTokenPerShare = rewards.Mul(EcoEarnTokensContractConstants.Denominator)
-                .Div(poolData.TotalStakedAmount).Add(poolData.AccTokenPerShare);
+            adjustedTokenPerShare = rewards.Mul(poolInfo.PrecisionFactor).Div(poolData.TotalStakedAmount)
+                .Add(poolData.AccTokenPerShare);
         }
         else
         {
             adjustedTokenPerShare = poolData.AccTokenPerShare;
         }
 
-        return CalculatePending(amount, adjustedTokenPerShare, debt);
+        return CalculatePending(amount, adjustedTokenPerShare, debt, poolInfo.PrecisionFactor);
     }
 
     #endregion
