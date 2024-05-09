@@ -121,4 +121,9 @@ public partial class EcoEarnTokensContract
             Value = State.UserStakeCountMap[input.PoolId][input.Account]
         };
     }
+
+    public override Hash GetUserStakeId(GetUserStakeIdInput input)
+    {
+        return State.UserStakeIdMap[input.PoolId]?[input.Account];
+    }
 }

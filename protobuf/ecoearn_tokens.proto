@@ -26,7 +26,7 @@ service EcoEarnTokensContract {
   rpc GetPoolInfo (aelf.Hash) returns (GetPoolInfoOutput) {option (aelf.is_view) = true;}
   rpc GetPoolData (aelf.Hash) returns (PoolData) {option (aelf.is_view) = true;}
   rpc GetPoolAddress (aelf.Hash) returns (GetPoolAddressOutput) {option (aelf.is_view) = true;}
-  rpc GetPoolCount (aelf.Hash) returns (google.protobuf.Int64Value) { option (aelf.is_view) = true; }
+  rpc GetPoolCount (aelf.Hash) returns (google.protobuf.Int64Value) {option (aelf.is_view) = true;}
 
   rpc Stake (StakeInput) returns (google.protobuf.Empty) {}
   rpc EarlyStake (EarlyStakeInput) returns (google.protobuf.Empty) {}
@@ -34,8 +34,9 @@ service EcoEarnTokensContract {
   rpc GetStakeInfo (aelf.Hash) returns (StakeInfo) {option (aelf.is_view) = true;}
   rpc GetReward (aelf.Hash) returns (GetRewardOutput) {option (aelf.is_view) = true;}
   rpc Unlock (aelf.Hash) returns (google.protobuf.Empty) {}
-  rpc GetUserStakeCount (GetUserStakeCountInput) returns (google.protobuf.Int64Value) {}
-  
+  rpc GetUserStakeId (GetUserStakeIdInput) returns (aelf.Hash) {option (aelf.is_view) = true;}
+  rpc GetUserStakeCount (GetUserStakeCountInput) returns (google.protobuf.Int64Value) {option (aelf.is_view) = true;}
+
   rpc Claim (aelf.Hash) returns (google.protobuf.Empty) {}
   rpc GetClaimInfo (aelf.Hash) returns (ClaimInfo) {}
   rpc Withdraw (WithdrawInput) returns (google.protobuf.Empty) {}
@@ -48,7 +49,7 @@ service EcoEarnTokensContract {
   rpc SetAdmin (aelf.Address) returns (google.protobuf.Empty) {}
   rpc GetAdmin (google.protobuf.Empty) returns (aelf.Address) {option (aelf.is_view) = true;}
   rpc SetContractConfig (aelf.Address) returns (google.protobuf.Empty) {}
-  rpc GetContractConfig (google.protobuf.Empty) returns (aelf.Address) { option (aelf.is_view) = true; }
+  rpc GetContractConfig (google.protobuf.Empty) returns (aelf.Address) {option (aelf.is_view) = true;}
 }
 
 message RegisterInput {
@@ -233,6 +234,11 @@ message Config {
 message SetDappAdminInput {
   aelf.Hash dapp_id = 1;
   aelf.Address admin = 2;
+}
+
+message GetUserStakeIdInput {
+  aelf.Hash pool_id = 1;
+  aelf.Address account = 2;
 }
 
 message GetUserStakeCountInput {

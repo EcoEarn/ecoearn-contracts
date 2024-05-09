@@ -112,7 +112,7 @@ public partial class EcoEarnTokensContract
     {
         var poolInfo = GetPool(input);
         CheckDAppAdminPermission(poolInfo.DappId);
-        Assert(Context.CurrentHeight < poolInfo.Config.EndBlockNumber, "Pool already closed.");
+        Assert(CheckPoolEnabled(poolInfo.Config.EndBlockNumber), "Pool already closed.");
 
         poolInfo.Config.EndBlockNumber = Context.CurrentHeight;
 
@@ -172,7 +172,7 @@ public partial class EcoEarnTokensContract
         CheckTokenExists(input.Config.StakingToken, input.Config.StakeTokenContract, out var decimals);
 
         var poolInfo = GetPool(input.PoolId);
-        Assert(Context.CurrentHeight >= poolInfo.Config.EndBlockNumber, "Can not restart yet.");
+        Assert(!CheckPoolEnabled(poolInfo.Config.EndBlockNumber), "Can not restart yet.");
         CheckDAppAdminPermission(poolInfo.DappId);
 
         poolInfo.Config = input.Config;
@@ -350,7 +350,7 @@ public partial class EcoEarnTokensContract
     {
         return HashHelper.ConcatAndCompute(id, HashHelper.ComputeFrom(EcoEarnTokensContractConstants.StakeAddress));
     }
-    
+
     private Hash GetRewardVirtualAddress(Hash id)
     {
         return HashHelper.ConcatAndCompute(id, HashHelper.ComputeFrom(EcoEarnTokensContractConstants.RewardAddress));

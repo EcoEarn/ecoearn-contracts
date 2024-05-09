@@ -23,7 +23,7 @@ public partial class EcoEarnTokensContract
 
         var poolInfo = GetPool(input.PoolId);
 
-        Assert(Context.CurrentHeight < poolInfo.Config.EndBlockNumber, "Pool closed.");
+        Assert(CheckPoolEnabled(poolInfo.Config.EndBlockNumber), "Pool closed.");
 
         ProcessStake(poolInfo, input.Amount, 0, input.Period, Context.Sender);
 
@@ -110,7 +110,7 @@ public partial class EcoEarnTokensContract
 
         var poolInfo = GetPool(input.PoolId);
         Assert(input.Period >= 0 && input.Period <= poolInfo.Config.MaximumStakeDuration, "Invalid period.");
-        Assert(Context.CurrentHeight < poolInfo.Config.EndBlockNumber, "Pool closed.");
+        Assert(CheckPoolEnabled(poolInfo.Config.EndBlockNumber), "Pool closed.");
 
         var stakedAmount = ProcessEarlyStake(input.ClaimIds.ToList(), poolInfo);
         Assert(stakedAmount >= poolInfo.Config.MinimumAmount, "Invalid amount.");
@@ -141,7 +141,7 @@ public partial class EcoEarnTokensContract
         var poolInfo = GetPool(input.PoolId);
         Assert(input.Amount >= poolInfo.Config.MinimumAmount, "Invalid amount.");
         Assert(input.Period >= 0 && input.Period <= poolInfo.Config.MaximumStakeDuration, "Invalid period.");
-        Assert(Context.CurrentHeight < poolInfo.Config.EndBlockNumber, "Pool closed.");
+        Assert(CheckPoolEnabled(poolInfo.Config.EndBlockNumber), "Pool closed.");
 
         Context.SendInline(poolInfo.Config.StakeTokenContract, "TransferFrom", new TransferFromInput
         {

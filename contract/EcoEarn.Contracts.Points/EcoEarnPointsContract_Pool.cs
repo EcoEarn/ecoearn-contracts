@@ -82,8 +82,6 @@ public partial class EcoEarnPointsContract
         Assert(State.PointsNameMap[input.DappId][input.PointsName] == null, "Points name taken.");
         State.PointsNameMap[input.DappId][input.PointsName] = poolId;
 
-        var poolAddress = CalculateVirtualAddress(poolId);
-
         State.PoolInfoMap[poolId] = new PoolInfo
         {
             DappId = input.DappId,
@@ -93,7 +91,7 @@ public partial class EcoEarnPointsContract
         };
 
         // charge rewards to pool address
-        TransferReward(input.Config, poolAddress, out var amount);
+        TransferReward(input.Config, CalculateVirtualAddress(poolId), out var amount);
 
         Context.Fire(new PointsPoolCreated
         {
@@ -111,7 +109,7 @@ public partial class EcoEarnPointsContract
     {
         var poolInfo = GetPool(input);
         CheckDAppAdminPermission(poolInfo.DappId);
-        Assert(Context.CurrentHeight < poolInfo.Config.EndBlockNumber, "Pool already closed.");
+        Assert(CheckPoolEnabled(poolInfo.Config.EndBlockNumber), "Pool already closed.");
 
         poolInfo.Config.EndBlockNumber = Context.CurrentHeight;
 
@@ -171,7 +169,7 @@ public partial class EcoEarnPointsContract
         ValidatePointsPoolConfig(input.Config);
 
         var poolInfo = GetPool(input.PoolId);
-        Assert(Context.CurrentHeight >= poolInfo.Config.EndBlockNumber, "Can not restart yet.");
+        Assert(!CheckPoolEnabled(poolInfo.Config.EndBlockNumber), "Can not restart yet.");
         CheckDAppAdminPermission(poolInfo.DappId);
 
         poolInfo.Config = input.Config;
@@ -286,7 +284,7 @@ public partial class EcoEarnPointsContract
             To = poolAddress,
             Symbol = config.RewardToken,
             Amount = amount,
-            Memo = "reward"
+            Memo = "pool"
         });
     }
 

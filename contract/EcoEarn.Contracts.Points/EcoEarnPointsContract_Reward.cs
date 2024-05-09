@@ -171,15 +171,10 @@ public partial class EcoEarnPointsContract
         Assert(input.Period >= 0, "Invalid period.");
 
         var poolInfo = State.EcoEarnTokensContract.GetPoolInfo.Call(input.PoolId).PoolInfo;
-        Assert(poolInfo != null, "Pool not exists.");
+        Assert(poolInfo.PoolId == input.PoolId, "Pool not exists.");
 
-        var count = State.EcoEarnTokensContract.GetUserStakeCount.Call(new GetUserStakeCountInput
-        {
-            Account = Context.Sender,
-            PoolId = input.PoolId
-        }).Value;
-
-        var stakeId = GenerateStakeId(input.PoolId, Context.Sender, count);
+        var stakeId = GetStakeId(input.PoolId);
+        
         var list = ProcessEarlyStake(input.ClaimIds.Distinct().ToList(), poolInfo.Config.StakingToken, stakeId,
             out var amount);
 
@@ -189,9 +184,9 @@ public partial class EcoEarnPointsContract
             {
                 Spender = State.EcoEarnTokensContract.Value,
                 Amount = amount,
-                Symbol = poolInfo.Config.StakingToken,
+                Symbol = poolInfo.Config.StakingToken
             });
-        
+
         Context.SendInline(State.EcoEarnTokensContract.Value, "StakeFor", new StakeForInput
         {
             Address = Context.Sender,
@@ -345,6 +340,30 @@ public partial class EcoEarnPointsContract
     {
         return HashHelper.ConcatAndCompute(
             HashHelper.ConcatAndCompute(HashHelper.ComputeFrom(count), HashHelper.ComputeFrom(sender)), poolId);
+    }
+
+    private Hash GetStakeId(Hash poolId)
+    {
+        var stakeId = State.EcoEarnTokensContract.GetUserStakeId.Call(new GetUserStakeIdInput
+        {
+            PoolId = poolId,
+            Account = Context.Sender
+        });
+        
+        var stakeInfo = State.EcoEarnTokensContract.GetStakeInfo.Call(stakeId);
+
+        if (!IsHashValid(stakeId) || stakeInfo.WithdrawTime != null)
+        {
+            var count = State.EcoEarnTokensContract.GetUserStakeCount.Call(new GetUserStakeCountInput
+            {
+                Account = Context.Sender,
+                PoolId = poolId
+            }).Value;
+            
+            stakeId = GenerateStakeId(poolId, Context.Sender, count);
+        }
+
+        return stakeId;
     }
 
     #endregion
