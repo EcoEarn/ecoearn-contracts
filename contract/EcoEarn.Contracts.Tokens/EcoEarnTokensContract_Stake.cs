@@ -90,6 +90,9 @@ public partial class EcoEarnTokensContract
                     });
             }
         }
+        
+        stakeInfo.StakedAmount = 0;
+        stakeInfo.EarlyStakedAmount = 0;
 
         Context.Fire(new Unlocked
         {
@@ -98,9 +101,6 @@ public partial class EcoEarnTokensContract
             StakedAmount = stakeInfo.StakedAmount,
             EarlyStakedAmount = stakeInfo.EarlyStakedAmount
         });
-
-        stakeInfo.StakedAmount = 0;
-        stakeInfo.EarlyStakedAmount = 0;
 
         return new Empty();
     }
@@ -225,7 +225,7 @@ public partial class EcoEarnTokensContract
         var rewards = new BigIntValue(multiplier.Mul(poolInfo.Config.RewardPerBlock));
         var accTokenPerShare = poolData.AccTokenPerShare ?? new BigIntValue(0);
         poolData.AccTokenPerShare =
-            accTokenPerShare.Add(rewards.Mul(poolInfo.PrecisionFactor).Div(poolData.TotalStakedAmount));
+            accTokenPerShare.Add(rewards.Mul(EcoEarnTokensContractConstants.Denominator).Div(poolData.TotalStakedAmount));
         poolData.LastRewardBlock = blockNumber;
     }
 
@@ -341,7 +341,7 @@ public partial class EcoEarnTokensContract
         if (stakeInfo.BoostedAmount > 0)
         {
             var pending = CalculatePending(stakeInfo.BoostedAmount, poolData.AccTokenPerShare, stakeInfo.RewardDebt,
-                poolInfo.PrecisionFactor);
+                EcoEarnTokensContractConstants.Denominator);
             var actualReward = ProcessCommissionFee(pending, poolInfo);
             if (actualReward > 0)
             {
@@ -359,7 +359,7 @@ public partial class EcoEarnTokensContract
 
         poolData.TotalStakedAmount = poolData.TotalStakedAmount.Add(boostedAmount).Sub(stakeInfo.BoostedAmount);
         stakeInfo.BoostedAmount = boostedAmount;
-        stakeInfo.RewardDebt = CalculateDebt(boostedAmount, poolData.AccTokenPerShare, poolInfo.PrecisionFactor);
+        stakeInfo.RewardDebt = CalculateDebt(boostedAmount, poolData.AccTokenPerShare, EcoEarnTokensContractConstants.Denominator);
         stakeInfo.LastOperationTime = Context.CurrentBlockTime;
 
         Context.Fire(new Staked
