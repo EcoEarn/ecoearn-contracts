@@ -220,7 +220,7 @@ public partial class EcoEarnTokensContract
         }
 
         var multiplier = GetMultiplier(poolData.LastRewardBlock, blockNumber, poolInfo.Config.EndBlockNumber);
-        var rewards = multiplier.Mul(poolInfo.Config.RewardPerBlock);
+        var rewards = new BigIntValue(multiplier.Mul(poolInfo.Config.RewardPerBlock));
         var accTokenPerShare = poolData.AccTokenPerShare ?? new BigIntValue(0);
         poolData.AccTokenPerShare = accTokenPerShare.Add(rewards.Mul(poolInfo.PrecisionFactor).Div(poolData.TotalStakedAmount));
         poolData.LastRewardBlock = blockNumber;
