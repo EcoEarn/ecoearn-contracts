@@ -168,8 +168,12 @@ public partial class EcoEarnTokensContract
 
             claimInfo.WithdrawTime = Context.CurrentBlockTime;
 
-            var stakeInfo = State.StakeInfoMap[claimInfo.StakeId];
-            stakeInfo.LockedRewardAmount.Sub(claimInfo.ClaimedAmount);
+            if (IsHashValid(claimInfo.StakeId))
+            {
+                var stakeInfo = State.StakeInfoMap[claimInfo.StakeId];
+                Assert(stakeInfo != null && stakeInfo.WithdrawTime != null, "Not unlocked.");
+                stakeInfo.LockedRewardAmount.Sub(claimInfo.ClaimedAmount);
+            }
 
             var poolInfo = GetPool(claimInfo.PoolId);
 

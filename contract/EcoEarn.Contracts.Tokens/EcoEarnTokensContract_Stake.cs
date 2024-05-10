@@ -357,6 +357,7 @@ public partial class EcoEarnTokensContract
         poolData.TotalStakedAmount = poolData.TotalStakedAmount.Add(boostedAmount).Sub(stakeInfo.BoostedAmount);
         stakeInfo.BoostedAmount = boostedAmount;
         stakeInfo.RewardDebt = CalculateDebt(boostedAmount, poolData.AccTokenPerShare, poolInfo.PrecisionFactor);
+        stakeInfo.LastOperationTime = Context.CurrentBlockTime;
 
         Context.Fire(new Staked
         {

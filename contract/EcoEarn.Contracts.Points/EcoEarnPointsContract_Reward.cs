@@ -271,10 +271,10 @@ public partial class EcoEarnPointsContract
             Assert(claimInfo.WithdrawTime == null, "Already withdrawn.");
             Assert(Context.CurrentBlockTime >= claimInfo.UnlockTime, "Not unlock yet.");
 
-            if (claimInfo.StakeId != null)
+            if (IsHashValid(claimInfo.StakeId))
             {
                 var stakeInfo = State.EcoEarnTokensContract.GetStakeInfo.Call(claimInfo.StakeId);
-                Assert(Context.CurrentBlockTime >= stakeInfo.WithdrawTime, "Not unlocked.");
+                Assert(stakeInfo != null && stakeInfo.WithdrawTime != null, "Not unlocked.");
             }
 
             claimInfo.WithdrawTime = Context.CurrentBlockTime;
