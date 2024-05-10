@@ -112,10 +112,11 @@ public partial class EcoEarnTokensContract
         Assert(input.Period >= 0 && input.Period <= poolInfo.Config.MaximumStakeDuration, "Invalid period.");
         Assert(CheckPoolEnabled(poolInfo.Config.EndBlockNumber), "Pool closed.");
 
-        var stakedAmount = ProcessEarlyStake(input.ClaimIds.ToList(), poolInfo);
+        var stakeId = GetStakeId(input.PoolId);
+        var stakedAmount = ProcessEarlyStake(input.ClaimIds.ToList(), poolInfo, stakeId);
         Assert(stakedAmount >= poolInfo.Config.MinimumAmount, "Invalid amount.");
 
-        var stakeId = ProcessStake(poolInfo, 0, stakedAmount, input.Period, Context.Sender);
+        ProcessStake(poolInfo, 0, stakedAmount, input.Period, Context.Sender);
 
         RecordEarlyStakeInfo(stakeId, stakedAmount);
 
@@ -241,7 +242,7 @@ public partial class EcoEarnTokensContract
         return amount.Mul(accTokenPerShare).Div(precisionFactor);
     }
 
-    private long ProcessEarlyStake(List<Hash> claimIds, PoolInfo poolInfo)
+    private long ProcessEarlyStake(List<Hash> claimIds, PoolInfo poolInfo, Hash stakeId)
     {
         var amount = 0L;
 
@@ -253,14 +254,19 @@ public partial class EcoEarnTokensContract
 
             var claimInfo = State.ClaimInfoMap[id];
             Assert(claimInfo != null, "Claim info not exists.");
-            Assert(claimInfo.EarlyStakeTime == null, "Already early staked.");
             Assert(claimInfo.WithdrawTime == null, "Already withdrawn.");
-            Assert(claimInfo.ClaimedSymbol == poolInfo.Config.StakingToken, "Token not matched.");
             Assert(claimInfo.Account == Context.Sender, "No permission.");
-            Assert(claimInfo.PoolId == poolInfo.PoolId, "Pool id not matched.");
+            Assert(claimInfo.ClaimedSymbol == poolInfo.Config.StakingToken, "Token not matched.");
+
+            if (claimInfo.StakeId != null)
+            {
+                var stakeInfo = State.StakeInfoMap[claimInfo.StakeId];
+                Assert(Context.CurrentBlockTime >= stakeInfo.WithdrawTime, "Not unlocked.");
+            }
 
             amount = amount.Add(claimInfo.ClaimedAmount);
             claimInfo.EarlyStakeTime = Context.CurrentBlockTime;
+            claimInfo.StakeId = stakeId;
         }
 
         return amount;
@@ -389,6 +395,19 @@ public partial class EcoEarnTokensContract
         {
             Data = { dict }
         };
+    }
+
+    private Hash GetStakeId(Hash poolId)
+    {
+        var stakeId = State.UserStakeIdMap[poolId]?[Context.Sender];
+
+        if (IsHashValid(stakeId) && State.StakeInfoMap[stakeId]?.WithdrawTime == null) return stakeId;
+
+        var count = State.UserStakeCountMap[poolId][Context.Sender];
+        stakeId = HashHelper.ConcatAndCompute(
+            HashHelper.ConcatAndCompute(HashHelper.ComputeFrom(count), HashHelper.ComputeFrom(Context.Sender)), poolId);
+
+        return stakeId;
     }
 
     #endregion
