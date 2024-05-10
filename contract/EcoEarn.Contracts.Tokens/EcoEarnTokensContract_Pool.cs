@@ -144,10 +144,10 @@ public partial class EcoEarnTokensContract
             amount = CalculateTotalRewardAmount(poolInfo.Config.EndBlockNumber, input.EndBlockNumber,
                 poolInfo.Config.RewardPerBlock);
 
-            Context.SendInline(poolInfo.Config.StakeTokenContract, "TransferFrom", new TransferFromInput
+            Context.SendInline(poolInfo.Config.RewardTokenContract, "TransferFrom", new TransferFromInput
             {
                 From = Context.Sender,
-                To = CalculateVirtualAddress(GetStakeVirtualAddress(input.PoolId)),
+                To = CalculateVirtualAddress(GetRewardVirtualAddress(input.PoolId)),
                 Symbol = poolInfo.Config.RewardToken,
                 Amount = amount
             });
