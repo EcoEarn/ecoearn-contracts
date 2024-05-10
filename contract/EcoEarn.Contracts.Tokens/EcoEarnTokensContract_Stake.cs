@@ -30,14 +30,15 @@ public partial class EcoEarnTokensContract
 
         if (input.Amount > 0)
         {
-            Context.SendInline(poolInfo.Config.StakeTokenContract, "TransferFrom", new TransferFromInput
-            {
-                From = Context.Sender,
-                To = CalculateVirtualAddress(GetStakeVirtualAddress(input.PoolId)),
-                Amount = input.Amount,
-                Memo = "stake",
-                Symbol = poolInfo.Config.StakingToken
-            });
+            Context.SendInline(poolInfo.Config.StakeTokenContract, nameof(State.TokenContract.TransferFrom),
+                new TransferFromInput
+                {
+                    From = Context.Sender,
+                    To = CalculateVirtualAddress(GetStakeVirtualAddress(input.PoolId)),
+                    Amount = input.Amount,
+                    Memo = "stake",
+                    Symbol = poolInfo.Config.StakingToken
+                });
         }
 
         return new Empty();
@@ -64,8 +65,8 @@ public partial class EcoEarnTokensContract
 
         if (stakeInfo.StakedAmount > 0)
         {
-            Context.SendVirtualInline(GetStakeVirtualAddress(input), poolInfo.Config.StakeTokenContract, "Transfer",
-                new TransferInput
+            Context.SendVirtualInline(GetStakeVirtualAddress(input), poolInfo.Config.StakeTokenContract,
+                nameof(State.TokenContract.Transfer), new TransferInput
                 {
                     Amount = stakeInfo.StakedAmount,
                     Memo = "withdraw",
@@ -79,8 +80,8 @@ public partial class EcoEarnTokensContract
             var dict = State.EarlyStakeInfoMap[stakeInfo.StakeId];
             foreach (var info in dict.Data)
             {
-                Context.SendVirtualInline(GetStakeVirtualAddress(input), poolInfo.Config.StakeTokenContract, "Transfer",
-                    new TransferInput
+                Context.SendVirtualInline(GetStakeVirtualAddress(input), poolInfo.Config.StakeTokenContract,
+                    nameof(State.TokenContract.Transfer), new TransferInput
                     {
                         Amount = info.Value,
                         Memo = "early",
@@ -122,7 +123,7 @@ public partial class EcoEarnTokensContract
         RecordEarlyStakeInfo(stakeId, stakedAmount);
 
         Context.SendVirtualInline(HashHelper.ComputeFrom(Context.Sender), poolInfo.Config.RewardTokenContract,
-            "Transfer", new TransferInput
+            nameof(State.TokenContract.Transfer), new TransferInput
             {
                 To = CalculateVirtualAddress(GetStakeVirtualAddress(input.PoolId)),
                 Amount = stakedAmount,
@@ -145,13 +146,14 @@ public partial class EcoEarnTokensContract
         Assert(input.Period >= 0 && input.Period <= poolInfo.Config.MaximumStakeDuration, "Invalid period.");
         Assert(CheckPoolEnabled(poolInfo.Config.EndBlockNumber), "Pool closed.");
 
-        Context.SendInline(poolInfo.Config.StakeTokenContract, "TransferFrom", new TransferFromInput
-        {
-            From = input.FromAddress,
-            To = CalculateVirtualAddress(GetStakeVirtualAddress(input.PoolId)),
-            Amount = input.Amount,
-            Symbol = poolInfo.Config.StakingToken
-        });
+        Context.SendInline(poolInfo.Config.StakeTokenContract, nameof(State.TokenContract.TransferFrom),
+            new TransferFromInput
+            {
+                From = input.FromAddress,
+                To = CalculateVirtualAddress(GetStakeVirtualAddress(input.PoolId)),
+                Amount = input.Amount,
+                Symbol = poolInfo.Config.StakingToken
+            });
 
         var stakeId = ProcessStake(poolInfo, 0, input.Amount, input.Period, input.Address);
 
@@ -222,7 +224,8 @@ public partial class EcoEarnTokensContract
         var multiplier = GetMultiplier(poolData.LastRewardBlock, blockNumber, poolInfo.Config.EndBlockNumber);
         var rewards = new BigIntValue(multiplier.Mul(poolInfo.Config.RewardPerBlock));
         var accTokenPerShare = poolData.AccTokenPerShare ?? new BigIntValue(0);
-        poolData.AccTokenPerShare = accTokenPerShare.Add(rewards.Mul(poolInfo.PrecisionFactor).Div(poolData.TotalStakedAmount));
+        poolData.AccTokenPerShare =
+            accTokenPerShare.Add(rewards.Mul(poolInfo.PrecisionFactor).Div(poolData.TotalStakedAmount));
         poolData.LastRewardBlock = blockNumber;
     }
 
@@ -344,7 +347,7 @@ public partial class EcoEarnTokensContract
             {
                 stakeInfo.RewardAmount = stakeInfo.RewardAmount.Add(actualReward);
                 Context.SendVirtualInline(GetRewardVirtualAddress(stakeInfo.PoolId),
-                    poolInfo.Config.RewardTokenContract, "Transfer", new TransferInput
+                    poolInfo.Config.RewardTokenContract, nameof(State.TokenContract.Transfer), new TransferInput
                     {
                         To = CalculateVirtualAddress(stakeInfo.StakeId),
                         Amount = actualReward,
@@ -377,8 +380,8 @@ public partial class EcoEarnTokensContract
 
         if (commissionFee != 0)
         {
-            Context.SendVirtualInline(GetRewardVirtualAddress(poolInfo.PoolId), State.TokenContract.Value, "Transfer",
-                new TransferInput
+            Context.SendVirtualInline(GetRewardVirtualAddress(poolInfo.PoolId), State.TokenContract.Value,
+                nameof(State.TokenContract.Transfer), new TransferInput
                 {
                     To = config.Recipient,
                     Amount = commissionFee,

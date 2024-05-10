@@ -23,23 +23,23 @@ public partial class EcoEarnPointsContract
         Assert(poolInfo.Config.UpdateAddress == Context.Sender, "No permission.");
         Assert(CheckPoolEnabled(poolInfo.Config.EndBlockNumber), "Pool disabled.");
 
-        var height = Context.CurrentHeight;
-        Assert(State.SnapshotMap[input.PoolId]?[height] == null, "Duplicate Snapshot.");
+        var currentHeight = Context.CurrentHeight;
+        Assert(State.SnapshotMap[input.PoolId]?[currentHeight] == null, "Duplicate Snapshot.");
 
         Assert(IsHashValid(input.MerkleTreeRoot), "Invalid merkle tree root.");
 
-        State.SnapshotMap[input.PoolId][height] = new Snapshot
+        State.SnapshotMap[input.PoolId][currentHeight] = new Snapshot
         {
             PoolId = input.PoolId,
             MerkleTreeRoot = input.MerkleTreeRoot,
-            BlockNumber = height
+            BlockNumber = currentHeight
         };
 
         Context.Fire(new SnapshotUpdated
         {
             PoolId = input.PoolId,
             MerkleTreeRoot = input.MerkleTreeRoot,
-            UpdateBlockNumber = height
+            UpdateBlockNumber = currentHeight
         });
 
         return new Empty();
@@ -64,13 +64,14 @@ public partial class EcoEarnPointsContract
         var commissionFee = CalculateCommissionFee(input.Amount, config.CommissionRate);
         if (commissionFee > 0)
         {
-            Context.SendVirtualInline(input.PoolId, State.TokenContract.Value, "Transfer", new TransferInput
-            {
-                To = config.Recipient,
-                Amount = commissionFee,
-                Symbol = poolInfo.Config.RewardToken,
-                Memo = "commission"
-            });
+            Context.SendVirtualInline(input.PoolId, State.TokenContract.Value, nameof(State.TokenContract.Transfer),
+                new TransferInput
+                {
+                    To = config.Recipient,
+                    Amount = commissionFee,
+                    Symbol = poolInfo.Config.RewardToken,
+                    Memo = "commission"
+                });
         }
 
         var claimedAmount = input.Amount.Sub(commissionFee);
@@ -90,13 +91,14 @@ public partial class EcoEarnPointsContract
         State.ClaimInfoMap[claimId] = claimInfo;
 
         // transfer rewards to user's virtual address
-        Context.SendVirtualInline(input.PoolId, State.TokenContract.Value, "Transfer", new TransferInput
-        {
-            To = CalculateVirtualAddress(Context.Sender),
-            Amount = claimedAmount,
-            Symbol = poolInfo.Config.RewardToken,
-            Memo = "claim"
-        });
+        Context.SendVirtualInline(input.PoolId, State.TokenContract.Value, nameof(State.TokenContract.Transfer),
+            new TransferInput
+            {
+                To = CalculateVirtualAddress(Context.Sender),
+                Amount = claimedAmount,
+                Symbol = poolInfo.Config.RewardToken,
+                Memo = "claim"
+            });
 
         Context.Fire(new Claimed
         {
@@ -144,13 +146,14 @@ public partial class EcoEarnPointsContract
 
         Assert(output.Balance > 0, "Invalid token.");
 
-        Context.SendVirtualInline(input.PoolId, State.TokenContract.Value, "Transfer", new TransferInput
-        {
-            Amount = output.Balance,
-            Symbol = input.Token,
-            To = input.Recipient ?? Context.Sender,
-            Memo = "recover"
-        });
+        Context.SendVirtualInline(input.PoolId, State.TokenContract.Value, nameof(State.TokenContract.Transfer),
+            new TransferInput
+            {
+                Amount = output.Balance,
+                Symbol = input.Token,
+                To = input.Recipient ?? Context.Sender,
+                Memo = "recover"
+            });
 
         Context.Fire(new TokenRecovered
         {
@@ -174,27 +177,28 @@ public partial class EcoEarnPointsContract
         Assert(poolInfo.PoolId == input.PoolId, "Pool not exists.");
 
         var stakeId = GetStakeId(input.PoolId);
-        
+
         var list = ProcessEarlyStake(input.ClaimIds.Distinct().ToList(), poolInfo.Config.StakingToken, stakeId,
             out var amount);
 
         // approve staked amount to EcoEarnTokensContract
-        Context.SendVirtualInline(HashHelper.ComputeFrom(Context.Sender), State.TokenContract.Value, "Approve",
-            new ApproveInput
+        Context.SendVirtualInline(HashHelper.ComputeFrom(Context.Sender), State.TokenContract.Value,
+            nameof(State.TokenContract.Approve), new ApproveInput
             {
                 Spender = State.EcoEarnTokensContract.Value,
                 Amount = amount,
                 Symbol = poolInfo.Config.StakingToken
             });
 
-        Context.SendInline(State.EcoEarnTokensContract.Value, "StakeFor", new StakeForInput
-        {
-            Address = Context.Sender,
-            PoolId = input.PoolId,
-            Amount = amount,
-            Period = input.Period,
-            FromAddress = CalculateVirtualAddress(Context.Sender)
-        });
+        Context.SendInline(State.EcoEarnTokensContract.Value, nameof(State.EcoEarnTokensContract.StakeFor),
+            new StakeForInput
+            {
+                Address = Context.Sender,
+                PoolId = input.PoolId,
+                Amount = amount,
+                Period = input.Period,
+                FromAddress = CalculateVirtualAddress(Context.Sender)
+            });
 
         Context.Fire(new EarlyStaked
         {
@@ -216,8 +220,8 @@ public partial class EcoEarnPointsContract
 
     private Address RecoverAddressFromSignature(ClaimInput input)
     {
-        var hash = ComputeConfirmInputHash(input);
-        var publicKey = Context.RecoverPublicKey(input.Signature.ToByteArray(), hash.ToByteArray());
+        var computedHash = ComputeConfirmInputHash(input);
+        var publicKey = Context.RecoverPublicKey(input.Signature.ToByteArray(), computedHash.ToByteArray());
         Assert(publicKey != null, "Invalid signature.");
 
         return Address.FromPublicKey(publicKey);
@@ -300,14 +304,14 @@ public partial class EcoEarnPointsContract
 
             var claimInfo = State.ClaimInfoMap[id];
             Assert(claimInfo != null, "Claim info not exists.");
-            Assert(claimInfo.WithdrawTime == null, "Already withdrawn.");
             Assert(claimInfo.Account == Context.Sender, "No permission.");
+            Assert(claimInfo.WithdrawTime == null, "Already withdrawn.");
             Assert(claimInfo.ClaimedSymbol == token, "Token not matched.");
 
-            if (claimInfo.StakeId != null)
+            if (IsHashValid(claimInfo.StakeId))
             {
                 var stakeInfo = State.EcoEarnTokensContract.GetStakeInfo.Call(claimInfo.StakeId);
-                Assert(Context.CurrentBlockTime >= stakeInfo.WithdrawTime, "Not unlocked.");
+                Assert(stakeInfo != null && stakeInfo.WithdrawTime != null, "Not unlocked.");
             }
 
             amount = amount.Add(claimInfo.ClaimedAmount);
@@ -325,8 +329,8 @@ public partial class EcoEarnPointsContract
         foreach (var reward in rewards)
         {
             if (reward.Value == 0) continue;
-            Context.SendVirtualInline(HashHelper.ComputeFrom(Context.Sender), State.TokenContract.Value, "Transfer",
-                new TransferInput
+            Context.SendVirtualInline(HashHelper.ComputeFrom(Context.Sender), State.TokenContract.Value,
+                nameof(State.TokenContract.Transfer), new TransferInput
                 {
                     To = Context.Sender,
                     Amount = reward.Value,
@@ -349,19 +353,18 @@ public partial class EcoEarnPointsContract
             PoolId = poolId,
             Account = Context.Sender
         });
-        
+
         var stakeInfo = State.EcoEarnTokensContract.GetStakeInfo.Call(stakeId);
 
-        if (!IsHashValid(stakeId) || stakeInfo.WithdrawTime != null)
+        if (IsHashValid(stakeId) && stakeInfo.WithdrawTime == null) return stakeId;
+
+        var count = State.EcoEarnTokensContract.GetUserStakeCount.Call(new GetUserStakeCountInput
         {
-            var count = State.EcoEarnTokensContract.GetUserStakeCount.Call(new GetUserStakeCountInput
-            {
-                Account = Context.Sender,
-                PoolId = poolId
-            }).Value;
-            
-            stakeId = GenerateStakeId(poolId, Context.Sender, count);
-        }
+            Account = Context.Sender,
+            PoolId = poolId
+        }).Value;
+
+        stakeId = GenerateStakeId(poolId, Context.Sender, count);
 
         return stakeId;
     }

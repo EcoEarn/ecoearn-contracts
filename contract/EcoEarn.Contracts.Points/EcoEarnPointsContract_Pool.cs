@@ -28,18 +28,18 @@ public partial class EcoEarnPointsContract
         Assert(dappInformationOutput?.DappInfo != null, "Dapp not exists.");
         Assert(dappInformationOutput.DappInfo.DappAdmin == Context.Sender, "No permission to register.");
 
-        var info = new DappInfo
+        var dappInfo = new DappInfo
         {
             DappId = input.DappId,
             Admin = input.Admin ?? Context.Sender
         };
 
-        State.DappInfoMap[input.DappId] = info;
+        State.DappInfoMap[input.DappId] = dappInfo;
 
         Context.Fire(new Registered
         {
-            DappId = info.DappId,
-            Admin = info.Admin
+            DappId = dappInfo.DappId,
+            Admin = dappInfo.Admin
         });
 
         return new Empty();
@@ -91,7 +91,7 @@ public partial class EcoEarnPointsContract
         };
 
         // charge rewards to pool address
-        TransferReward(input.Config, CalculateVirtualAddress(poolId), out var amount);
+        TransferReward(input.Config, CalculateVirtualAddress(poolId), out var totalReward);
 
         Context.Fire(new PointsPoolCreated
         {
@@ -99,7 +99,7 @@ public partial class EcoEarnPointsContract
             PoolId = poolId,
             PointsName = input.PointsName,
             Config = input.Config,
-            Amount = amount
+            Amount = totalReward
         });
 
         return new Empty();
@@ -134,12 +134,12 @@ public partial class EcoEarnPointsContract
 
         if (input.EndBlockNumber == poolInfo.Config.EndBlockNumber) return new Empty();
 
-        var amount = 0L;
+        var addedReward = 0L;
 
         // charge rewards if extends end block number
         if (input.EndBlockNumber > poolInfo.Config.EndBlockNumber)
         {
-            amount = CalculateTotalRewardAmount(poolInfo.Config.EndBlockNumber, input.EndBlockNumber,
+            addedReward = CalculateTotalRewardAmount(poolInfo.Config.EndBlockNumber, input.EndBlockNumber,
                 poolInfo.Config.RewardPerBlock);
 
             State.TokenContract.TransferFrom.Send(new TransferFromInput
@@ -147,7 +147,7 @@ public partial class EcoEarnPointsContract
                 From = Context.Sender,
                 To = CalculateVirtualAddress(input.PoolId),
                 Symbol = poolInfo.Config.RewardToken,
-                Amount = amount
+                Amount = addedReward
             });
         }
 
@@ -157,7 +157,7 @@ public partial class EcoEarnPointsContract
         {
             PoolId = input.PoolId,
             EndBlockNumber = input.EndBlockNumber,
-            Amount = amount
+            Amount = addedReward
         });
 
         return new Empty();
@@ -274,16 +274,16 @@ public partial class EcoEarnPointsContract
         return HashHelper.ComputeFrom(input);
     }
 
-    private void TransferReward(PointsPoolConfig config, Address poolAddress, out long amount)
+    private void TransferReward(PointsPoolConfig config, Address poolAddress, out long totalReward)
     {
-        amount = CalculateTotalRewardAmount(config.StartBlockNumber, config.EndBlockNumber, config.RewardPerBlock);
+        totalReward = CalculateTotalRewardAmount(config.StartBlockNumber, config.EndBlockNumber, config.RewardPerBlock);
 
         State.TokenContract.TransferFrom.Send(new TransferFromInput
         {
             From = Context.Sender,
             To = poolAddress,
             Symbol = config.RewardToken,
-            Amount = amount,
+            Amount = totalReward,
             Memo = "pool"
         });
     }

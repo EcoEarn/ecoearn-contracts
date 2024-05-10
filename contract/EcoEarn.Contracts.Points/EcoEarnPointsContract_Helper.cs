@@ -32,8 +32,8 @@ public partial class EcoEarnPointsContract
 
     private void CheckDAppAdminPermission(Hash id)
     {
-        var info = State.DappInfoMap[id];
-        Assert(info != null && info.Admin == Context.Sender, "No permission.");
+        var dappInfo = State.DappInfoMap[id];
+        Assert(dappInfo != null && dappInfo.Admin == Context.Sender, "No permission.");
     }
 
     private bool CheckPoolEnabled(long endBlockNumber)

@@ -137,20 +137,21 @@ public partial class EcoEarnTokensContract
 
         if (input.EndBlockNumber == poolInfo.Config.EndBlockNumber) return new Empty();
 
-        var amount = 0L;
+        var totalRewards = 0L;
 
         if (input.EndBlockNumber > poolInfo.Config.EndBlockNumber)
         {
-            amount = CalculateTotalRewardAmount(poolInfo.Config.EndBlockNumber, input.EndBlockNumber,
+            totalRewards = CalculateTotalRewardAmount(poolInfo.Config.EndBlockNumber, input.EndBlockNumber,
                 poolInfo.Config.RewardPerBlock);
 
-            Context.SendInline(poolInfo.Config.RewardTokenContract, "TransferFrom", new TransferFromInput
-            {
-                From = Context.Sender,
-                To = CalculateVirtualAddress(GetRewardVirtualAddress(input.PoolId)),
-                Symbol = poolInfo.Config.RewardToken,
-                Amount = amount
-            });
+            Context.SendInline(poolInfo.Config.RewardTokenContract, nameof(State.TokenContract.TransferFrom),
+                new TransferFromInput
+                {
+                    From = Context.Sender,
+                    To = CalculateVirtualAddress(GetRewardVirtualAddress(input.PoolId)),
+                    Symbol = poolInfo.Config.RewardToken,
+                    Amount = totalRewards
+                });
         }
 
         poolInfo.Config.EndBlockNumber = input.EndBlockNumber;
@@ -159,7 +160,7 @@ public partial class EcoEarnTokensContract
         {
             PoolId = input.PoolId,
             EndBlockNumber = input.EndBlockNumber,
-            Amount = amount
+            Amount = totalRewards
         });
 
         return new Empty();
@@ -295,10 +296,8 @@ public partial class EcoEarnTokensContract
     private void CheckTokenExists(string symbol, Address tokenContract, out int decimals)
     {
         Assert(IsStringValid(symbol), "Invalid reward token.");
-        var info = Context.Call<TokenInfo>(tokenContract, "GetTokenInfo", new GetTokenInfoInput
-        {
-            Symbol = symbol
-        });
+        var info = Context.Call<TokenInfo>(tokenContract, nameof(State.TokenContract.GetTokenInfo),
+            new GetTokenInfoInput { Symbol = symbol });
         Assert(IsStringValid(info.Symbol), $"{symbol} not exists.");
         decimals = info.Decimals;
     }
@@ -316,7 +315,7 @@ public partial class EcoEarnTokensContract
     {
         amount = CalculateTotalRewardAmount(config.StartBlockNumber, config.EndBlockNumber, config.RewardPerBlock);
 
-        Context.SendInline(config.RewardTokenContract, "TransferFrom", new TransferFromInput
+        Context.SendInline(config.RewardTokenContract, nameof(State.TokenContract.TransferFrom), new TransferFromInput
         {
             From = Context.Sender,
             To = CalculateVirtualAddress(GetRewardVirtualAddress(poolId)),

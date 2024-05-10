@@ -132,7 +132,7 @@ public partial class EcoEarnTokensContract
         stakeInfo.RewardDebt = stakeInfo.RewardDebt.Add(pending);
 
         Context.SendVirtualInline(GetRewardVirtualAddress(poolInfo.PoolId), poolInfo.Config.RewardTokenContract,
-            "Transfer", new TransferInput
+            nameof(State.TokenContract.Transfer), new TransferInput
             {
                 Amount = claimInfo.ClaimedAmount,
                 Symbol = claimInfo.ClaimedSymbol,
@@ -178,7 +178,7 @@ public partial class EcoEarnTokensContract
             var poolInfo = GetPool(claimInfo.PoolId);
 
             Context.SendVirtualInline(GetRewardVirtualAddress(claimInfo.PoolId), poolInfo.Config.RewardTokenContract,
-                "Transfer", new TransferInput
+                nameof(State.TokenContract.Transfer), new TransferInput
                 {
                     To = claimInfo.Account,
                     Symbol = claimInfo.ClaimedSymbol,
@@ -222,7 +222,7 @@ public partial class EcoEarnTokensContract
                 {
                     stakeInfo.RewardAmount = stakeInfo.RewardAmount.Add(actualReward);
                     Context.SendVirtualInline(GetRewardVirtualAddress(stakeInfo.PoolId),
-                        poolInfo.Config.RewardTokenContract, "Transfer", new TransferInput
+                        poolInfo.Config.RewardTokenContract, nameof(State.TokenContract.Transfer), new TransferInput
                         {
                             To = CalculateVirtualAddress(stakeInfo.StakeId),
                             Amount = actualReward,
