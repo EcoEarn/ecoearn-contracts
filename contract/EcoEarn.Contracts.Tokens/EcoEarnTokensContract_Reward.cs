@@ -245,16 +245,10 @@ public partial class EcoEarnTokensContract
     {
         var multiplier = GetMultiplier(poolData.LastRewardBlock, Context.CurrentHeight, poolInfo.Config.EndBlockNumber);
         var rewards = multiplier.Mul(poolInfo.Config.RewardPerBlock);
-        long adjustedTokenPerShare;
-        if (poolData.TotalStakedAmount > 0)
-        {
-            adjustedTokenPerShare = rewards.Mul(poolInfo.PrecisionFactor).Div(poolData.TotalStakedAmount)
-                .Add(poolData.AccTokenPerShare);
-        }
-        else
-        {
-            adjustedTokenPerShare = poolData.AccTokenPerShare;
-        }
+        var accTokenPerShare = poolData.AccTokenPerShare ?? new BigIntValue(0);
+        var adjustedTokenPerShare = poolData.TotalStakedAmount > 0
+            ? accTokenPerShare.Add(rewards.Mul(poolInfo.PrecisionFactor).Div(poolData.TotalStakedAmount))
+            : accTokenPerShare;
 
         return CalculatePending(amount, adjustedTokenPerShare, debt, poolInfo.PrecisionFactor);
     }

@@ -126,7 +126,7 @@ message PoolInfo {
 
 message PoolData {
   aelf.Hash pool_id = 1;
-  int64 acc_token_per_share = 2;  // Accrued token per share
+  aelf.BigIntValue acc_token_per_share = 2;  // Accrued token per share
   int64 last_reward_block = 3;    // The block number of the last pool update
   int64 total_staked_amount = 4;  // The amount of token staked
 }

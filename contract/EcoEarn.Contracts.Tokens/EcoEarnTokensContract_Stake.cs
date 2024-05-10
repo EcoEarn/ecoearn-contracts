@@ -8,6 +8,7 @@ using AElf.Sdk.CSharp;
 using AElf.Types;
 using Google.Protobuf.Collections;
 using Google.Protobuf.WellKnownTypes;
+using static System.Int64;
 
 namespace EcoEarn.Contracts.Tokens;
 
@@ -220,8 +221,8 @@ public partial class EcoEarnTokensContract
 
         var multiplier = GetMultiplier(poolData.LastRewardBlock, blockNumber, poolInfo.Config.EndBlockNumber);
         var rewards = multiplier.Mul(poolInfo.Config.RewardPerBlock);
-        poolData.AccTokenPerShare = rewards.Mul(poolInfo.PrecisionFactor).Div(poolData.TotalStakedAmount)
-            .Add(poolData.AccTokenPerShare);
+        var accTokenPerShare = poolData.AccTokenPerShare ?? new BigIntValue(0);
+        poolData.AccTokenPerShare = accTokenPerShare.Add(rewards.Mul(poolInfo.PrecisionFactor).Div(poolData.TotalStakedAmount));
         poolData.LastRewardBlock = blockNumber;
     }
 
@@ -232,14 +233,18 @@ public partial class EcoEarnTokensContract
         return endBlockNumber - from;
     }
 
-    private long CalculatePending(long amount, long accTokenPerShare, long debt, long precisionFactor)
+    private long CalculatePending(long amount, BigIntValue accTokenPerShare, long debt, long precisionFactor)
     {
-        return amount.Mul(accTokenPerShare).Div(precisionFactor) - debt;
+        if (accTokenPerShare == null) return 0;
+        TryParse(accTokenPerShare.Mul(amount).Div(precisionFactor).Sub(debt).Value, out long result);
+        return result;
     }
 
-    private long CalculateDebt(long amount, long accTokenPerShare, long precisionFactor)
+    private long CalculateDebt(long amount, BigIntValue accTokenPerShare, long precisionFactor)
     {
-        return amount.Mul(accTokenPerShare).Div(precisionFactor);
+        if (accTokenPerShare == null) return 0;
+        TryParse(accTokenPerShare.Mul(amount).Div(precisionFactor).Value, out long result);
+        return result;
     }
 
     private long ProcessEarlyStake(List<Hash> claimIds, PoolInfo poolInfo, Hash stakeId)
