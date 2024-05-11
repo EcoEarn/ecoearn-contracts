@@ -21,6 +21,13 @@ jobs:
         uses: actions/setup-dotnet@v4
         with:
           dotnet-version: '6.0'
+
+      - name: 'Download AElf build tools'
+        run: bash scripts/download_binary.sh
+
+      - name: 'Install protobuf'
+        run: bash scripts/install.sh
+
       - name: Install dependencies
         run: dotnet restore --verbosity quiet
 
