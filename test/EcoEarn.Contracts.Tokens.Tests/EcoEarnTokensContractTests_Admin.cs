@@ -160,13 +160,45 @@ public partial class EcoEarnTokensContractTests : EcoEarnTokensContractTestBase
         }
     }
 
+    [Fact]
+    public async Task SetContractConfigTests()
+    {
+        await Initialize();
+
+        var output = await EcoEarnTokensContractStub.GetContractConfig.CallAsync(new Empty());
+        output.ShouldBe(EcoEarnPointsContractAddress);
+
+        var result = await EcoEarnTokensContractStub.SetContractConfig.SendAsync(EcoEarnPointsContractAddress);
+        result.TransactionResult.Logs.FirstOrDefault(l => l.Name.Contains(nameof(ContractConfigSet))).ShouldBeNull();
+
+        result = await EcoEarnTokensContractStub.SetContractConfig.SendAsync(UserAddress);
+        var log = GetLogEvent<ContractConfigSet>(result.TransactionResult);
+        log.EcoearnPointsContract.ShouldBe(UserAddress);
+
+        output = await EcoEarnTokensContractStub.GetContractConfig.CallAsync(new Empty());
+        output.ShouldBe(UserAddress);
+    }
+
+    [Fact]
+    public async Task SetContractConfigTests_Fail()
+    {
+        await Initialize();
+
+        var result = await EcoEarnTokensContractUserStub.SetContractConfig.SendWithExceptionAsync(new Address());
+        result.TransactionResult.Error.ShouldContain("No permission.");
+
+        result = await EcoEarnTokensContractStub.SetContractConfig.SendWithExceptionAsync(new Address());
+        result.TransactionResult.Error.ShouldContain("Invalid input.");
+    }
+
     private async Task Initialize()
     {
         await EcoEarnTokensContractStub.Initialize.SendAsync(new InitializeInput
         {
             CommissionRate = 100,
             Recipient = User2Address,
-            EcoearnPointsContract = DefaultAddress
+            EcoearnPointsContract = EcoEarnPointsContractAddress,
+            IsRegisterRestricted = true
         });
     }
 }

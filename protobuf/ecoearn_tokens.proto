@@ -24,7 +24,7 @@ service EcoEarnTokensContract {
   rpc SetTokensPoolStakeConfig (SetTokensPoolStakeConfigInput) returns (google.protobuf.Empty) {}
   rpc GetPoolInfo (aelf.Hash) returns (GetPoolInfoOutput) {option (aelf.is_view) = true;}
   rpc GetPoolData (aelf.Hash) returns (PoolData) {option (aelf.is_view) = true;}
-  rpc GetPoolAddress (aelf.Hash) returns (GetPoolAddressOutput) {option (aelf.is_view) = true;}
+  rpc GetPoolAddressInfo (aelf.Hash) returns (PoolAddressInfo) {option (aelf.is_view) = true;}
   rpc GetPoolCount (aelf.Hash) returns (google.protobuf.Int64Value) {option (aelf.is_view) = true;}
   rpc SetTokensPoolFixedBoostFactor (SetTokensPoolFixedBoostFactorInput) returns (google.protobuf.Empty) {}
 
@@ -250,7 +250,7 @@ message EarlyStakeInfo {
   map<string, int64> data = 1;
 }
 
-message GetPoolAddressOutput {
+message PoolAddressInfo {
   aelf.Address stake_address = 1;
   aelf.Address reward_address = 2;
 }

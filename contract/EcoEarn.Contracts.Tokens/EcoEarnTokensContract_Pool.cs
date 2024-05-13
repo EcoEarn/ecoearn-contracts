@@ -23,7 +23,7 @@ public partial class EcoEarnTokensContract
 
         var dappInfo = State.EcoEarnPointsContract.GetDappInfo.Call(input.DappId);
         if (State.Config.Value.IsRegisterRestricted) Assert(dappInfo.DappId != null, "Dapp id not exists.");
-        if (dappInfo.DappId != null) Assert(dappInfo.Admin == Context.Sender, "No permission.");
+        if (dappInfo.DappId != null) Assert(dappInfo.Admin == Context.Sender, "No permission to register.");
 
         var info = new DappInfo
         {
@@ -72,7 +72,9 @@ public partial class EcoEarnTokensContract
         Assert(IsHashValid(input.DappId), "Invalid dapp id.");
         CheckDAppAdminPermission(input.DappId);
         ValidateTokensPoolConfig(input.Config);
-        CheckTokenExists(input.Config.StakingToken, input.Config.StakeTokenContract, out var decimals);
+        Assert(IsStringValid(input.Config.StakingToken), "Invalid staking token.");
+        CheckTokenExists(input.Config.StakingToken, input.Config.StakeTokenContract ?? State.TokenContract.Value,
+            out var decimals);
 
         var poolId = GeneratePoolId(input);
         Assert(State.PoolInfoMap[poolId] == null, "Pool exists.");
@@ -213,14 +215,15 @@ public partial class EcoEarnTokensContract
     public override Empty SetTokensPoolStakeConfig(SetTokensPoolStakeConfigInput input)
     {
         Assert(input != null, "Invalid input.");
-        Assert(input.MinimumAmount >= 0, "Invalid minimum amount.");
-        Assert(input.MaximumStakeDuration > 0, "Invalid maximum stake duration.");
-        Assert(input.MinimumClaimAmount >= 0, "Invalid minimum claim amount.");
-        Assert(input.MinimumStakeDuration > 0, "Invalid minimum stake duration.");
 
         var poolInfo = GetPool(input.PoolId);
 
         CheckDAppAdminPermission(poolInfo.DappId);
+        
+        Assert(input.MinimumAmount >= 0, "Invalid minimum amount.");
+        Assert(input.MaximumStakeDuration > 0, "Invalid maximum stake duration.");
+        Assert(input.MinimumClaimAmount >= 0, "Invalid minimum claim amount.");
+        Assert(input.MinimumStakeDuration > 0, "Invalid minimum stake duration.");
 
         if (poolInfo.Config.MinimumAmount == input.MinimumAmount &&
             poolInfo.Config.MaximumStakeDuration == input.MaximumStakeDuration &&
@@ -281,7 +284,8 @@ public partial class EcoEarnTokensContract
             "Invalid reward token contract.");
         Assert(config.StakeTokenContract == null || !config.StakeTokenContract.Value.IsNullOrEmpty(),
             "Invalid stake token contract.");
-        CheckTokenExists(config.RewardToken, config.RewardTokenContract, out _);
+        Assert(IsStringValid(config.RewardToken), "Invalid reward token.");
+        CheckTokenExists(config.RewardToken, config.RewardTokenContract ?? State.TokenContract.Value, out _);
         Assert(config.StartBlockNumber >= Context.CurrentHeight, "Invalid start block number.");
         Assert(config.EndBlockNumber > config.StartBlockNumber, "Invalid end block number.");
         Assert(config.RewardPerBlock > 0, "Invalid reward per block.");
@@ -295,7 +299,6 @@ public partial class EcoEarnTokensContract
 
     private void CheckTokenExists(string symbol, Address tokenContract, out int decimals)
     {
-        Assert(IsStringValid(symbol), "Invalid reward token.");
         var info = Context.Call<TokenInfo>(tokenContract, nameof(State.TokenContract.GetTokenInfo),
             new GetTokenInfoInput { Symbol = symbol });
         Assert(IsStringValid(info.Symbol), $"{symbol} not exists.");

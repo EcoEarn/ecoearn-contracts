@@ -74,10 +74,10 @@ public partial class EcoEarnTokensContract : EcoEarnTokensContractContainer.EcoE
 
     public override Empty SetContractConfig(Address input)
     {
-        Assert(IsAddressValid(input), "Invalid input.");
-
         CheckAdminPermission();
 
+        Assert(IsAddressValid(input), "Invalid input.");
+        
         if (State.EcoEarnPointsContract.Value == input)
         {
             return new Empty();

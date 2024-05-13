@@ -40,15 +40,15 @@ public partial class EcoEarnTokensContract
         return output;
     }
 
-    public override GetPoolAddressOutput GetPoolAddress(Hash input)
+    public override PoolAddressInfo GetPoolAddressInfo(Hash input)
     {
         return IsHashValid(input)
-            ? new GetPoolAddressOutput
+            ? new PoolAddressInfo
             {
                 StakeAddress = CalculateVirtualAddress(GetStakeVirtualAddress(input)),
                 RewardAddress = CalculateVirtualAddress(GetRewardVirtualAddress(input))
             }
-            : new GetPoolAddressOutput();
+            : new PoolAddressInfo();
     }
 
     public override PoolData GetPoolData(Hash input)
@@ -108,7 +108,7 @@ public partial class EcoEarnTokensContract
         }
 
         var config = State.Config.Value;
-        output.Amount = reward.Sub(CalculateCommissionFee(output.Amount, config.CommissionRate))
+        output.Amount = reward.Sub(CalculateCommissionFee(reward, config.CommissionRate))
             .Add(stakeInfo.RewardAmount);
 
         return output;
