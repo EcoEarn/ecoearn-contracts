@@ -221,7 +221,7 @@ public partial class EcoEarnPointsContractTests : EcoEarnPointsContractTestBase
         
         var result = await EcoEarnPointsContractStub.SetContractConfig.SendAsync(new SetContractConfigInput
         {
-            EcoearnTokensContract = DefaultAddress,
+            EcoearnTokensContract = EcoEarnTokensContractAddress,
             PointsContract = PointsContractAddress
         });
         result.TransactionResult.Logs.FirstOrDefault(l => l.Name.Contains(nameof(ContractConfigSet))).ShouldBeNull();
