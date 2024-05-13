@@ -120,7 +120,7 @@ public partial class EcoEarnTokensContract
 
         ProcessStake(poolInfo, 0, stakedAmount, input.Period, Context.Sender);
 
-        RecordEarlyStakeInfo(stakeId, stakedAmount);
+        RecordEarlyStakeInfo(stakeId, stakedAmount, null);
 
         Context.SendVirtualInline(HashHelper.ComputeFrom(Context.Sender), poolInfo.Config.RewardTokenContract,
             nameof(State.TokenContract.Transfer), new TransferInput
@@ -157,7 +157,7 @@ public partial class EcoEarnTokensContract
 
         var stakeId = ProcessStake(poolInfo, 0, input.Amount, input.Period, input.Address);
 
-        RecordEarlyStakeInfo(stakeId, input.Amount);
+        RecordEarlyStakeInfo(stakeId, input.Amount, input.FromAddress.ToBase58());
 
         return new Empty();
     }
@@ -393,9 +393,9 @@ public partial class EcoEarnTokensContract
         return pending - commissionFee;
     }
 
-    private void RecordEarlyStakeInfo(Hash stakeId, long stakedAmount)
+    private void RecordEarlyStakeInfo(Hash stakeId, long stakedAmount, string address)
     {
-        var key = CalculateVirtualAddress(Context.Sender).ToBase58();
+        var key = address ?? CalculateVirtualAddress(Context.Sender).ToBase58();
         var earlyStakeInfo = State.EarlyStakeInfoMap[stakeId] ?? new EarlyStakeInfo();
         var dict = earlyStakeInfo?.Data ?? new MapField<string, long>();
         dict.TryGetValue(key, out var amount);

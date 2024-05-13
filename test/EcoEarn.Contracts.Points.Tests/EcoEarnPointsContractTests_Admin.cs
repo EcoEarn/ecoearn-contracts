@@ -217,7 +217,7 @@ public partial class EcoEarnPointsContractTests : EcoEarnPointsContractTestBase
 
         var output = await EcoEarnPointsContractStub.GetContractConfig.CallAsync(new Empty());
         output.PointsContract.ShouldBe(PointsContractAddress);
-        output.EcoearnTokensContract.ShouldBe(DefaultAddress);
+        output.EcoearnTokensContract.ShouldBe(EcoEarnTokensContractAddress);
         
         var result = await EcoEarnPointsContractStub.SetContractConfig.SendAsync(new SetContractConfigInput
         {
@@ -279,7 +279,7 @@ public partial class EcoEarnPointsContractTests : EcoEarnPointsContractTestBase
             PointsContract = PointsContractAddress,
             CommissionRate = 100,
             Recipient = User2Address,
-            EcoearnTokensContract = DefaultAddress
+            EcoearnTokensContract = EcoEarnTokensContractAddress
         });
         await PointsContractStub.Initialize.SendAsync(new TestPointsContract.InitializeInput
         {

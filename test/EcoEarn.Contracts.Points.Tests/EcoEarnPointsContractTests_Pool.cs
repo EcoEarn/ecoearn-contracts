@@ -101,7 +101,7 @@ public partial class EcoEarnPointsContractTests
     {
         await Initialize();
 
-        await Register(_appId);
+        await Register();
 
         var output = await EcoEarnPointsContractStub.GetDappInfo.CallAsync(_appId);
         output.Admin.ShouldBe(DefaultAddress);
@@ -130,7 +130,7 @@ public partial class EcoEarnPointsContractTests
     {
         await Initialize();
 
-        await Register(_appId);
+        await Register();
 
         var result = await EcoEarnPointsContractStub.SetDappAdmin.SendWithExceptionAsync(new SetDappAdminInput());
         result.TransactionResult.Error.ShouldContain("Invalid dapp id.");
@@ -174,7 +174,7 @@ public partial class EcoEarnPointsContractTests
     {
         await Initialize();
 
-        await Register(_appId);
+        await Register();
         await CreateToken();
 
         await TokenContractStub.Approve.SendAsync(new ApproveInput
@@ -230,7 +230,7 @@ public partial class EcoEarnPointsContractTests
     {
         await Initialize();
 
-        await Register(_appId);
+        await Register();
         await CreateToken();
 
         var result =
@@ -354,7 +354,7 @@ public partial class EcoEarnPointsContractTests
     {
         await Initialize();
 
-        await Register(_appId);
+        await Register();
         await CreateToken();
 
         var result = await EcoEarnPointsContractStub.CreatePointsPool.SendWithExceptionAsync(
@@ -379,7 +379,7 @@ public partial class EcoEarnPointsContractTests
     {
         await Initialize();
 
-        await Register(_appId);
+        await Register();
         var poolId = await CreatePointsPool(_appId);
 
         var blockNumber = SimulateBlockMining().Result.Block.Height;
@@ -407,7 +407,7 @@ public partial class EcoEarnPointsContractTests
     {
         await Initialize();
 
-        await Register(_appId);
+        await Register();
         var poolId = await CreatePointsPool(_appId);
 
         var result = await EcoEarnPointsContractStub.ClosePointsPool.SendWithExceptionAsync(
@@ -431,7 +431,7 @@ public partial class EcoEarnPointsContractTests
     {
         await Initialize();
 
-        await Register(_appId);
+        await Register();
         var poolId = await CreatePointsPool(_appId);
 
         var output = await EcoEarnPointsContractStub.GetPoolInfo.CallAsync(poolId);
@@ -500,7 +500,7 @@ public partial class EcoEarnPointsContractTests
     {
         await Initialize();
 
-        await Register(_appId);
+        await Register();
         var poolId = await CreatePointsPool(_appId);
 
         var result = await EcoEarnPointsContractStub.SetPointsPoolEndBlockNumber.SendWithExceptionAsync(
@@ -553,7 +553,7 @@ public partial class EcoEarnPointsContractTests
     {
         await Initialize();
 
-        await Register(_appId);
+        await Register();
         var poolId = await CreatePointsPool(_appId);
         await EcoEarnPointsContractStub.ClosePointsPool.SendAsync(poolId);
 
@@ -600,7 +600,7 @@ public partial class EcoEarnPointsContractTests
     {
         await Initialize();
 
-        await Register(_appId);
+        await Register();
         var poolId = await CreatePointsPool(_appId);
 
         var result =
@@ -689,7 +689,7 @@ public partial class EcoEarnPointsContractTests
     {
         await Initialize();
 
-        await Register(_appId);
+        await Register();
         var poolId = await CreatePointsPool(_appId);
 
         await EcoEarnPointsContractStub.ClosePointsPool.SendAsync(poolId);
@@ -716,7 +716,7 @@ public partial class EcoEarnPointsContractTests
     {
         await Initialize();
 
-        await Register(_appId);
+        await Register();
         var poolId = await CreatePointsPool(_appId);
 
         var output = await EcoEarnPointsContractStub.GetPoolInfo.CallAsync(poolId);
@@ -752,7 +752,7 @@ public partial class EcoEarnPointsContractTests
     {
         await Initialize();
 
-        await Register(_appId);
+        await Register();
         var poolId = await CreatePointsPool(_appId);
 
         var result = await EcoEarnPointsContractStub.SetPointsPoolUpdateAddress.SendWithExceptionAsync(
@@ -803,7 +803,7 @@ public partial class EcoEarnPointsContractTests
     {
         await Initialize();
 
-        await Register(_appId);
+        await Register();
         var poolId = await CreatePointsPool(_appId);
 
         var output = await EcoEarnPointsContractStub.GetPoolInfo.CallAsync(poolId);
@@ -839,7 +839,7 @@ public partial class EcoEarnPointsContractTests
     {
         await Initialize();
 
-        await Register(_appId);
+        await Register();
         var poolId = await CreatePointsPool(_appId);
 
         var result = await EcoEarnPointsContractStub.SetPointsPoolRewardReleasePeriod.SendWithExceptionAsync(
@@ -877,7 +877,7 @@ public partial class EcoEarnPointsContractTests
         result.TransactionResult.Error.ShouldContain("No permission.");
     }
 
-    private async Task Register(Hash _appId)
+    private async Task Register()
     {
         await EcoEarnPointsContractStub.Register.SendAsync(new RegisterInput
         {

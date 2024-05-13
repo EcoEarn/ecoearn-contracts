@@ -881,7 +881,7 @@ public partial class EcoEarnTokensContractTests
                 RewardToken = Symbol,
                 StakingToken = Symbol,
                 FixedBoostFactor = 10000,
-                MaximumStakeDuration = 1000000000,
+                MaximumStakeDuration = 500000,
                 MinimumAmount = 1_00000000,
                 MinimumClaimAmount = 1_00000000,
                 RewardPerBlock = 100_00000000,
@@ -889,7 +889,7 @@ public partial class EcoEarnTokensContractTests
                 RewardTokenContract = TokenContractAddress,
                 StakeTokenContract = TokenContractAddress,
                 UpdateAddress = DefaultAddress,
-                MinimumStakeDuration = 1
+                MinimumStakeDuration = 86400
             }
         };
         var result = await EcoEarnTokensContractStub.CreateTokensPool.SendAsync(input);

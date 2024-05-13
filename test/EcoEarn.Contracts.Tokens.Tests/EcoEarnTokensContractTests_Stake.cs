@@ -222,4 +222,70 @@ public partial class EcoEarnTokensContractTests
             reward.Amount.ShouldBe((100_00000000 - 100_00000000 * 100 / 10000) * 3);
         }
     }
+
+    [Fact]
+    public async Task StakeTests_Fail()
+    {
+        var poolId = await CreateTokensPool();
+
+        var result = await EcoEarnTokensContractStub.Stake.SendWithExceptionAsync(new StakeInput());
+        result.TransactionResult.Error.ShouldContain("Invalid pool id.");
+        
+        result = await EcoEarnTokensContractStub.Stake.SendWithExceptionAsync(new StakeInput
+        {
+            PoolId = new Hash()
+        });
+        result.TransactionResult.Error.ShouldContain("Invalid pool id.");
+        
+        result = await EcoEarnTokensContractStub.Stake.SendWithExceptionAsync(new StakeInput
+        {
+            PoolId = HashHelper.ComputeFrom("test")
+        });
+        result.TransactionResult.Error.ShouldContain("Pool not exists.");
+        
+        result = await EcoEarnTokensContractStub.Stake.SendWithExceptionAsync(new StakeInput
+        {
+            PoolId = poolId
+        });
+        result.TransactionResult.Error.ShouldContain("New position requires both amount and period.");
+        
+        result = await EcoEarnTokensContractStub.Stake.SendWithExceptionAsync(new StakeInput
+        {
+            PoolId = poolId,
+            Amount = -1
+        });
+        result.TransactionResult.Error.ShouldContain("Invalid amount.");
+        
+        result = await EcoEarnTokensContractStub.Stake.SendWithExceptionAsync(new StakeInput
+        {
+            PoolId = poolId,
+            Amount = 0,
+            Period = -1
+        });
+        result.TransactionResult.Error.ShouldContain("Invalid period.");
+        
+        result = await EcoEarnTokensContractStub.Stake.SendWithExceptionAsync(new StakeInput
+        {
+            PoolId = poolId,
+            Amount = 0,
+            Period = 1
+        });
+        result.TransactionResult.Error.ShouldContain("Period too short.");
+        
+        result = await EcoEarnTokensContractStub.Stake.SendWithExceptionAsync(new StakeInput
+        {
+            PoolId = poolId,
+            Amount = 0,
+            Period = 500001
+        });
+        result.TransactionResult.Error.ShouldContain("Period too long.");
+        
+        result = await EcoEarnTokensContractStub.Stake.SendWithExceptionAsync(new StakeInput
+        {
+            PoolId = poolId,
+            Amount = 1,
+            Period = 86400
+        });
+        result.TransactionResult.Error.ShouldContain("Amount not enough.");
+    }
 }

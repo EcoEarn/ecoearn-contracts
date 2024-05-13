@@ -52,6 +52,9 @@
         <ContractStub Include="..\..\protobuf\ecoearn_points.proto">
             <Link>Protobuf\Proto\ecoearn_points.proto</Link>
         </ContractStub>
+        <ContractStub Include="..\..\protobuf\ecoearn_tokens.proto">
+            <Link>Protobuf\Proto\ecoearn_tokens.proto</Link>
+        </ContractStub>
         <ContractStub Include="..\..\protobuf\test_points_contract.proto">
             <Link>Protobuf\Proto\test_points_contract.proto</Link>
         </ContractStub>
@@ -60,6 +63,7 @@
     <ItemGroup>
         <ProjectReference Include="..\..\contract\EcoEarn.Contracts.Points\EcoEarn.Contracts.Points.csproj"/>
         <ProjectReference Include="..\..\test\EcoEarn.Contracts.TestPointsContract\EcoEarn.Contracts.TestPointsContract.csproj"/>
+        <ProjectReference Include="..\..\contract\EcoEarn.Contracts.Tokens\EcoEarn.Contracts.Tokens.csproj"/>
         <ProjectReference Include="..\..\src\AElf.Boilerplate.MainChain\AElf.Boilerplate.MainChain.csproj"/>
         <ProjectReference Include="..\..\src\AElf.Boilerplate.TestBase\AElf.Boilerplate.TestBase.csproj"/>
     </ItemGroup>
