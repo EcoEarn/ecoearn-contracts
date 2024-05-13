@@ -290,7 +290,6 @@ public partial class EcoEarnTokensContract
 
         if (amount > 0)
         {
-            Assert(amount >= poolInfo.Config.MinimumAmount, "Amount not enough.");
             stakeInfo.StakedAmount = stakeInfo.StakedAmount.Add(stakedAmount);
             stakeInfo.EarlyStakedAmount = stakeInfo.EarlyStakedAmount.Add(earlyStakedAmount);
         }
@@ -306,6 +305,7 @@ public partial class EcoEarnTokensContract
         if (existId == null || Context.CurrentBlockTime >= stakeInfo.StakedTime.AddSeconds(stakeInfo.Period))
         {
             Assert(amount > 0 && period > 0, "New position requires both amount and period.");
+            Assert(amount >= poolInfo.Config.MinimumAmount, "Amount not enough.");
             var stakeId = GenerateStakeId(poolInfo.PoolId, address);
             Assert(State.StakeInfoMap[stakeId] == null, "Stake id exists.");
 
