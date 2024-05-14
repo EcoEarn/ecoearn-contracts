@@ -94,7 +94,7 @@ public partial class EcoEarnTokensContract
         State.PoolDataMap[poolId] = new PoolData
         {
             PoolId = poolId,
-            LastRewardBlock = Context.CurrentHeight
+            LastRewardBlock = input.Config.StartBlockNumber
         };
 
         TransferReward(input.Config, poolId, out var amount);

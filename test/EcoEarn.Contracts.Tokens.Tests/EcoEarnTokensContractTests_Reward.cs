@@ -84,6 +84,12 @@ public partial class EcoEarnTokensContractTests
 
         result = await EcoEarnTokensContractUserStub.Claim.SendWithExceptionAsync(stakeInfo.StakeId);
         result.TransactionResult.Error.ShouldContain("Reward not enough.");
+        
+        poolId = await CreateTokensPoolAwayFromStart();
+        stakeInfo = await Stake(poolId, tokenBalance);
+        
+        result = await EcoEarnTokensContractUserStub.Claim.SendWithExceptionAsync(stakeInfo.StakeId);
+        result.TransactionResult.Error.ShouldContain("Reward not enough.");
     }
 
     [Fact]
@@ -310,6 +316,49 @@ public partial class EcoEarnTokensContractTests
                 MaximumStakeDuration = 500000,
                 MinimumAmount = 1_00000000,
                 MinimumClaimAmount = 1000_00000000,
+                RewardPerBlock = 100_00000000,
+                ReleasePeriod = 10,
+                RewardTokenContract = TokenContractAddress,
+                StakeTokenContract = TokenContractAddress,
+                UpdateAddress = DefaultAddress,
+                MinimumStakeDuration = 86400
+            }
+        };
+        var result = await EcoEarnTokensContractStub.CreateTokensPool.SendAsync(input);
+        return GetLogEvent<TokensPoolCreated>(result.TransactionResult).PoolId;
+    }
+    
+    private async Task<Hash> CreateTokensPoolAwayFromStart()
+    {
+        var admin = await EcoEarnTokensContractStub.GetAdmin.CallAsync(new Empty());
+        if (admin == new Address())
+        {
+            await Register();
+            await CreateToken();
+        }
+
+        await TokenContractStub.Approve.SendAsync(new ApproveInput
+        {
+            Spender = EcoEarnTokensContractAddress,
+            Amount = 1000000_00000000,
+            Symbol = Symbol
+        });
+
+        var blockNumber = 1000;
+
+        var input = new CreateTokensPoolInput
+        {
+            DappId = _appId,
+            Config = new TokensPoolConfig
+            {
+                StartBlockNumber = blockNumber,
+                EndBlockNumber = blockNumber + 10,
+                RewardToken = Symbol,
+                StakingToken = Symbol,
+                FixedBoostFactor = 10000,
+                MaximumStakeDuration = 500000,
+                MinimumAmount = 1_00000000,
+                MinimumClaimAmount = 1_00000000,
                 RewardPerBlock = 100_00000000,
                 ReleasePeriod = 10,
                 RewardTokenContract = TokenContractAddress,
