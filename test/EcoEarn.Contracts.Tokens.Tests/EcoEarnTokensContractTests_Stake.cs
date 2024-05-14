@@ -482,6 +482,8 @@ public partial class EcoEarnTokensContractTests
         });
         result.TransactionResult.Error.ShouldContain("Already withdrawn.");
     }
+    
+    
 
     private async Task<StakeInfo> Stake(Hash poolId, long tokenBalance)
     {

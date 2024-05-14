@@ -583,17 +583,18 @@ public partial class EcoEarnPointsContractTests
 
         balance = await GetTokenBalance(Symbol, userAddress);
         balance.ShouldBe(0);
-
+        
+        BlockTimeProvider.SetBlockTime(BlockTimeProvider.GetBlockTime().AddDays(10));
+        
         await EcoEarnTokensContractUserStub.Unlock.SendAsync(tokensPoolId);
 
         balance = await GetTokenBalance(Symbol, userAddress);
         balance.ShouldBe(100 - 100 * 100 / 10000);
 
-        BlockTimeProvider.SetBlockTime(BlockTimeProvider.GetBlockTime().AddSeconds(100));
-
         await EcoEarnPointsContractUserStub.EarlyStake.SendAsync(input);
         result.TransactionResult.Status.ShouldBe(TransactionResultStatus.Mined);
 
+        BlockTimeProvider.SetBlockTime(BlockTimeProvider.GetBlockTime().AddSeconds(100));
         await EcoEarnTokensContractUserStub.Unlock.SendAsync(tokensPoolId);
 
         BlockTimeProvider.SetBlockTime(BlockTimeProvider.GetBlockTime().AddSeconds(100));
