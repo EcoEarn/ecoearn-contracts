@@ -123,8 +123,7 @@ public partial class EcoEarnTokensContract
             ClaimedBlockNumber = Context.CurrentHeight,
             ClaimedAmount = actualReward,
             UnlockTime = Context.CurrentBlockTime.AddSeconds(poolInfo.Config.ReleasePeriod),
-            PoolId = stakeInfo.PoolId,
-            StakeId = stakeInfo.StakeId
+            PoolId = stakeInfo.PoolId
         };
 
         State.ClaimInfoMap[claimId] = claimInfo;
@@ -161,7 +160,6 @@ public partial class EcoEarnTokensContract
 
             var claimInfo = State.ClaimInfoMap[id];
             Assert(claimInfo != null, "Claim id not exists.");
-            Assert(claimInfo.EarlyStakeTime == null, "Already early staked.");
             Assert(claimInfo.WithdrawTime == null, "Already withdrawn.");
             Assert(claimInfo.Account == Context.Sender, "No permission.");
             Assert(Context.CurrentBlockTime >= claimInfo.UnlockTime, "Not unlock yet.");

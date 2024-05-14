@@ -3,6 +3,7 @@ using System.Threading.Tasks;
 using AElf;
 using AElf.Contracts.MultiToken;
 using AElf.Types;
+using Google.Protobuf.WellKnownTypes;
 using Shouldly;
 using Xunit;
 
@@ -859,8 +860,12 @@ public partial class EcoEarnTokensContractTests
 
     private async Task<Hash> CreateTokensPool()
     {
-        await Register();
-        await CreateToken();
+        var admin = await EcoEarnTokensContractStub.GetAdmin.CallAsync(new Empty());
+        if (admin == new Address())
+        {
+            await Register();
+            await CreateToken();
+        }
 
         await TokenContractStub.Approve.SendAsync(new ApproveInput
         {
@@ -885,6 +890,78 @@ public partial class EcoEarnTokensContractTests
                 MinimumAmount = 1_00000000,
                 MinimumClaimAmount = 1_00000000,
                 RewardPerBlock = 100_00000000,
+                ReleasePeriod = 10,
+                RewardTokenContract = TokenContractAddress,
+                StakeTokenContract = TokenContractAddress,
+                UpdateAddress = DefaultAddress,
+                MinimumStakeDuration = 86400
+            }
+        };
+        var result = await EcoEarnTokensContractStub.CreateTokensPool.SendAsync(input);
+        return GetLogEvent<TokensPoolCreated>(result.TransactionResult).PoolId;
+    }
+    
+    private async Task<Hash> CreateTokensPool(string symbol)
+    {
+        await TokenContractStub.Approve.SendAsync(new ApproveInput
+        {
+            Spender = EcoEarnTokensContractAddress,
+            Amount = 1000000_00000000,
+            Symbol = Symbol
+        });
+
+        var blockNumber = SimulateBlockMining().Result.Block.Height;
+
+        var input = new CreateTokensPoolInput
+        {
+            DappId = _appId,
+            Config = new TokensPoolConfig
+            {
+                StartBlockNumber = blockNumber,
+                EndBlockNumber = blockNumber + 10,
+                RewardToken = Symbol,
+                StakingToken = symbol,
+                FixedBoostFactor = 10000,
+                MaximumStakeDuration = 500000,
+                MinimumAmount = 1_00000000,
+                MinimumClaimAmount = 1_00000000,
+                RewardPerBlock = 100_00000000,
+                ReleasePeriod = 10,
+                RewardTokenContract = TokenContractAddress,
+                StakeTokenContract = TokenContractAddress,
+                UpdateAddress = DefaultAddress,
+                MinimumStakeDuration = 86400
+            }
+        };
+        var result = await EcoEarnTokensContractStub.CreateTokensPool.SendAsync(input);
+        return GetLogEvent<TokensPoolCreated>(result.TransactionResult).PoolId;
+    }
+    
+    private async Task<Hash> CreateTokensPoolWithLowRewardPerBlock()
+    {
+        await TokenContractStub.Approve.SendAsync(new ApproveInput
+        {
+            Spender = EcoEarnTokensContractAddress,
+            Amount = 1000000_00000000,
+            Symbol = Symbol
+        });
+
+        var blockNumber = SimulateBlockMining().Result.Block.Height;
+
+        var input = new CreateTokensPoolInput
+        {
+            DappId = _appId,
+            Config = new TokensPoolConfig
+            {
+                StartBlockNumber = blockNumber,
+                EndBlockNumber = blockNumber + 10,
+                RewardToken = Symbol,
+                StakingToken = Symbol,
+                FixedBoostFactor = 10000,
+                MaximumStakeDuration = 500000,
+                MinimumAmount = 2_00000000,
+                MinimumClaimAmount = 1,
+                RewardPerBlock = 1_00000000,
                 ReleasePeriod = 10,
                 RewardTokenContract = TokenContractAddress,
                 StakeTokenContract = TokenContractAddress,

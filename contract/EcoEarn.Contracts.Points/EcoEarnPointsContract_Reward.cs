@@ -174,7 +174,7 @@ public partial class EcoEarnPointsContract
         Assert(input.Period >= 0, "Invalid period.");
 
         var poolInfo = State.EcoEarnTokensContract.GetPoolInfo.Call(input.PoolId).PoolInfo;
-        Assert(poolInfo.PoolId == input.PoolId, "Pool not exists.");
+        Assert(poolInfo?.PoolId == input.PoolId, "Pool not exists.");
 
         var stakeId = GetStakeId(input.PoolId);
 
@@ -311,7 +311,8 @@ public partial class EcoEarnPointsContract
             if (IsHashValid(claimInfo.StakeId))
             {
                 var stakeInfo = State.EcoEarnTokensContract.GetStakeInfo.Call(claimInfo.StakeId);
-                Assert(stakeInfo != null && stakeInfo.WithdrawTime != null, "Not unlocked.");
+                Assert(stakeInfo.WithdrawTime != null && Context.CurrentBlockTime >= stakeInfo.WithdrawTime,
+                    "Not unlocked.");
             }
 
             amount = amount.Add(claimInfo.ClaimedAmount);
