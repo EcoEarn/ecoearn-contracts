@@ -77,7 +77,7 @@ public partial class EcoEarnTokensContract : EcoEarnTokensContractContainer.EcoE
         CheckAdminPermission();
 
         Assert(IsAddressValid(input), "Invalid input.");
-        
+
         if (State.EcoEarnPointsContract.Value == input)
         {
             return new Empty();

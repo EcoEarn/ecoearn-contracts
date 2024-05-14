@@ -720,7 +720,7 @@ public partial class EcoEarnTokensContractTests
                 PoolId = HashHelper.ComputeFrom(1)
             });
         result.TransactionResult.Error.ShouldContain("Pool not exists.");
-        
+
         result = await EcoEarnTokensContractUserStub.SetTokensPoolStakeConfig.SendWithExceptionAsync(
             new SetTokensPoolStakeConfigInput
             {
@@ -900,7 +900,7 @@ public partial class EcoEarnTokensContractTests
         var result = await EcoEarnTokensContractStub.CreateTokensPool.SendAsync(input);
         return GetLogEvent<TokensPoolCreated>(result.TransactionResult).PoolId;
     }
-    
+
     private async Task<Hash> CreateTokensPool(string symbol)
     {
         await TokenContractStub.Approve.SendAsync(new ApproveInput
@@ -936,7 +936,7 @@ public partial class EcoEarnTokensContractTests
         var result = await EcoEarnTokensContractStub.CreateTokensPool.SendAsync(input);
         return GetLogEvent<TokensPoolCreated>(result.TransactionResult).PoolId;
     }
-    
+
     private async Task<Hash> CreateTokensPoolWithLowRewardPerBlock()
     {
         await TokenContractStub.Approve.SendAsync(new ApproveInput
@@ -972,7 +972,7 @@ public partial class EcoEarnTokensContractTests
         var result = await EcoEarnTokensContractStub.CreateTokensPool.SendAsync(input);
         return GetLogEvent<TokensPoolCreated>(result.TransactionResult).PoolId;
     }
-    
+
     private async Task CreateToken()
     {
         await TokenContractStub.Create.SendAsync(new CreateInput
@@ -985,7 +985,7 @@ public partial class EcoEarnTokensContractTests
             IsBurnable = true,
             IssueChainId = 0,
         });
-    
+
         var seedOwnedSymbol = "SGR" + "-0";
         var seedExpTime = "1720590467";
         await TokenContractStub.Create.SendAsync(new CreateInput
@@ -1013,7 +1013,7 @@ public partial class EcoEarnTokensContractTests
                 }
             }
         });
-    
+
         await TokenContractStub.Issue.SendAsync(new IssueInput
         {
             Symbol = "SEED-1",

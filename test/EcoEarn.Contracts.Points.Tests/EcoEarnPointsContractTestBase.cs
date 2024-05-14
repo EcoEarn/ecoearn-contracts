@@ -78,7 +78,7 @@ public class EcoEarnPointsContractTestBase : DAppContractTestBase<EcoEarnPointsC
         PointsContractAddress = Address.Parser.ParseFrom(result.TransactionResult.ReturnValue);
         PointsContractStub =
             GetContractStub<TestPointsContractContainer.TestPointsContractStub>(PointsContractAddress, DefaultKeyPair);
-        
+
         result = AsyncHelper.RunSync(async () => await ZeroContractStub.DeploySmartContract.SendAsync(
             new ContractDeploymentInput
             {
@@ -89,9 +89,11 @@ public class EcoEarnPointsContractTestBase : DAppContractTestBase<EcoEarnPointsC
 
         EcoEarnTokensContractAddress = Address.Parser.ParseFrom(result.TransactionResult.ReturnValue);
         EcoEarnTokensContractStub =
-            GetContractStub<EcoEarnTokensContractContainer.EcoEarnTokensContractStub>(EcoEarnTokensContractAddress, DefaultKeyPair);
+            GetContractStub<EcoEarnTokensContractContainer.EcoEarnTokensContractStub>(EcoEarnTokensContractAddress,
+                DefaultKeyPair);
         EcoEarnTokensContractUserStub =
-            GetContractStub<EcoEarnTokensContractContainer.EcoEarnTokensContractStub>(EcoEarnTokensContractAddress, UserKeyPair);
+            GetContractStub<EcoEarnTokensContractContainer.EcoEarnTokensContractStub>(EcoEarnTokensContractAddress,
+                UserKeyPair);
     }
 
     internal T GetContractStub<T>(Address contractAddress, ECKeyPair senderKeyPair) where T : ContractStubBase, new()

@@ -136,27 +136,27 @@ public partial class EcoEarnTokensContractTests
             ClaimIds = { new Hash() }
         });
         result.TransactionResult.Error.ShouldContain("Invalid claim id.");
-        
+
         result = await EcoEarnTokensContractStub.Withdraw.SendWithExceptionAsync(new WithdrawInput
         {
             ClaimIds = { HashHelper.ComputeFrom("test") }
         });
         result.TransactionResult.Error.ShouldContain("Claim id not exists.");
-        
+
         result = await EcoEarnTokensContractStub.Withdraw.SendWithExceptionAsync(new WithdrawInput
         {
             ClaimIds = { claimInfo.ClaimId }
         });
         result.TransactionResult.Error.ShouldContain("No permission.");
-        
+
         result = await EcoEarnTokensContractUserStub.Withdraw.SendWithExceptionAsync(new WithdrawInput
         {
             ClaimIds = { claimInfo.ClaimId }
         });
         result.TransactionResult.Error.ShouldContain("Not unlock yet.");
-        
+
         BlockTimeProvider.SetBlockTime(BlockTimeProvider.GetBlockTime().AddSeconds(86400));
-        
+
         var poolId2 = await CreateTokensPool();
 
         await EcoEarnTokensContractUserStub.EarlyStake.SendAsync(new EarlyStakeInput
@@ -165,21 +165,21 @@ public partial class EcoEarnTokensContractTests
             ClaimIds = { claimInfo.ClaimId },
             Period = 86400
         });
-        
+
         result = await EcoEarnTokensContractUserStub.Withdraw.SendWithExceptionAsync(new WithdrawInput
         {
             ClaimIds = { claimInfo.ClaimId }
         });
         result.TransactionResult.Error.ShouldContain("Not unlocked.");
-        
+
         BlockTimeProvider.SetBlockTime(BlockTimeProvider.GetBlockTime().AddSeconds(86400));
         await EcoEarnTokensContractUserStub.Unlock.SendAsync(poolId2);
-        
+
         await EcoEarnTokensContractUserStub.Withdraw.SendAsync(new WithdrawInput
         {
             ClaimIds = { claimInfo.ClaimId }
         });
-        
+
         result = await EcoEarnTokensContractUserStub.Withdraw.SendWithExceptionAsync(new WithdrawInput
         {
             ClaimIds = { claimInfo.ClaimId }

@@ -583,9 +583,9 @@ public partial class EcoEarnPointsContractTests
 
         balance = await GetTokenBalance(Symbol, userAddress);
         balance.ShouldBe(0);
-        
+
         BlockTimeProvider.SetBlockTime(BlockTimeProvider.GetBlockTime().AddDays(10));
-        
+
         await EcoEarnTokensContractUserStub.Unlock.SendAsync(tokensPoolId);
 
         balance = await GetTokenBalance(Symbol, userAddress);

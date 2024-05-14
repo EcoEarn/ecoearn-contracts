@@ -219,7 +219,7 @@ public partial class EcoEarnTokensContract
         var poolInfo = GetPool(input.PoolId);
 
         CheckDAppAdminPermission(poolInfo.DappId);
-        
+
         Assert(input.MinimumAmount >= 0, "Invalid minimum amount.");
         Assert(input.MaximumStakeDuration > 0, "Invalid maximum stake duration.");
         Assert(input.MinimumClaimAmount >= 0, "Invalid minimum claim amount.");

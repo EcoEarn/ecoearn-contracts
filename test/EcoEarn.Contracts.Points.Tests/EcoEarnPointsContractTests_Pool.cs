@@ -71,7 +71,7 @@ public partial class EcoEarnPointsContractTests
             });
             result.TransactionResult.Error.ShouldContain("Dapp not exists.");
         }
-        
+
         {
             var result = await EcoEarnPointsContractUserStub.Register.SendWithExceptionAsync(new RegisterInput
             {
@@ -215,7 +215,7 @@ public partial class EcoEarnPointsContractTests
         log.Config.RewardPerBlock.ShouldBe(10);
         log.Amount.ShouldBe(1000);
         log.PoolId.ShouldBe(HashHelper.ComputeFrom(input));
-        
+
         {
             var output = await EcoEarnPointsContractStub.GetPoolInfo.CallAsync(log.PoolId);
             output.Status.ShouldBe(true);

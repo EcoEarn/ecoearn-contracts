@@ -75,7 +75,7 @@ public partial class EcoEarnPointsContract : EcoEarnPointsContractContainer.EcoE
     public override Empty SetContractConfig(SetContractConfigInput input)
     {
         CheckAdminPermission();
-        
+
         Assert(input != null, "Invalid input.");
         Assert(IsAddressValid(input.PointsContract), "Invalid points contract.");
         Assert(IsAddressValid(input.EcoearnTokensContract), "Invalid ecoearn tokens contract.");

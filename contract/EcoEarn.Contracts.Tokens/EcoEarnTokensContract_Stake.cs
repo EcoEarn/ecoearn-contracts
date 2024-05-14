@@ -91,7 +91,7 @@ public partial class EcoEarnTokensContract
                     });
             }
         }
-        
+
         stakeInfo.StakedAmount = 0;
         stakeInfo.EarlyStakedAmount = 0;
 
@@ -130,7 +130,7 @@ public partial class EcoEarnTokensContract
                 Amount = stakedAmount,
                 Symbol = poolInfo.Config.RewardToken
             });
-        
+
         Context.Fire(new EarlyStaked
         {
             StakeInfo = State.StakeInfoMap[stakeId],
@@ -237,7 +237,8 @@ public partial class EcoEarnTokensContract
         var rewards = new BigIntValue(multiplier.Mul(poolInfo.Config.RewardPerBlock));
         var accTokenPerShare = poolData.AccTokenPerShare ?? new BigIntValue(0);
         poolData.AccTokenPerShare =
-            accTokenPerShare.Add(rewards.Mul(EcoEarnTokensContractConstants.Denominator).Div(poolData.TotalStakedAmount));
+            accTokenPerShare.Add(
+                rewards.Mul(EcoEarnTokensContractConstants.Denominator).Div(poolData.TotalStakedAmount));
         poolData.LastRewardBlock = blockNumber;
     }
 
@@ -369,7 +370,8 @@ public partial class EcoEarnTokensContract
 
         poolData.TotalStakedAmount = poolData.TotalStakedAmount.Add(boostedAmount).Sub(stakeInfo.BoostedAmount);
         stakeInfo.BoostedAmount = boostedAmount;
-        stakeInfo.RewardDebt = CalculateDebt(boostedAmount, poolData.AccTokenPerShare, EcoEarnTokensContractConstants.Denominator);
+        stakeInfo.RewardDebt = CalculateDebt(boostedAmount, poolData.AccTokenPerShare,
+            EcoEarnTokensContractConstants.Denominator);
         stakeInfo.LastOperationTime = Context.CurrentBlockTime;
 
         Context.Fire(new Staked
@@ -475,6 +477,6 @@ public partial class EcoEarnTokensContract
 
         return result.Values.ToList();
     }
-    
+
     #endregion
 }

@@ -218,14 +218,14 @@ public partial class EcoEarnPointsContractTests : EcoEarnPointsContractTestBase
         var output = await EcoEarnPointsContractStub.GetContractConfig.CallAsync(new Empty());
         output.PointsContract.ShouldBe(PointsContractAddress);
         output.EcoearnTokensContract.ShouldBe(EcoEarnTokensContractAddress);
-        
+
         var result = await EcoEarnPointsContractStub.SetContractConfig.SendAsync(new SetContractConfigInput
         {
             EcoearnTokensContract = EcoEarnTokensContractAddress,
             PointsContract = PointsContractAddress
         });
         result.TransactionResult.Logs.FirstOrDefault(l => l.Name.Contains(nameof(ContractConfigSet))).ShouldBeNull();
-        
+
         result = await EcoEarnPointsContractStub.SetContractConfig.SendAsync(new SetContractConfigInput
         {
             EcoearnTokensContract = UserAddress,
@@ -234,7 +234,7 @@ public partial class EcoEarnPointsContractTests : EcoEarnPointsContractTestBase
         var log = GetLogEvent<ContractConfigSet>(result.TransactionResult);
         log.EcoearnTokensContract.ShouldBe(UserAddress);
         log.PointsContract.ShouldBe(UserAddress);
-        
+
         output = await EcoEarnPointsContractStub.GetContractConfig.CallAsync(new Empty());
         output.PointsContract.ShouldBe(UserAddress);
         output.EcoearnTokensContract.ShouldBe(UserAddress);
@@ -251,19 +251,19 @@ public partial class EcoEarnPointsContractTests : EcoEarnPointsContractTestBase
 
         result = await EcoEarnPointsContractStub.SetContractConfig.SendWithExceptionAsync(new SetContractConfigInput());
         result.TransactionResult.Error.ShouldContain("Invalid points contract.");
-        
+
         result = await EcoEarnPointsContractStub.SetContractConfig.SendWithExceptionAsync(new SetContractConfigInput
         {
             PointsContract = new Address()
         });
         result.TransactionResult.Error.ShouldContain("Invalid points contract.");
-        
+
         result = await EcoEarnPointsContractStub.SetContractConfig.SendWithExceptionAsync(new SetContractConfigInput
         {
             PointsContract = UserAddress
         });
         result.TransactionResult.Error.ShouldContain("Invalid ecoearn tokens contract.");
-        
+
         result = await EcoEarnPointsContractStub.SetContractConfig.SendWithExceptionAsync(new SetContractConfigInput
         {
             PointsContract = UserAddress,

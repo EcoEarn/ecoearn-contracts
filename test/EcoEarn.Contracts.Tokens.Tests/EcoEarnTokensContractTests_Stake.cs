@@ -112,7 +112,7 @@ public partial class EcoEarnTokensContractTests
 
             balance = await GetTokenBalance(Symbol, addressInfo.StakeAddress);
             balance.ShouldBe(tokenBalance);
-            
+
             var reward = await EcoEarnTokensContractStub.GetReward.CallAsync(stakeInfo.StakeId);
             reward.Symbol.ShouldBe(Symbol);
             reward.Account.ShouldBe(UserAddress);
@@ -171,7 +171,7 @@ public partial class EcoEarnTokensContractTests
             var reward = await EcoEarnTokensContractStub.GetReward.CallAsync(stakeInfo.StakeId);
             reward.Amount.ShouldBe(100_00000000 * 2 - 100_00000000 * 100 / 10000 * 2);
         }
-        
+
         // add position with more period
         {
             var result = await EcoEarnTokensContractUserStub.Stake.SendAsync(new StakeInput
@@ -185,7 +185,7 @@ public partial class EcoEarnTokensContractTests
             var log = GetLogEvent<Staked>(result.TransactionResult);
             log.PoolData.TotalStakedAmount.ShouldBe(tokenBalance * 8);
             log.PoolData.LastRewardBlock.ShouldBe(result.TransactionResult.BlockNumber);
-            
+
             var acc = 100_00000000 * 10000 / (tokenBalance * 4) + 100_00000000 * 10000 / (tokenBalance * 2);
             log.PoolData.AccTokenPerShare.ShouldBe(acc);
 
@@ -232,32 +232,32 @@ public partial class EcoEarnTokensContractTests
 
         var result = await EcoEarnTokensContractStub.Stake.SendWithExceptionAsync(new StakeInput());
         result.TransactionResult.Error.ShouldContain("Invalid pool id.");
-        
+
         result = await EcoEarnTokensContractStub.Stake.SendWithExceptionAsync(new StakeInput
         {
             PoolId = new Hash()
         });
         result.TransactionResult.Error.ShouldContain("Invalid pool id.");
-        
+
         result = await EcoEarnTokensContractStub.Stake.SendWithExceptionAsync(new StakeInput
         {
             PoolId = HashHelper.ComputeFrom("test")
         });
         result.TransactionResult.Error.ShouldContain("Pool not exists.");
-        
+
         result = await EcoEarnTokensContractStub.Stake.SendWithExceptionAsync(new StakeInput
         {
             PoolId = poolId
         });
         result.TransactionResult.Error.ShouldContain("New position requires both amount and period.");
-        
+
         result = await EcoEarnTokensContractStub.Stake.SendWithExceptionAsync(new StakeInput
         {
             PoolId = poolId,
             Amount = -1
         });
         result.TransactionResult.Error.ShouldContain("Invalid amount.");
-        
+
         result = await EcoEarnTokensContractStub.Stake.SendWithExceptionAsync(new StakeInput
         {
             PoolId = poolId,
@@ -265,7 +265,7 @@ public partial class EcoEarnTokensContractTests
             Period = -1
         });
         result.TransactionResult.Error.ShouldContain("Invalid period.");
-        
+
         result = await EcoEarnTokensContractStub.Stake.SendWithExceptionAsync(new StakeInput
         {
             PoolId = poolId,
@@ -273,7 +273,7 @@ public partial class EcoEarnTokensContractTests
             Period = 1
         });
         result.TransactionResult.Error.ShouldContain("Period too short.");
-        
+
         result = await EcoEarnTokensContractStub.Stake.SendWithExceptionAsync(new StakeInput
         {
             PoolId = poolId,
@@ -281,7 +281,7 @@ public partial class EcoEarnTokensContractTests
             Period = 500001
         });
         result.TransactionResult.Error.ShouldContain("Period too long.");
-        
+
         result = await EcoEarnTokensContractStub.Stake.SendWithExceptionAsync(new StakeInput
         {
             PoolId = poolId,
@@ -295,7 +295,7 @@ public partial class EcoEarnTokensContractTests
     public async Task UnlockTests()
     {
         const long tokenBalance = 5_00000000;
-        
+
         var poolId = await CreateTokensPool();
         var stakeInfo = await Stake(poolId, tokenBalance);
         stakeInfo.StakedAmount.ShouldBe(tokenBalance);
@@ -307,10 +307,10 @@ public partial class EcoEarnTokensContractTests
         poolData.TotalStakedAmount.ShouldBe(tokenBalance * 2);
 
         BlockTimeProvider.SetBlockTime(BlockTimeProvider.GetBlockTime().AddSeconds(86400));
-        
+
         var result = await EcoEarnTokensContractUserStub.Unlock.SendAsync(poolId);
         result.TransactionResult.Status.ShouldBe(TransactionResultStatus.Mined);
-        
+
         balance = await GetTokenBalance(Symbol, UserAddress);
         balance.ShouldBe(tokenBalance);
 
@@ -318,7 +318,7 @@ public partial class EcoEarnTokensContractTests
         log.StakeId.ShouldBe(stakeInfo.StakeId);
         log.StakedAmount.ShouldBe(0);
         log.PoolData.ShouldBe(poolData);
-        
+
         stakeInfo = await EcoEarnTokensContractStub.GetStakeInfo.CallAsync(stakeInfo.StakeId);
         stakeInfo.StakedAmount.ShouldBe(0);
         stakeInfo.ClaimedAmount.ShouldBe(100_00000000 - 100_00000000 * 100 / 10000);
@@ -328,26 +328,26 @@ public partial class EcoEarnTokensContractTests
     public async Task UnlockTests_Fail()
     {
         const long tokenBalance = 5_00000000;
-        
+
         var poolId = await CreateTokensPool();
         await Stake(poolId, tokenBalance);
 
         var result = await EcoEarnTokensContractStub.Unlock.SendWithExceptionAsync(new Hash());
         result.TransactionResult.Error.ShouldContain("Invalid input.");
-        
+
         result = await EcoEarnTokensContractStub.Unlock.SendWithExceptionAsync(HashHelper.ComputeFrom("test"));
         result.TransactionResult.Error.ShouldContain("Not staked before.");
-        
+
         result = await EcoEarnTokensContractStub.Unlock.SendWithExceptionAsync(poolId);
         result.TransactionResult.Error.ShouldContain("Not staked before.");
-        
+
         result = await EcoEarnTokensContractUserStub.Unlock.SendWithExceptionAsync(poolId);
         result.TransactionResult.Error.ShouldContain("No unlock yet.");
-        
+
         BlockTimeProvider.SetBlockTime(BlockTimeProvider.GetBlockTime().AddSeconds(86400));
 
         await EcoEarnTokensContractUserStub.Unlock.SendAsync(poolId);
-        
+
         result = await EcoEarnTokensContractUserStub.Unlock.SendWithExceptionAsync(poolId);
         result.TransactionResult.Error.ShouldContain("Already withdrawn.");
     }
@@ -356,7 +356,7 @@ public partial class EcoEarnTokensContractTests
     public async Task EarlyStakeTests()
     {
         const long tokenBalance = 5_00000000;
-        
+
         var poolId = await CreateTokensPool();
         var (stakeInfo, claimInfo) = await Claim(poolId, tokenBalance);
         var poolData = await EcoEarnTokensContractStub.GetPoolData.CallAsync(poolId);
@@ -384,19 +384,19 @@ public partial class EcoEarnTokensContractTests
     public async Task EarlyStakeTests_Fail()
     {
         const long tokenBalance = 5_00000000;
-        
+
         var poolId = await CreateTokensPool();
         var (_, claimInfo) = await Claim(poolId, tokenBalance);
 
         var result = await EcoEarnTokensContractStub.EarlyStake.SendWithExceptionAsync(new EarlyStakeInput());
         result.TransactionResult.Error.ShouldContain("Invalid claim ids.");
-        
+
         result = await EcoEarnTokensContractStub.EarlyStake.SendWithExceptionAsync(new EarlyStakeInput
         {
             ClaimIds = { new Hash() }
         });
         result.TransactionResult.Error.ShouldContain("Invalid pool id.");
-        
+
         result = await EcoEarnTokensContractStub.EarlyStake.SendWithExceptionAsync(new EarlyStakeInput
         {
             ClaimIds = { new Hash() },
@@ -404,10 +404,10 @@ public partial class EcoEarnTokensContractTests
             Period = -1
         });
         result.TransactionResult.Error.ShouldContain("Invalid period.");
-        
+
         var closedPoolId = await CreateTokensPool();
         await EcoEarnTokensContractStub.CloseTokensPool.SendAsync(closedPoolId);
-        
+
         result = await EcoEarnTokensContractStub.EarlyStake.SendWithExceptionAsync(new EarlyStakeInput
         {
             ClaimIds = { new Hash() },
@@ -415,10 +415,10 @@ public partial class EcoEarnTokensContractTests
             Period = 0
         });
         result.TransactionResult.Error.ShouldContain("Pool closed.");
-        
+
         var poolIdWithLowReward = await CreateTokensPoolWithLowRewardPerBlock();
         var (_, lessClaimInfo) = await Claim(poolIdWithLowReward, tokenBalance);
-        
+
         result = await EcoEarnTokensContractStub.EarlyStake.SendWithExceptionAsync(new EarlyStakeInput
         {
             ClaimIds = { new Hash() },
@@ -426,7 +426,7 @@ public partial class EcoEarnTokensContractTests
             Period = 0
         });
         result.TransactionResult.Error.ShouldContain("Invalid claim id.");
-        
+
         result = await EcoEarnTokensContractStub.EarlyStake.SendWithExceptionAsync(new EarlyStakeInput
         {
             ClaimIds = { lessClaimInfo.ClaimId },
@@ -434,7 +434,7 @@ public partial class EcoEarnTokensContractTests
             Period = 0
         });
         result.TransactionResult.Error.ShouldContain("No permission.");
-        
+
         result = await EcoEarnTokensContractUserStub.EarlyStake.SendWithExceptionAsync(new EarlyStakeInput
         {
             ClaimIds = { lessClaimInfo.ClaimId },
@@ -442,7 +442,7 @@ public partial class EcoEarnTokensContractTests
             Period = 0
         });
         result.TransactionResult.Error.ShouldContain("Amount not enough.");
-        
+
         var poolIdWithDifferentStakingSymbol = await CreateTokensPool(DefaultSymbol);
         result = await EcoEarnTokensContractUserStub.EarlyStake.SendWithExceptionAsync(new EarlyStakeInput
         {
@@ -451,7 +451,7 @@ public partial class EcoEarnTokensContractTests
             Period = 0
         });
         result.TransactionResult.Error.ShouldContain("Token not matched.");
-        
+
         poolId = await CreateTokensPool();
         await EcoEarnTokensContractUserStub.EarlyStake.SendAsync(new EarlyStakeInput
         {
@@ -459,14 +459,14 @@ public partial class EcoEarnTokensContractTests
             ClaimIds = { claimInfo.ClaimId },
             Period = 86400
         });
-        
+
         result = await EcoEarnTokensContractUserStub.EarlyStake.SendWithExceptionAsync(new EarlyStakeInput
         {
             PoolId = poolId,
             ClaimIds = { claimInfo.ClaimId },
         });
         result.TransactionResult.Error.ShouldContain("Not unlocked.");
-        
+
         BlockTimeProvider.SetBlockTime(BlockTimeProvider.GetBlockTime().AddSeconds(86400));
 
         await EcoEarnTokensContractUserStub.Unlock.SendAsync(poolId);
@@ -474,7 +474,7 @@ public partial class EcoEarnTokensContractTests
         {
             ClaimIds = { claimInfo.ClaimId }
         });
-        
+
         result = await EcoEarnTokensContractUserStub.EarlyStake.SendWithExceptionAsync(new EarlyStakeInput
         {
             PoolId = poolId,
@@ -482,15 +482,15 @@ public partial class EcoEarnTokensContractTests
         });
         result.TransactionResult.Error.ShouldContain("Already withdrawn.");
     }
-    
+
     [Fact]
     public async Task UpdateStakeInfoTests()
     {
         const long tokenBalance = 5_00000000;
-        
+
         var poolId = await CreateTokensPool();
         var stakeInfo = await Stake(poolId, tokenBalance);
-        
+
         var poolId2 = await CreateTokensPool();
         var stakeInfo2 = await Stake(poolId2, tokenBalance);
 
@@ -501,7 +501,7 @@ public partial class EcoEarnTokensContractTests
 
         var reward = await EcoEarnTokensContractStub.GetReward.CallAsync(stakeInfo.StakeId);
         var reward2 = await EcoEarnTokensContractStub.GetReward.CallAsync(stakeInfo2.StakeId);
-        
+
         BlockTimeProvider.SetBlockTime(BlockTimeProvider.GetBlockTime().AddSeconds(86400));
 
         var input = new UpdateStakeInfoInput
@@ -515,7 +515,7 @@ public partial class EcoEarnTokensContractTests
         log.StakeIds.Data.ShouldBe(input.StakeIds);
         log.PoolDatas.Data.First().TotalStakedAmount.ShouldBe(0);
         log.PoolDatas.Data.Last().TotalStakedAmount.ShouldBe(0);
-        
+
         var newReward = await EcoEarnTokensContractStub.GetReward.CallAsync(stakeInfo.StakeId);
         var newReward2 = await EcoEarnTokensContractStub.GetReward.CallAsync(stakeInfo2.StakeId);
         reward.ShouldBe(newReward);
@@ -526,44 +526,44 @@ public partial class EcoEarnTokensContractTests
     public async Task UpdateStakeInfoTests_Fail()
     {
         const long tokenBalance = 5_00000000;
-        
+
         var poolId = await CreateTokensPool();
         var stakeInfo = await Stake(poolId, tokenBalance);
 
         var result = await EcoEarnTokensContractStub.UpdateStakeInfo.SendWithExceptionAsync(new UpdateStakeInfoInput());
         result.TransactionResult.Error.ShouldContain("Invalid stake ids.");
-        
+
         result = await EcoEarnTokensContractStub.UpdateStakeInfo.SendWithExceptionAsync(new UpdateStakeInfoInput
         {
             StakeIds = { new Hash() }
         });
         result.TransactionResult.Error.ShouldContain("Invalid stake id.");
-        
+
         result = await EcoEarnTokensContractStub.UpdateStakeInfo.SendWithExceptionAsync(new UpdateStakeInfoInput
         {
             StakeIds = { HashHelper.ComputeFrom("test") }
         });
         result.TransactionResult.Error.ShouldContain("Stake id not exists.");
-        
+
         result = await EcoEarnTokensContractStub.UpdateStakeInfo.SendWithExceptionAsync(new UpdateStakeInfoInput
         {
             StakeIds = { stakeInfo.StakeId }
         });
         result.TransactionResult.Error.ShouldContain("Not unlock yet.");
-        
+
         BlockTimeProvider.SetBlockTime(BlockTimeProvider.GetBlockTime().AddSeconds(86400));
-        
+
         result = await EcoEarnTokensContractUserStub.UpdateStakeInfo.SendWithExceptionAsync(new UpdateStakeInfoInput
         {
             StakeIds = { stakeInfo.StakeId }
         });
         result.TransactionResult.Error.ShouldContain("No permission.");
-        
+
         await EcoEarnTokensContractStub.UpdateStakeInfo.SendAsync(new UpdateStakeInfoInput
         {
             StakeIds = { stakeInfo.StakeId }
         });
-        
+
         result = await EcoEarnTokensContractStub.UpdateStakeInfo.SendWithExceptionAsync(new UpdateStakeInfoInput
         {
             StakeIds = { stakeInfo.StakeId }
@@ -585,7 +585,7 @@ public partial class EcoEarnTokensContractTests
             Symbol = Symbol,
             Amount = tokenBalance
         });
-        
+
         var result = await EcoEarnTokensContractUserStub.Stake.SendAsync(new StakeInput
         {
             PoolId = poolId,
