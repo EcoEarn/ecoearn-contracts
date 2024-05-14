@@ -428,5 +428,53 @@ public partial class EcoEarnTokensContract
         return stakeId;
     }
 
+    private List<PoolData> ProcessStakeInfos(List<Hash> stakeIds)
+    {
+        var result = new Dictionary<Hash, PoolData>();
+
+        foreach (var id in stakeIds)
+        {
+            Assert(IsHashValid(id), "Invalid stake id.");
+            Assert(!State.StakeInfoUpdateStatusMap[id], "Already updated.");
+
+            State.StakeInfoUpdateStatusMap[id] = true;
+
+            var stakeInfo = State.StakeInfoMap[id];
+            Assert(stakeInfo != null, "Stake id not exists.");
+
+            Assert(Context.CurrentBlockTime >= stakeInfo.StakedTime.AddSeconds(stakeInfo.Period), "Not unlock yet.");
+
+            var poolInfo = GetPool(stakeInfo.PoolId);
+            Assert(poolInfo.Config.UpdateAddress == Context.Sender, "No permission.");
+            var poolData = State.PoolDataMap[stakeInfo.PoolId];
+            UpdatePool(poolInfo, poolData);
+
+            if (stakeInfo.BoostedAmount > 0)
+            {
+                var pending = CalculatePending(stakeInfo.BoostedAmount, poolData.AccTokenPerShare,
+                    stakeInfo.RewardDebt, EcoEarnTokensContractConstants.Denominator);
+                var actualReward = ProcessCommissionFee(pending, poolInfo);
+                if (actualReward > 0)
+                {
+                    stakeInfo.RewardAmount = stakeInfo.RewardAmount.Add(actualReward);
+                    Context.SendVirtualInline(GetRewardVirtualAddress(stakeInfo.PoolId),
+                        poolInfo.Config.RewardTokenContract, nameof(State.TokenContract.Transfer), new TransferInput
+                        {
+                            To = CalculateVirtualAddress(stakeInfo.StakeId),
+                            Amount = actualReward,
+                            Memo = "reward",
+                            Symbol = poolInfo.Config.RewardToken
+                        });
+                }
+            }
+
+            poolData.TotalStakedAmount = poolData.TotalStakedAmount.Sub(stakeInfo.BoostedAmount);
+
+            result[stakeInfo.PoolId] = poolData;
+        }
+
+        return result.Values.ToList();
+    }
+    
     #endregion
 }

@@ -483,7 +483,93 @@ public partial class EcoEarnTokensContractTests
         result.TransactionResult.Error.ShouldContain("Already withdrawn.");
     }
     
-    
+    [Fact]
+    public async Task UpdateStakeInfoTests()
+    {
+        const long tokenBalance = 5_00000000;
+        
+        var poolId = await CreateTokensPool();
+        var stakeInfo = await Stake(poolId, tokenBalance);
+        
+        var poolId2 = await CreateTokensPool();
+        var stakeInfo2 = await Stake(poolId2, tokenBalance);
+
+        var poolData = await EcoEarnTokensContractStub.GetPoolData.CallAsync(poolId);
+        var poolData2 = await EcoEarnTokensContractStub.GetPoolData.CallAsync(poolId2);
+        poolData.TotalStakedAmount.ShouldBe(tokenBalance * 2);
+        poolData2.TotalStakedAmount.ShouldBe(tokenBalance * 2);
+
+        var reward = await EcoEarnTokensContractStub.GetReward.CallAsync(stakeInfo.StakeId);
+        var reward2 = await EcoEarnTokensContractStub.GetReward.CallAsync(stakeInfo2.StakeId);
+        
+        BlockTimeProvider.SetBlockTime(BlockTimeProvider.GetBlockTime().AddSeconds(86400));
+
+        var input = new UpdateStakeInfoInput
+        {
+            StakeIds = { stakeInfo.StakeId, stakeInfo2.StakeId }
+        };
+        var result = await EcoEarnTokensContractStub.UpdateStakeInfo.SendAsync(input);
+        result.TransactionResult.Status.ShouldBe(TransactionResultStatus.Mined);
+
+        var log = GetLogEvent<StakeInfoUpdated>(result.TransactionResult);
+        log.StakeIds.Data.ShouldBe(input.StakeIds);
+        log.PoolDatas.Data.First().TotalStakedAmount.ShouldBe(0);
+        log.PoolDatas.Data.Last().TotalStakedAmount.ShouldBe(0);
+        
+        var newReward = await EcoEarnTokensContractStub.GetReward.CallAsync(stakeInfo.StakeId);
+        var newReward2 = await EcoEarnTokensContractStub.GetReward.CallAsync(stakeInfo2.StakeId);
+        reward.ShouldBe(newReward);
+        reward2.ShouldBe(newReward2);
+    }
+
+    [Fact]
+    public async Task UpdateStakeInfoTests_Fail()
+    {
+        const long tokenBalance = 5_00000000;
+        
+        var poolId = await CreateTokensPool();
+        var stakeInfo = await Stake(poolId, tokenBalance);
+
+        var result = await EcoEarnTokensContractStub.UpdateStakeInfo.SendWithExceptionAsync(new UpdateStakeInfoInput());
+        result.TransactionResult.Error.ShouldContain("Invalid stake ids.");
+        
+        result = await EcoEarnTokensContractStub.UpdateStakeInfo.SendWithExceptionAsync(new UpdateStakeInfoInput
+        {
+            StakeIds = { new Hash() }
+        });
+        result.TransactionResult.Error.ShouldContain("Invalid stake id.");
+        
+        result = await EcoEarnTokensContractStub.UpdateStakeInfo.SendWithExceptionAsync(new UpdateStakeInfoInput
+        {
+            StakeIds = { HashHelper.ComputeFrom("test") }
+        });
+        result.TransactionResult.Error.ShouldContain("Stake id not exists.");
+        
+        result = await EcoEarnTokensContractStub.UpdateStakeInfo.SendWithExceptionAsync(new UpdateStakeInfoInput
+        {
+            StakeIds = { stakeInfo.StakeId }
+        });
+        result.TransactionResult.Error.ShouldContain("Not unlock yet.");
+        
+        BlockTimeProvider.SetBlockTime(BlockTimeProvider.GetBlockTime().AddSeconds(86400));
+        
+        result = await EcoEarnTokensContractUserStub.UpdateStakeInfo.SendWithExceptionAsync(new UpdateStakeInfoInput
+        {
+            StakeIds = { stakeInfo.StakeId }
+        });
+        result.TransactionResult.Error.ShouldContain("No permission.");
+        
+        await EcoEarnTokensContractStub.UpdateStakeInfo.SendAsync(new UpdateStakeInfoInput
+        {
+            StakeIds = { stakeInfo.StakeId }
+        });
+        
+        result = await EcoEarnTokensContractStub.UpdateStakeInfo.SendWithExceptionAsync(new UpdateStakeInfoInput
+        {
+            StakeIds = { stakeInfo.StakeId }
+        });
+        result.TransactionResult.Error.ShouldContain("Already updated.");
+    }
 
     private async Task<StakeInfo> Stake(Hash poolId, long tokenBalance)
     {

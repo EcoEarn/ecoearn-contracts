@@ -972,4 +972,82 @@ public partial class EcoEarnTokensContractTests
         var result = await EcoEarnTokensContractStub.CreateTokensPool.SendAsync(input);
         return GetLogEvent<TokensPoolCreated>(result.TransactionResult).PoolId;
     }
+    
+    private async Task CreateToken()
+    {
+        await TokenContractStub.Create.SendAsync(new CreateInput
+        {
+            Symbol = "SEED-0",
+            TokenName = "SEED-0 token",
+            TotalSupply = 1,
+            Decimals = 0,
+            Issuer = DefaultAddress,
+            IsBurnable = true,
+            IssueChainId = 0,
+        });
+    
+        var seedOwnedSymbol = "SGR" + "-0";
+        var seedExpTime = "1720590467";
+        await TokenContractStub.Create.SendAsync(new CreateInput
+        {
+            Symbol = "SEED-1",
+            TokenName = "SEED-1 token",
+            TotalSupply = 1,
+            Decimals = 0,
+            Issuer = DefaultAddress,
+            IsBurnable = true,
+            IssueChainId = 0,
+            LockWhiteList = { TokenContractAddress },
+            ExternalInfo = new ExternalInfo()
+            {
+                Value =
+                {
+                    {
+                        "__seed_owned_symbol",
+                        seedOwnedSymbol
+                    },
+                    {
+                        "__seed_exp_time",
+                        seedExpTime
+                    }
+                }
+            }
+        });
+    
+        await TokenContractStub.Issue.SendAsync(new IssueInput
+        {
+            Symbol = "SEED-1",
+            Amount = 1,
+            To = DefaultAddress,
+            Memo = ""
+        });
+        await TokenContractStub.Create.SendAsync(new CreateInput
+        {
+            Symbol = "SGR-0",
+            TokenName = "SGR-0 token",
+            TotalSupply = 1,
+            Decimals = 0,
+            Issuer = DefaultAddress,
+            IsBurnable = true,
+            IssueChainId = 0,
+            LockWhiteList = { TokenContractAddress }
+        });
+        await TokenContractStub.Create.SendAsync(new CreateInput
+        {
+            Symbol = "SGR-1",
+            TokenName = "SGR-1 token",
+            TotalSupply = 1000000_00000000,
+            Decimals = 0,
+            Issuer = DefaultAddress,
+            IsBurnable = true,
+            IssueChainId = 0,
+            LockWhiteList = { TokenContractAddress }
+        });
+        await TokenContractStub.Issue.SendAsync(new IssueInput
+        {
+            Amount = 1000000_00000000,
+            Symbol = Symbol,
+            To = DefaultAddress
+        });
+    }
 }
