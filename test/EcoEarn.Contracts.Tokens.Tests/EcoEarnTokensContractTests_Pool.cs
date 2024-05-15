@@ -883,6 +883,51 @@ public partial class EcoEarnTokensContractTests
         var reward3 = await EcoEarnTokensContractStub.GetReward.CallAsync(stakeInfo.StakeId);
         reward3.Amount.ShouldBe(99_00000000 + 99_0000000 + 99_00000000);
     }
+    
+    [Fact]
+    public async Task SetTokensPoolRewardPerBlockTests_Fail()
+    {
+        var poolId = await CreateTokensPool();
+
+        var result = await EcoEarnTokensContractStub.SetTokensPoolRewardPerBlock.SendWithExceptionAsync(
+            new SetTokensPoolRewardPerBlockInput
+            {
+                RewardPerBlock = 1
+            });
+        result.TransactionResult.Error.ShouldContain("Invalid pool id.");
+
+        result = await EcoEarnTokensContractStub.SetTokensPoolRewardPerBlock.SendWithExceptionAsync(
+            new SetTokensPoolRewardPerBlockInput
+            {
+                RewardPerBlock = 1,
+                PoolId = new Hash()
+            });
+        result.TransactionResult.Error.ShouldContain("Invalid pool id.");
+
+        result = await EcoEarnTokensContractStub.SetTokensPoolRewardPerBlock.SendWithExceptionAsync(
+            new SetTokensPoolRewardPerBlockInput
+            {
+                RewardPerBlock = 1,
+                PoolId = HashHelper.ComputeFrom(1)
+            });
+        result.TransactionResult.Error.ShouldContain("Pool not exists.");
+
+        result = await EcoEarnTokensContractStub.SetTokensPoolRewardPerBlock.SendWithExceptionAsync(
+            new SetTokensPoolRewardPerBlockInput
+            {
+                PoolId = poolId,
+                RewardPerBlock = 0
+            });
+        result.TransactionResult.Error.ShouldContain("Invalid reward per block.");
+
+        result = await EcoEarnTokensContractUserStub.SetTokensPoolRewardPerBlock.SendWithExceptionAsync(
+            new SetTokensPoolRewardPerBlockInput
+            {
+                PoolId = poolId,
+                RewardPerBlock = 1
+            });
+        result.TransactionResult.Error.ShouldContain("No permission.");
+    }
 
     private async Task Register()
     {

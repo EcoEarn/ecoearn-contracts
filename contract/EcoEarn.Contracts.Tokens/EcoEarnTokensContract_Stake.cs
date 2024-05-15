@@ -318,7 +318,7 @@ public partial class EcoEarnTokensContract
         }
 
         // create position
-        if (existId == null || Context.CurrentBlockTime >= stakeInfo.StakedTime.AddSeconds(stakeInfo.Period))
+        if (existId == null || stakeInfo.WithdrawTime != null)
         {
             Assert(amount > 0 && period > 0, "New position requires both amount and period.");
             Assert(amount >= poolInfo.Config.MinimumAmount, "Amount not enough.");
@@ -342,6 +342,9 @@ public partial class EcoEarnTokensContract
             State.StakeInfoMap[stakeId] = stakeInfo;
             State.UserStakeIdMap[poolInfo.PoolId][address] = stakeId;
         }
+
+        Assert(Context.CurrentBlockTime < stakeInfo.StakedTime.AddSeconds(stakeInfo.Period),
+            "Staking expires. Unlock first.");
 
         var poolData = State.PoolDataMap[poolInfo.PoolId];
         UpdatePool(poolInfo, poolData);

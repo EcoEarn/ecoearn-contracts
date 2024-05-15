@@ -226,6 +226,53 @@ public partial class EcoEarnTokensContractTests
     }
 
     [Fact]
+    public async Task StakeTests_UpdatePosition()
+    {
+        var poolId = await CreateTokensPool();
+
+        await TokenContractStub.Approve.SendAsync(new ApproveInput
+        {
+            Spender = EcoEarnTokensContractAddress,
+            Symbol = Symbol,
+            Amount = 10_00000000
+        });
+
+        var result = await EcoEarnTokensContractStub.Stake.SendAsync(new StakeInput
+        {
+            PoolId = poolId,
+            Amount = 1_00000000,
+            Period = 86400
+        });
+        var stakeId = GetLogEvent<Staked>(result.TransactionResult).StakeInfo.StakeId;
+
+        result = await EcoEarnTokensContractStub.Stake.SendAsync(new StakeInput
+        {
+            PoolId = poolId,
+            Amount = 1_00000000
+        });
+        GetLogEvent<Staked>(result.TransactionResult).StakeInfo.StakeId.ShouldBe(stakeId);
+        
+        BlockTimeProvider.SetBlockTime(BlockTimeProvider.GetBlockTime().AddDays(3));
+        
+        result = await EcoEarnTokensContractStub.Stake.SendWithExceptionAsync(new StakeInput
+        {
+            PoolId = poolId,
+            Amount = 1_00000000
+        });
+        result.TransactionResult.Error.ShouldContain("Staking expires. Unlock first.");
+
+        await EcoEarnTokensContractStub.Unlock.SendAsync(poolId);
+        
+        result = await EcoEarnTokensContractStub.Stake.SendAsync(new StakeInput
+        {
+            PoolId = poolId,
+            Amount = 1_00000000,
+            Period = 86400
+        });
+        GetLogEvent<Staked>(result.TransactionResult).StakeInfo.StakeId.ShouldNotBe(stakeId);
+    }
+
+    [Fact]
     public async Task StakeTests_Fail()
     {
         var poolId = await CreateTokensPool();

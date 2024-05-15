@@ -50,6 +50,7 @@ public partial class EcoEarnPointsContract
         ValidateClaimInput(input);
 
         var poolInfo = GetPool(input.PoolId);
+        Assert(Context.CurrentHeight >= poolInfo.Config.StartBlockNumber, "Pool not start.");
 
         Assert(RecoverAddressFromSignature(input) == poolInfo.Config.UpdateAddress, "Signature not valid.");
 
