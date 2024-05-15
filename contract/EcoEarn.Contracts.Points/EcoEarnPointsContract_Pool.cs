@@ -20,7 +20,7 @@ public partial class EcoEarnPointsContract
         Assert(IsHashValid(input.DappId), "Invalid dapp id.");
         Assert(input.Admin == null || !input.Admin.Value.IsNullOrEmpty(), "Invalid admin.");
         Assert(State.DappInfoMap[input.DappId] == null, "Dapp registered.");
-        
+
         var dappInformationOutput = State.PointsContract.GetDappInformation.Call(new GetDappInformationInput
         {
             DappId = input.DappId
@@ -89,7 +89,7 @@ public partial class EcoEarnPointsContract
             PointsName = input.PointsName,
             Config = input.Config
         };
-        
+
         var totalReward = CalculateTotalRewardAmount(input.Config.StartBlockNumber, input.Config.EndBlockNumber,
             input.Config.RewardPerBlock);
 
@@ -162,7 +162,7 @@ public partial class EcoEarnPointsContract
         CheckDAppAdminPermission(poolInfo.DappId);
 
         poolInfo.Config = input.Config;
-        
+
         var totalReward = CalculateTotalRewardAmount(input.Config.StartBlockNumber, input.Config.EndBlockNumber,
             input.Config.RewardPerBlock);
 

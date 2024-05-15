@@ -297,13 +297,6 @@ public partial class EcoEarnTokensContractTests
             await CreateToken();
         }
 
-        await TokenContractStub.Approve.SendAsync(new ApproveInput
-        {
-            Spender = EcoEarnTokensContractAddress,
-            Amount = 1000000_00000000,
-            Symbol = Symbol
-        });
-
         var blockNumber = SimulateBlockMining().Result.Block.Height;
 
         var input = new CreateTokensPoolInput
@@ -339,13 +332,6 @@ public partial class EcoEarnTokensContractTests
             await Register();
             await CreateToken();
         }
-
-        await TokenContractStub.Approve.SendAsync(new ApproveInput
-        {
-            Spender = EcoEarnTokensContractAddress,
-            Amount = 1000000_00000000,
-            Symbol = Symbol
-        });
 
         var blockNumber = 1000;
 

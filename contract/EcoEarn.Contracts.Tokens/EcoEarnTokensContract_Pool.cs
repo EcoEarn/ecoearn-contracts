@@ -266,6 +266,31 @@ public partial class EcoEarnTokensContract
         return new Empty();
     }
 
+    public override Empty SetTokensPoolRewardPerBlock(SetTokensPoolRewardPerBlockInput input)
+    {
+        Assert(input != null, "Invalid input.");
+        Assert(input.RewardPerBlock > 0, "Invalid reward per block.");
+
+        var poolInfo = GetPool(input.PoolId);
+        var poolData = State.PoolDataMap[poolInfo.PoolId];
+        UpdatePool(poolInfo, poolData);
+
+        CheckDAppAdminPermission(poolInfo.DappId);
+
+        if (poolInfo.Config.RewardPerBlock == input.RewardPerBlock) return new Empty();
+
+        poolInfo.Config.RewardPerBlock = input.RewardPerBlock;
+
+        Context.Fire(new TokensPoolRewardPerBlockSet
+        {
+            PoolId = input.PoolId,
+            RewardPerBlock = input.RewardPerBlock,
+            PoolData = poolData
+        });
+
+        return new Empty();
+    }
+
     #endregion
 
     #region private

@@ -830,6 +830,60 @@ public partial class EcoEarnTokensContractTests
         result.TransactionResult.Error.ShouldContain("No permission.");
     }
 
+    [Fact]
+    public async Task SetTokensPoolRewardPerBlockTests()
+    {
+        var poolId = await CreateTokensPool();
+        
+        var output = await EcoEarnTokensContractStub.GetPoolInfo.CallAsync(poolId);
+        output.PoolInfo.Config.RewardPerBlock.ShouldBe(100_00000000);
+
+        var input = new SetTokensPoolRewardPerBlockInput
+        {
+            PoolId = poolId,
+            RewardPerBlock = 10_00000000
+        };
+
+        var result = await EcoEarnTokensContractStub.SetTokensPoolRewardPerBlock.SendAsync(input);
+        result.TransactionResult.Status.ShouldBe(TransactionResultStatus.Mined);
+
+        var log = GetLogEvent<TokensPoolRewardPerBlockSet>(result.TransactionResult);
+        log.PoolId.ShouldBe(poolId);
+        log.RewardPerBlock.ShouldBe(10_00000000);
+
+        output = await EcoEarnTokensContractStub.GetPoolInfo.CallAsync(poolId);
+        output.PoolInfo.Config.RewardPerBlock.ShouldBe(10_00000000);
+
+        result = await EcoEarnTokensContractStub.SetTokensPoolRewardPerBlock.SendAsync(input);
+        result.TransactionResult.Logs.FirstOrDefault(l => l.Name.Contains(nameof(TokensPoolRewardPerBlockSet)))
+            .ShouldBeNull();
+        
+        const long tokenBalance = 5_00000000;
+
+        poolId = await CreateTokensPool();
+        var stakeInfo = await Stake(poolId, tokenBalance);
+        var reward = await EcoEarnTokensContractStub.GetReward.CallAsync(stakeInfo.StakeId);
+        reward.Amount.ShouldBe(99_00000000);
+
+        await EcoEarnTokensContractStub.SetTokensPoolRewardPerBlock.SendAsync(new SetTokensPoolRewardPerBlockInput
+        {
+            PoolId = poolId,
+            RewardPerBlock = 10_00000000
+        });
+
+        var reward2 = await EcoEarnTokensContractStub.GetReward.CallAsync(stakeInfo.StakeId);
+        reward2.Amount.ShouldBe(99_00000000 + 99_0000000);
+        
+        await EcoEarnTokensContractStub.SetTokensPoolRewardPerBlock.SendAsync(new SetTokensPoolRewardPerBlockInput
+        {
+            PoolId = poolId,
+            RewardPerBlock = 100_00000000
+        });
+        
+        var reward3 = await EcoEarnTokensContractStub.GetReward.CallAsync(stakeInfo.StakeId);
+        reward3.Amount.ShouldBe(99_00000000 + 99_0000000 + 99_00000000);
+    }
+
     private async Task Register()
     {
         await Initialize();
@@ -860,13 +914,6 @@ public partial class EcoEarnTokensContractTests
             await Register();
             await CreateToken();
         }
-
-        await TokenContractStub.Approve.SendAsync(new ApproveInput
-        {
-            Spender = EcoEarnTokensContractAddress,
-            Amount = 1000000_00000000,
-            Symbol = Symbol
-        });
 
         var blockNumber = SimulateBlockMining().Result.Block.Height;
 
