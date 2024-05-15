@@ -241,9 +241,6 @@ public partial class EcoEarnTokensContractTests
         poolData.TotalStakedAmount.ShouldBe(0);
         poolData.AccTokenPerShare.ShouldBeNull();
         poolData.LastRewardBlock.ShouldBe(blockNumber);
-
-        var poolAddress = await EcoEarnTokensContractStub.GetPoolAddressInfo.CallAsync(log.PoolId);
-        GetTokenBalance(Symbol, poolAddress.RewardAddress).Result.ShouldBe(1000_00000000);
     }
 
     [Fact]
@@ -455,9 +452,6 @@ public partial class EcoEarnTokensContractTests
 
         output = await EcoEarnTokensContractStub.GetPoolInfo.CallAsync(poolId);
         output.PoolInfo.Config.EndBlockNumber.ShouldBe(input.EndBlockNumber);
-
-        balance = await GetTokenBalance(Symbol, address.RewardAddress);
-        balance.ShouldBe(rewardBalance * 2);
 
         result = await EcoEarnTokensContractStub.SetTokensPoolEndBlockNumber.SendAsync(input);
         result.TransactionResult.Logs.FirstOrDefault(l => l.Name.Contains(nameof(TokensPoolEndBlockNumberSet)))
@@ -898,18 +892,20 @@ public partial class EcoEarnTokensContractTests
             }
         };
         var result = await EcoEarnTokensContractStub.CreateTokensPool.SendAsync(input);
-        return GetLogEvent<TokensPoolCreated>(result.TransactionResult).PoolId;
+        var log = GetLogEvent<TokensPoolCreated>(result.TransactionResult);
+
+        await TokenContractStub.Transfer.SendAsync(new TransferInput
+        {
+            Amount = 1000_00000000,
+            To = log.AddressInfo.RewardAddress,
+            Symbol = Symbol
+        });
+        
+        return log.PoolId;
     }
 
     private async Task<Hash> CreateTokensPool(string symbol)
     {
-        await TokenContractStub.Approve.SendAsync(new ApproveInput
-        {
-            Spender = EcoEarnTokensContractAddress,
-            Amount = 1000000_00000000,
-            Symbol = Symbol
-        });
-
         var blockNumber = SimulateBlockMining().Result.Block.Height;
 
         var input = new CreateTokensPoolInput
@@ -934,18 +930,21 @@ public partial class EcoEarnTokensContractTests
             }
         };
         var result = await EcoEarnTokensContractStub.CreateTokensPool.SendAsync(input);
-        return GetLogEvent<TokensPoolCreated>(result.TransactionResult).PoolId;
+        
+        var log = GetLogEvent<TokensPoolCreated>(result.TransactionResult);
+
+        await TokenContractStub.Transfer.SendAsync(new TransferInput
+        {
+            Amount = 1000_00000000,
+            To = log.AddressInfo.RewardAddress,
+            Symbol = Symbol
+        });
+        
+        return log.PoolId;
     }
 
     private async Task<Hash> CreateTokensPoolWithLowRewardPerBlock()
     {
-        await TokenContractStub.Approve.SendAsync(new ApproveInput
-        {
-            Spender = EcoEarnTokensContractAddress,
-            Amount = 1000000_00000000,
-            Symbol = Symbol
-        });
-
         var blockNumber = SimulateBlockMining().Result.Block.Height;
 
         var input = new CreateTokensPoolInput
@@ -970,7 +969,17 @@ public partial class EcoEarnTokensContractTests
             }
         };
         var result = await EcoEarnTokensContractStub.CreateTokensPool.SendAsync(input);
-        return GetLogEvent<TokensPoolCreated>(result.TransactionResult).PoolId;
+        
+        var log = GetLogEvent<TokensPoolCreated>(result.TransactionResult);
+
+        await TokenContractStub.Transfer.SendAsync(new TransferInput
+        {
+            Amount = 1000_00000000,
+            To = log.AddressInfo.RewardAddress,
+            Symbol = Symbol
+        });
+        
+        return log.PoolId;
     }
 
     private async Task CreateToken()

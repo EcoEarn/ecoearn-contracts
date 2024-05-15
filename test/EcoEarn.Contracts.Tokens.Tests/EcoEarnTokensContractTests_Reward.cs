@@ -87,6 +87,9 @@ public partial class EcoEarnTokensContractTests
         
         poolId = await CreateTokensPoolAwayFromStart();
         stakeInfo = await Stake(poolId, tokenBalance);
+
+        var reward = await EcoEarnTokensContractStub.GetReward.CallAsync(stakeInfo.StakeId);
+        reward.Amount.ShouldBe(0);
         
         result = await EcoEarnTokensContractUserStub.Claim.SendWithExceptionAsync(stakeInfo.StakeId);
         result.TransactionResult.Error.ShouldContain("Reward not enough.");

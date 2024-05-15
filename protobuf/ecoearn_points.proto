@@ -223,6 +223,7 @@ message PointsPoolCreated {
   aelf.Hash pool_id = 3;
   string points_name = 4;
   int64 amount = 5;
+  aelf.Address pool_address = 6;
 }
 
 message PointsPoolClosed {

@@ -431,47 +431,6 @@ public partial class EcoEarnPointsContractTests
             balance = await GetTokenBalance(Symbol, UserAddress);
             balance.ShouldBe(1000);
         }
-
-        {
-            await EcoEarnPointsContractStub.RestartPointsPool.SendAsync(new RestartPointsPoolInput
-            {
-                PoolId = poolId,
-                Config = new PointsPoolConfig
-                {
-                    StartBlockNumber = 100,
-                    EndBlockNumber = 200,
-                    RewardPerBlock = 10,
-                    RewardToken = Symbol,
-                    UpdateAddress = DefaultAddress,
-                    ReleasePeriod = 10
-                }
-            });
-            await EcoEarnPointsContractStub.ClosePointsPool.SendAsync(poolId);
-
-            var address = await EcoEarnPointsContractStub.GetPoolAddress.CallAsync(poolId);
-            var balance = await GetTokenBalance(Symbol, address);
-            balance.ShouldBe(1000);
-            balance = await GetTokenBalance(Symbol, DefaultAddress);
-            balance.ShouldBe(8000);
-
-            var result = await EcoEarnPointsContractStub.RecoverToken.SendAsync(new RecoverTokenInput
-            {
-                PoolId = poolId,
-                Token = Symbol
-            });
-            result.TransactionResult.Status.ShouldBe(TransactionResultStatus.Mined);
-
-            var log = GetLogEvent<TokenRecovered>(result.TransactionResult);
-            log.Amount.ShouldBe(1000);
-            log.PoolId.ShouldBe(poolId);
-            log.Account.ShouldBe(DefaultAddress);
-            log.Token.ShouldBe(Symbol);
-
-            balance = await GetTokenBalance(Symbol, address);
-            balance.ShouldBe(0);
-            balance = await GetTokenBalance(Symbol, DefaultAddress);
-            balance.ShouldBe(9000);
-        }
     }
 
     [Fact]
@@ -757,13 +716,6 @@ public partial class EcoEarnPointsContractTests
             });
         }
 
-        await TokenContractStub.Approve.SendAsync(new ApproveInput
-        {
-            Spender = EcoEarnTokensContractAddress,
-            Symbol = Symbol,
-            Amount = 1000
-        });
-
         var blockNumber = SimulateBlockMining().Result.Block.Height;
 
         var result = await EcoEarnTokensContractStub.CreateTokensPool.SendAsync(new CreateTokensPoolInput
@@ -787,6 +739,15 @@ public partial class EcoEarnPointsContractTests
                 MinimumStakeDuration = 1
             }
         });
-        return GetLogEvent<TokensPoolCreated>(result.TransactionResult).PoolId;
+        var log = GetLogEvent<TokensPoolCreated>(result.TransactionResult);
+
+        await TokenContractStub.Transfer.SendAsync(new TransferInput
+        {
+            To = log.AddressInfo.RewardAddress,
+            Amount = 1000,
+            Symbol = Symbol
+        });
+
+        return log.PoolId;
     }
 }

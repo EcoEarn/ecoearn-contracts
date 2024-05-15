@@ -268,6 +268,7 @@ message TokensPoolCreated {
   TokensPoolConfig config = 2;
   aelf.Hash pool_id = 3;
   int64 amount = 4;
+  PoolAddressInfo address_info = 5;
 }
 
 message TokensPoolClosed {

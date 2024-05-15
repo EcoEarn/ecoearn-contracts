@@ -288,6 +288,16 @@ public partial class EcoEarnTokensContractTests
             Amount = 1,
             Period = 86400
         });
+        result.TransactionResult.Error.ShouldContain("Pool closed.");
+        
+        poolId = await CreateTokensPool();
+        
+        result = await EcoEarnTokensContractStub.Stake.SendWithExceptionAsync(new StakeInput
+        {
+            PoolId = poolId,
+            Amount = 1,
+            Period = 86400
+        });
         result.TransactionResult.Error.ShouldContain("Amount not enough.");
     }
 

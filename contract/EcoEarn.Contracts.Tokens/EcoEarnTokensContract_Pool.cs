@@ -97,14 +97,20 @@ public partial class EcoEarnTokensContract
             LastRewardBlock = input.Config.StartBlockNumber
         };
 
-        TransferReward(input.Config, poolId, out var amount);
+        var totalReward = CalculateTotalRewardAmount(input.Config.StartBlockNumber, input.Config.EndBlockNumber,
+            input.Config.RewardPerBlock);
 
         Context.Fire(new TokensPoolCreated
         {
             DappId = input.DappId,
             PoolId = poolId,
             Config = input.Config,
-            Amount = amount
+            Amount = totalReward,
+            AddressInfo = new PoolAddressInfo
+            {
+                StakeAddress = CalculateVirtualAddress(GetStakeVirtualAddress(poolId)),
+                RewardAddress = CalculateVirtualAddress(GetRewardVirtualAddress(poolId))
+            }
         });
 
         return new Empty();
@@ -139,22 +145,10 @@ public partial class EcoEarnTokensContract
 
         if (input.EndBlockNumber == poolInfo.Config.EndBlockNumber) return new Empty();
 
-        var totalRewards = 0L;
-
-        if (input.EndBlockNumber > poolInfo.Config.EndBlockNumber)
-        {
-            totalRewards = CalculateTotalRewardAmount(poolInfo.Config.EndBlockNumber, input.EndBlockNumber,
-                poolInfo.Config.RewardPerBlock);
-
-            Context.SendInline(poolInfo.Config.RewardTokenContract, nameof(State.TokenContract.TransferFrom),
-                new TransferFromInput
-                {
-                    From = Context.Sender,
-                    To = CalculateVirtualAddress(GetRewardVirtualAddress(input.PoolId)),
-                    Symbol = poolInfo.Config.RewardToken,
-                    Amount = totalRewards
-                });
-        }
+        var totalRewards = input.EndBlockNumber > poolInfo.Config.EndBlockNumber
+            ? CalculateTotalRewardAmount(poolInfo.Config.EndBlockNumber, input.EndBlockNumber,
+                poolInfo.Config.RewardPerBlock)
+            : 0L;
 
         poolInfo.Config.EndBlockNumber = input.EndBlockNumber;
 
@@ -312,20 +306,6 @@ public partial class EcoEarnTokensContract
         State.PoolCountMap[input.DappId] = count.Add(1);
 
         return poolId;
-    }
-
-    private void TransferReward(TokensPoolConfig config, Hash poolId, out long amount)
-    {
-        amount = CalculateTotalRewardAmount(config.StartBlockNumber, config.EndBlockNumber, config.RewardPerBlock);
-
-        Context.SendInline(config.RewardTokenContract, nameof(State.TokenContract.TransferFrom), new TransferFromInput
-        {
-            From = Context.Sender,
-            To = CalculateVirtualAddress(GetRewardVirtualAddress(poolId)),
-            Symbol = config.RewardToken,
-            Amount = amount,
-            Memo = "reward"
-        });
     }
 
     private long CalculateTotalRewardAmount(long start, long end, long rewardPerBlock)
