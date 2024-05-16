@@ -19,15 +19,12 @@ service EcoEarnPointsContract {
   rpc GetConfig (google.protobuf.Empty) returns (Config) {option (aelf.is_view) = true;}
   rpc SetAdmin (aelf.Address) returns (google.protobuf.Empty) {}
   rpc GetAdmin (google.protobuf.Empty) returns (aelf.Address) {option (aelf.is_view) = true;}
-  rpc SetContractConfig (SetContractConfigInput) returns (google.protobuf.Empty) {}
-  rpc GetContractConfig (google.protobuf.Empty) returns (GetContractConfigOutput) {option (aelf.is_view) = true;}
 
   // Pool
   rpc Register (RegisterInput) returns (google.protobuf.Empty) {}
   rpc SetDappAdmin (SetDappAdminInput) returns (google.protobuf.Empty) {}
   rpc GetDappInfo (aelf.Hash) returns (DappInfo) {option (aelf.is_view) = true;}
   rpc CreatePointsPool (CreatePointsPoolInput) returns (google.protobuf.Empty) {}
-  rpc ClosePointsPool (aelf.Hash) returns (google.protobuf.Empty) {}
   rpc SetPointsPoolEndBlockNumber (SetPointsPoolEndBlockNumberInput) returns (google.protobuf.Empty) {}
   rpc RestartPointsPool (RestartPointsPoolInput) returns (google.protobuf.Empty) {}
   rpc SetPointsPoolUpdateAddress (SetPointsPoolUpdateAddressInput) returns (google.protobuf.Empty) {}
@@ -183,23 +180,7 @@ message WithdrawInput {
   repeated aelf.Hash claim_ids = 1;
 }
 
-message SetContractConfigInput {
-  aelf.Address points_contract = 1;
-  aelf.Address ecoearn_tokens_contract = 2;
-}
-
-message GetContractConfigOutput {
-  aelf.Address points_contract = 1;
-  aelf.Address ecoearn_tokens_contract = 2;
-}
-
 // log event
-message ContractConfigSet {
-  option (aelf.is_event) = true;
-  aelf.Address points_contract = 1;
-  aelf.Address ecoearn_tokens_contract = 2;
-}
-
 message ConfigSet {
   option (aelf.is_event) = true;
   Config config = 1;
@@ -226,12 +207,6 @@ message PointsPoolCreated {
   aelf.Address pool_address = 6;
 }
 
-message PointsPoolClosed {
-  option (aelf.is_event) = true;
-  aelf.Hash pool_id = 1;
-  PointsPoolConfig config = 2;
-}
-
 message SnapshotUpdated {
   option (aelf.is_event) = true;
   aelf.Hash pool_id = 1;
@@ -242,6 +217,7 @@ message SnapshotUpdated {
 message Claimed {
   option (aelf.is_event) = true;
   ClaimInfo claim_info = 1;
+  aelf.Hash seed = 2;
 }
 
 message Withdrawn {

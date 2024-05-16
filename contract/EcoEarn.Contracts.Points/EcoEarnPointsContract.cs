@@ -71,30 +71,4 @@ public partial class EcoEarnPointsContract : EcoEarnPointsContractContainer.EcoE
 
         return new Empty();
     }
-
-    public override Empty SetContractConfig(SetContractConfigInput input)
-    {
-        CheckAdminPermission();
-
-        Assert(input != null, "Invalid input.");
-        Assert(IsAddressValid(input.PointsContract), "Invalid points contract.");
-        Assert(IsAddressValid(input.EcoearnTokensContract), "Invalid ecoearn tokens contract.");
-
-        if (State.PointsContract.Value == input.PointsContract &&
-            State.EcoEarnTokensContract.Value == input.EcoearnTokensContract)
-        {
-            return new Empty();
-        }
-
-        State.PointsContract.Value = input.PointsContract;
-        State.EcoEarnTokensContract.Value = input.EcoearnTokensContract;
-
-        Context.Fire(new ContractConfigSet
-        {
-            PointsContract = input.PointsContract,
-            EcoearnTokensContract = input.EcoearnTokensContract
-        });
-
-        return new Empty();
-    }
 }

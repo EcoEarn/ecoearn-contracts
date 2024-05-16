@@ -462,8 +462,7 @@ public partial class EcoEarnTokensContractTests
         });
         result.TransactionResult.Error.ShouldContain("Invalid period.");
 
-        var closedPoolId = await CreateTokensPool();
-        await EcoEarnTokensContractStub.CloseTokensPool.SendAsync(closedPoolId);
+        var closedPoolId = await CreateTokensPoolWithShortTime();
 
         result = await EcoEarnTokensContractStub.EarlyStake.SendWithExceptionAsync(new EarlyStakeInput
         {

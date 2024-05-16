@@ -376,58 +376,6 @@ public partial class EcoEarnPointsContractTests
     }
 
     [Fact]
-    public async Task ClosePointsPoolTests()
-    {
-        await Initialize();
-
-        await Register();
-        var poolId = await CreatePointsPool();
-
-        var blockNumber = SimulateBlockMining().Result.Block.Height;
-
-        var output = await EcoEarnPointsContractStub.GetPoolInfo.CallAsync(poolId);
-        output.PoolInfo.Config.EndBlockNumber.ShouldBeGreaterThan(blockNumber);
-        output.Status.ShouldBeTrue();
-
-        var result = await EcoEarnPointsContractStub.ClosePointsPool.SendAsync(poolId);
-        result.TransactionResult.Status.ShouldBe(TransactionResultStatus.Mined);
-
-        var log = GetLogEvent<PointsPoolClosed>(result.TransactionResult);
-        log.PoolId.ShouldBe(poolId);
-        log.Config.EndBlockNumber.ShouldBeLessThan(output.PoolInfo.Config.EndBlockNumber);
-
-        blockNumber = SimulateBlockMining().Result.Block.Height;
-
-        output = await EcoEarnPointsContractStub.GetPoolInfo.CallAsync(poolId);
-        output.PoolInfo.Config.EndBlockNumber.ShouldBeLessThan(blockNumber);
-        output.Status.ShouldBeFalse();
-    }
-
-    [Fact]
-    public async Task ClosePointsPoolTests_Fail()
-    {
-        await Initialize();
-
-        await Register();
-        var poolId = await CreatePointsPool();
-
-        var result = await EcoEarnPointsContractStub.ClosePointsPool.SendWithExceptionAsync(
-            new Hash());
-        result.TransactionResult.Error.ShouldContain("Invalid pool id.");
-
-        result = await EcoEarnPointsContractStub.ClosePointsPool.SendWithExceptionAsync(HashHelper.ComputeFrom(1));
-        result.TransactionResult.Error.ShouldContain("Pool not exists.");
-
-        await EcoEarnPointsContractStub.ClosePointsPool.SendAsync(poolId);
-
-        result = await EcoEarnPointsContractStub.ClosePointsPool.SendWithExceptionAsync(poolId);
-        result.TransactionResult.Error.ShouldContain("Pool already closed.");
-
-        result = await EcoEarnPointsContractUserStub.ClosePointsPool.SendWithExceptionAsync(poolId);
-        result.TransactionResult.Error.ShouldContain("No permission.");
-    }
-
-    [Fact]
     public async Task SetPointsPoolEndBlockNumberTests()
     {
         await Initialize();
@@ -438,55 +386,21 @@ public partial class EcoEarnPointsContractTests
         var output = await EcoEarnPointsContractStub.GetPoolInfo.CallAsync(poolId);
         var endBlockNumber = output.PoolInfo.Config.EndBlockNumber;
 
-        var address = await EcoEarnPointsContractStub.GetPoolAddress.CallAsync(poolId);
-        var balance = await GetTokenBalance(Symbol, address);
-        balance.ShouldBe(1000);
-
         var result = await EcoEarnPointsContractStub.SetPointsPoolEndBlockNumber.SendAsync(
             new SetPointsPoolEndBlockNumberInput
             {
                 PoolId = poolId,
-                EndBlockNumber = endBlockNumber - 50
-            });
-        result.TransactionResult.Status.ShouldBe(TransactionResultStatus.Mined);
-        var log = GetLogEvent<PointsPoolEndBlockNumberSet>(result.TransactionResult);
-        log.PoolId.ShouldBe(poolId);
-        log.Amount.ShouldBe(0);
-        log.EndBlockNumber.ShouldBe(endBlockNumber - 50);
-
-        output = await EcoEarnPointsContractStub.GetPoolInfo.CallAsync(poolId);
-        output.PoolInfo.Config.EndBlockNumber.ShouldBe(endBlockNumber - 50);
-
-        balance = await GetTokenBalance(Symbol, address);
-        balance.ShouldBe(1000);
-
-        result = await EcoEarnPointsContractStub.SetPointsPoolEndBlockNumber.SendAsync(
-            new SetPointsPoolEndBlockNumberInput
-            {
-                PoolId = poolId,
                 EndBlockNumber = endBlockNumber + 50
             });
         result.TransactionResult.Status.ShouldBe(TransactionResultStatus.Mined);
 
-        log = GetLogEvent<PointsPoolEndBlockNumberSet>(result.TransactionResult);
+        var log = GetLogEvent<PointsPoolEndBlockNumberSet>(result.TransactionResult);
         log.PoolId.ShouldBe(poolId);
-        log.Amount.ShouldBe(1000);
+        log.Amount.ShouldBe(500);
         log.EndBlockNumber.ShouldBe(endBlockNumber + 50);
 
         output = await EcoEarnPointsContractStub.GetPoolInfo.CallAsync(poolId);
         output.PoolInfo.Config.EndBlockNumber.ShouldBe(endBlockNumber + 50);
-
-        balance = await GetTokenBalance(Symbol, address);
-        balance.ShouldBe(1000);
-
-        result = await EcoEarnPointsContractStub.SetPointsPoolEndBlockNumber.SendAsync(
-            new SetPointsPoolEndBlockNumberInput
-            {
-                PoolId = poolId,
-                EndBlockNumber = endBlockNumber + 50
-            });
-        result.TransactionResult.Logs.FirstOrDefault(l => l.Name.Contains(nameof(PointsPoolEndBlockNumberSet)))
-            .ShouldBeNull();
     }
 
     [Fact]
@@ -532,8 +446,6 @@ public partial class EcoEarnPointsContractTests
             });
         result.TransactionResult.Error.ShouldContain("Invalid end block number.");
 
-        await EcoEarnPointsContractStub.ClosePointsPool.SendAsync(poolId);
-
         result = await EcoEarnPointsContractUserStub.SetPointsPoolEndBlockNumber.SendWithExceptionAsync(
             new SetPointsPoolEndBlockNumberInput
             {
@@ -548,18 +460,10 @@ public partial class EcoEarnPointsContractTests
         await Initialize();
 
         await Register();
-        var poolId = await CreatePointsPool();
-        await EcoEarnPointsContractStub.ClosePointsPool.SendAsync(poolId);
+        var poolId = await CreatePointsPoolWithShortTime(2);
 
         var output = await EcoEarnPointsContractStub.GetPoolInfo.CallAsync(poolId);
         output.Status.ShouldBeFalse();
-
-        await TokenContractStub.Approve.SendAsync(new ApproveInput
-        {
-            Spender = EcoEarnPointsContractAddress,
-            Amount = 1000,
-            Symbol = Symbol
-        });
 
         var blockNumber = SimulateBlockMining().Result.Block.Height;
 
@@ -595,9 +499,27 @@ public partial class EcoEarnPointsContractTests
         await Initialize();
 
         await Register();
-        var poolId = await CreatePointsPool();
-
-        var result =
+        var poolId = await CreatePointsPoolWithShortTime(3);
+        
+        var config = new PointsPoolConfig
+        {
+            UpdateAddress = UserAddress,
+            RewardToken = Symbol,
+            StartBlockNumber = 100,
+            EndBlockNumber = 200,
+            ReleasePeriod = 10,
+            RewardPerBlock = 1
+        };
+        
+        var result = await EcoEarnPointsContractStub.RestartPointsPool.SendWithExceptionAsync(
+            new RestartPointsPoolInput
+            {
+                Config = config,
+                PoolId = poolId
+            });
+        result.TransactionResult.Error.ShouldContain("Can not restart yet.");
+        
+        result =
             await EcoEarnPointsContractStub.RestartPointsPool.SendWithExceptionAsync(new RestartPointsPoolInput());
         result.TransactionResult.Error.ShouldContain("Invalid config.");
 
@@ -619,16 +541,7 @@ public partial class EcoEarnPointsContractTests
                 }
             });
         result.TransactionResult.Error.ShouldContain("Invalid update address.");
-
-        var config = new PointsPoolConfig
-        {
-            UpdateAddress = UserAddress,
-            RewardToken = Symbol,
-            StartBlockNumber = 100,
-            EndBlockNumber = 200,
-            ReleasePeriod = 10,
-            RewardPerBlock = 1
-        };
+        
         result = await EcoEarnPointsContractStub.RestartPointsPool.SendWithExceptionAsync(
             new RestartPointsPoolInput
             {
@@ -652,16 +565,6 @@ public partial class EcoEarnPointsContractTests
             });
         result.TransactionResult.Error.ShouldContain("Pool not exists.");
 
-        result = await EcoEarnPointsContractStub.RestartPointsPool.SendWithExceptionAsync(
-            new RestartPointsPoolInput
-            {
-                Config = config,
-                PoolId = poolId
-            });
-        result.TransactionResult.Error.ShouldContain("Can not restart yet.");
-
-        await EcoEarnPointsContractStub.ClosePointsPool.SendAsync(poolId);
-
         result = await EcoEarnPointsContractUserStub.RestartPointsPool.SendWithExceptionAsync(
             new RestartPointsPoolInput
             {
@@ -684,9 +587,7 @@ public partial class EcoEarnPointsContractTests
         await Initialize();
 
         await Register();
-        var poolId = await CreatePointsPool();
-
-        await EcoEarnPointsContractStub.ClosePointsPool.SendAsync(poolId);
+        var poolId = await CreatePointsPoolWithShortTime(2);
 
         var result = await EcoEarnPointsContractStub.RestartPointsPool.SendWithExceptionAsync(
             new RestartPointsPoolInput
@@ -894,6 +795,39 @@ public partial class EcoEarnPointsContractTests
             {
                 StartBlockNumber = blockNumber,
                 EndBlockNumber = blockNumber + 100,
+                RewardPerBlock = 10,
+                RewardToken = Symbol,
+                UpdateAddress = DefaultAddress,
+                ReleasePeriod = 10
+            }
+        });
+
+        var log = GetLogEvent<PointsPoolCreated>(result.TransactionResult);
+
+        await TokenContractStub.Transfer.SendAsync(new TransferInput
+        {
+            To = log.PoolAddress,
+            Amount = 1000,
+            Symbol = Symbol
+        });
+        
+        return log.PoolId;
+    }
+    
+    private async Task<Hash> CreatePointsPoolWithShortTime(long amount)
+    {
+        await CreateToken();
+
+        var blockNumber = SimulateBlockMining().Result.Block.Height;
+
+        var result = await EcoEarnPointsContractStub.CreatePointsPool.SendAsync(new CreatePointsPoolInput
+        {
+            DappId = _appId,
+            PointsName = PointsName,
+            Config = new PointsPoolConfig
+            {
+                StartBlockNumber = blockNumber,
+                EndBlockNumber = blockNumber + amount,
                 RewardPerBlock = 10,
                 RewardToken = Symbol,
                 UpdateAddress = DefaultAddress,

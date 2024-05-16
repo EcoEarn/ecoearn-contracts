@@ -17,7 +17,6 @@ service EcoEarnTokensContract {
   rpc SetDappAdmin (SetDappAdminInput) returns (google.protobuf.Empty) {}
   rpc GetDappInfo (aelf.Hash) returns (DappInfo) {option (aelf.is_view) = true;}
   rpc CreateTokensPool (CreateTokensPoolInput) returns (google.protobuf.Empty) {}
-  rpc CloseTokensPool (aelf.Hash) returns (google.protobuf.Empty) {}
   rpc SetTokensPoolEndBlockNumber (SetTokensPoolEndBlockNumberInput) returns (google.protobuf.Empty) {}
   rpc SetTokensPoolUpdateAddress (SetTokensPoolUpdateAddressInput) returns (google.protobuf.Empty) {}
   rpc SetTokensPoolRewardReleasePeriod (SetTokensPoolRewardReleasePeriodInput) returns (google.protobuf.Empty) {}
@@ -49,8 +48,6 @@ service EcoEarnTokensContract {
   rpc GetConfig (google.protobuf.Empty) returns (Config) {option (aelf.is_view) = true;}
   rpc SetAdmin (aelf.Address) returns (google.protobuf.Empty) {}
   rpc GetAdmin (google.protobuf.Empty) returns (aelf.Address) {option (aelf.is_view) = true;}
-  rpc SetContractConfig (aelf.Address) returns (google.protobuf.Empty) {}
-  rpc GetContractConfig (google.protobuf.Empty) returns (aelf.Address) {option (aelf.is_view) = true;}
 }
 
 message RegisterInput {
@@ -277,12 +274,6 @@ message TokensPoolCreated {
   PoolAddressInfo address_info = 5;
 }
 
-message TokensPoolClosed {
-  option (aelf.is_event) = true;
-  aelf.Hash pool_id = 1;
-  TokensPoolConfig config = 2;
-}
-
 message TokensPoolEndBlockNumberSet {
   option (aelf.is_event) = true;
   aelf.Hash pool_id = 1;
@@ -372,11 +363,6 @@ message DappAdminSet {
   option (aelf.is_event) = true;
   aelf.Hash dapp_id = 1;
   aelf.Address admin = 2;
-}
-
-message ContractConfigSet {
-  option (aelf.is_event) = true;
-  aelf.Address ecoearn_points_contract = 1;
 }
 
 message TokensPoolFixedBoostFactorSet {

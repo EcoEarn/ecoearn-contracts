@@ -364,98 +364,31 @@ public partial class EcoEarnTokensContractTests
     }
 
     [Fact]
-    public async Task CloseTokensPoolTests()
-    {
-        var poolId = await CreateTokensPool();
-
-        var output = await EcoEarnTokensContractStub.GetPoolInfo.CallAsync(poolId);
-        output.Status.ShouldBeTrue();
-
-        var result = await EcoEarnTokensContractStub.CloseTokensPool.SendAsync(poolId);
-        result.TransactionResult.Status.ShouldBe(TransactionResultStatus.Mined);
-
-        var log = GetLogEvent<TokensPoolClosed>(result.TransactionResult);
-        log.PoolId.ShouldBe(poolId);
-        log.Config.EndBlockNumber.ShouldBeLessThan(output.PoolInfo.Config.EndBlockNumber);
-        log.Config.EndBlockNumber.ShouldBe(result.TransactionResult.BlockNumber);
-
-        output = await EcoEarnTokensContractStub.GetPoolInfo.CallAsync(poolId);
-        output.Status.ShouldBeFalse();
-        output.PoolInfo.Config.EndBlockNumber.ShouldBe(log.Config.EndBlockNumber);
-    }
-
-    [Fact]
-    public async Task CloseTokensPoolTests_Fail()
-    {
-        var poolId = await CreateTokensPool();
-
-        var result = await EcoEarnTokensContractStub.CloseTokensPool.SendWithExceptionAsync(new Hash());
-        result.TransactionResult.Error.ShouldContain("Invalid pool id.");
-
-        result = await EcoEarnTokensContractStub.CloseTokensPool.SendWithExceptionAsync(HashHelper.ComputeFrom("test"));
-        result.TransactionResult.Error.ShouldContain("Pool not exists.");
-
-        result = await EcoEarnTokensContractUserStub.CloseTokensPool.SendWithExceptionAsync(poolId);
-        result.TransactionResult.Error.ShouldContain("No permission.");
-
-        await EcoEarnTokensContractStub.CloseTokensPool.SendAsync(poolId);
-
-        result = await EcoEarnTokensContractStub.CloseTokensPool.SendWithExceptionAsync(poolId);
-        result.TransactionResult.Error.ShouldContain("Pool already closed.");
-    }
-
-    [Fact]
     public async Task SetTokensPoolEndBlockNumberTests()
     {
-        const long rewardBalance = 1000_00000000;
+        const long rewardBalance = 500_00000000;
 
         var poolId = await CreateTokensPool();
 
         var output = await EcoEarnTokensContractStub.GetPoolInfo.CallAsync(poolId);
         var endBlockNumber = output.PoolInfo.Config.EndBlockNumber;
-
-        var address = await EcoEarnTokensContractStub.GetPoolAddressInfo.CallAsync(poolId);
-        var balance = await GetTokenBalance(Symbol, address.RewardAddress);
-        balance.ShouldBe(rewardBalance);
-
-        var result = await EcoEarnTokensContractStub.SetTokensPoolEndBlockNumber.SendAsync(
-            new SetTokensPoolEndBlockNumberInput
-            {
-                PoolId = poolId,
-                EndBlockNumber = endBlockNumber - 5
-            });
-        result.TransactionResult.Status.ShouldBe(TransactionResultStatus.Mined);
-        var log = GetLogEvent<TokensPoolEndBlockNumberSet>(result.TransactionResult);
-        log.PoolId.ShouldBe(poolId);
-        log.Amount.ShouldBe(0);
-        log.EndBlockNumber.ShouldBe(endBlockNumber - 5);
-
-        output = await EcoEarnTokensContractStub.GetPoolInfo.CallAsync(poolId);
-        output.PoolInfo.Config.EndBlockNumber.ShouldBe(endBlockNumber - 5);
-
-        balance = await GetTokenBalance(Symbol, address.RewardAddress);
-        balance.ShouldBe(rewardBalance);
-
+        
         var input = new SetTokensPoolEndBlockNumberInput
         {
             PoolId = poolId,
             EndBlockNumber = endBlockNumber + 5
         };
 
-        result = await EcoEarnTokensContractStub.SetTokensPoolEndBlockNumber.SendAsync(input);
+        var result = await EcoEarnTokensContractStub.SetTokensPoolEndBlockNumber.SendAsync(input);
         result.TransactionResult.Status.ShouldBe(TransactionResultStatus.Mined);
 
-        log = GetLogEvent<TokensPoolEndBlockNumberSet>(result.TransactionResult);
+        var log = GetLogEvent<TokensPoolEndBlockNumberSet>(result.TransactionResult);
         log.PoolId.ShouldBe(poolId);
         log.Amount.ShouldBe(rewardBalance);
         log.EndBlockNumber.ShouldBe(input.EndBlockNumber);
 
         output = await EcoEarnTokensContractStub.GetPoolInfo.CallAsync(poolId);
         output.PoolInfo.Config.EndBlockNumber.ShouldBe(input.EndBlockNumber);
-
-        result = await EcoEarnTokensContractStub.SetTokensPoolEndBlockNumber.SendAsync(input);
-        result.TransactionResult.Logs.FirstOrDefault(l => l.Name.Contains(nameof(TokensPoolEndBlockNumberSet)))
-            .ShouldBeNull();
     }
 
     [Fact]
@@ -497,8 +430,6 @@ public partial class EcoEarnTokensContractTests
                 EndBlockNumber = poolInfo.PoolInfo.Config.StartBlockNumber
             });
         result.TransactionResult.Error.ShouldContain("Invalid end block number.");
-
-        await EcoEarnTokensContractStub.CloseTokensPool.SendAsync(poolId);
 
         result = await EcoEarnTokensContractUserStub.SetTokensPoolEndBlockNumber.SendWithExceptionAsync(
             new SetTokensPoolEndBlockNumberInput

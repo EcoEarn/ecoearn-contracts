@@ -116,23 +116,6 @@ public partial class EcoEarnTokensContract
         return new Empty();
     }
 
-    public override Empty CloseTokensPool(Hash input)
-    {
-        var poolInfo = GetPool(input);
-        CheckDAppAdminPermission(poolInfo.DappId);
-        Assert(CheckPoolEnabled(poolInfo.Config.EndBlockNumber), "Pool already closed.");
-
-        poolInfo.Config.EndBlockNumber = Context.CurrentHeight;
-
-        Context.Fire(new TokensPoolClosed
-        {
-            PoolId = input,
-            Config = poolInfo.Config
-        });
-
-        return new Empty();
-    }
-
     public override Empty SetTokensPoolEndBlockNumber(SetTokensPoolEndBlockNumberInput input)
     {
         Assert(input != null, "Invalid input.");
@@ -141,9 +124,7 @@ public partial class EcoEarnTokensContract
 
         CheckDAppAdminPermission(poolInfo.DappId);
 
-        Assert(input.EndBlockNumber > poolInfo.Config.StartBlockNumber, "Invalid end block number.");
-
-        if (input.EndBlockNumber == poolInfo.Config.EndBlockNumber) return new Empty();
+        Assert(input.EndBlockNumber > poolInfo.Config.EndBlockNumber, "Invalid end block number.");
 
         var totalRewards = input.EndBlockNumber > poolInfo.Config.EndBlockNumber
             ? CalculateTotalRewardAmount(poolInfo.Config.EndBlockNumber, input.EndBlockNumber,
@@ -353,7 +334,7 @@ public partial class EcoEarnTokensContract
         return HashHelper.ConcatAndCompute(id, HashHelper.ComputeFrom(EcoEarnTokensContractConstants.StakeAddress));
     }
 
-    private Hash GetRewardVirtualAddress(Hash id)
+    private Hash GetRewardVirtualAddress(Hash id) 
     {
         return HashHelper.ConcatAndCompute(id, HashHelper.ComputeFrom(EcoEarnTokensContractConstants.RewardAddress));
     }

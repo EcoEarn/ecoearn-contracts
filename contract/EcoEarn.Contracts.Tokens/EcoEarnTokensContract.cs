@@ -71,25 +71,4 @@ public partial class EcoEarnTokensContract : EcoEarnTokensContractContainer.EcoE
 
         return new Empty();
     }
-
-    public override Empty SetContractConfig(Address input)
-    {
-        CheckAdminPermission();
-
-        Assert(IsAddressValid(input), "Invalid input.");
-
-        if (State.EcoEarnPointsContract.Value == input)
-        {
-            return new Empty();
-        }
-
-        State.EcoEarnPointsContract.Value = input;
-
-        Context.Fire(new ContractConfigSet
-        {
-            EcoearnPointsContract = input
-        });
-
-        return new Empty();
-    }
 }

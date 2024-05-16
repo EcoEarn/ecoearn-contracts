@@ -357,18 +357,7 @@ public partial class EcoEarnTokensContract
             var pending = CalculatePending(stakeInfo.BoostedAmount, poolData.AccTokenPerShare, stakeInfo.RewardDebt,
                 EcoEarnTokensContractConstants.Denominator);
             var actualReward = ProcessCommissionFee(pending, poolInfo);
-            if (actualReward > 0)
-            {
-                stakeInfo.RewardAmount = stakeInfo.RewardAmount.Add(actualReward);
-                Context.SendVirtualInline(GetRewardVirtualAddress(stakeInfo.PoolId),
-                    poolInfo.Config.RewardTokenContract, nameof(State.TokenContract.Transfer), new TransferInput
-                    {
-                        To = CalculateVirtualAddress(stakeInfo.StakeId),
-                        Amount = actualReward,
-                        Memo = "reward",
-                        Symbol = poolInfo.Config.RewardToken
-                    });
-            }
+            stakeInfo.RewardAmount = stakeInfo.RewardAmount.Add(actualReward);
         }
 
         poolData.TotalStakedAmount = poolData.TotalStakedAmount.Add(boostedAmount).Sub(stakeInfo.BoostedAmount);
@@ -395,7 +384,7 @@ public partial class EcoEarnTokensContract
 
         if (commissionFee != 0)
         {
-            Context.SendVirtualInline(GetRewardVirtualAddress(poolInfo.PoolId), State.TokenContract.Value,
+            Context.SendVirtualInline(GetRewardVirtualAddress(poolInfo.PoolId), poolInfo.Config.RewardTokenContract,
                 nameof(State.TokenContract.Transfer), new TransferInput
                 {
                     To = config.Recipient,
@@ -459,18 +448,7 @@ public partial class EcoEarnTokensContract
                 var pending = CalculatePending(stakeInfo.BoostedAmount, poolData.AccTokenPerShare,
                     stakeInfo.RewardDebt, EcoEarnTokensContractConstants.Denominator);
                 var actualReward = ProcessCommissionFee(pending, poolInfo);
-                if (actualReward > 0)
-                {
-                    stakeInfo.RewardAmount = stakeInfo.RewardAmount.Add(actualReward);
-                    Context.SendVirtualInline(GetRewardVirtualAddress(stakeInfo.PoolId),
-                        poolInfo.Config.RewardTokenContract, nameof(State.TokenContract.Transfer), new TransferInput
-                        {
-                            To = CalculateVirtualAddress(stakeInfo.StakeId),
-                            Amount = actualReward,
-                            Memo = "reward",
-                            Symbol = poolInfo.Config.RewardToken
-                        });
-                }
+                stakeInfo.RewardAmount = stakeInfo.RewardAmount.Add(actualReward);
             }
 
             poolData.TotalStakedAmount = poolData.TotalStakedAmount.Sub(stakeInfo.BoostedAmount);

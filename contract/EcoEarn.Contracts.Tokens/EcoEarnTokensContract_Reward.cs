@@ -58,6 +58,8 @@ public partial class EcoEarnTokensContract
 
         var poolInfo = GetPool(input.PoolId);
         CheckDAppAdminPermission(poolInfo.DappId);
+        
+        Assert(!CheckPoolEnabled(poolInfo.Config.EndBlockNumber), "Pool not closed.");
 
         var output = Context.Call<GetBalanceOutput>(poolInfo.Config.RewardTokenContract, "GetBalance",
             new GetBalanceInput

@@ -11,11 +11,6 @@ public partial class EcoEarnTokensContract
         return State.Admin?.Value;
     }
 
-    public override Address GetContractConfig(Empty input)
-    {
-        return State.EcoEarnPointsContract.Value;
-    }
-
     public override Config GetConfig(Empty input)
     {
         return State.Config?.Value;

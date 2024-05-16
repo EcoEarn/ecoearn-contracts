@@ -10,15 +10,6 @@ public partial class EcoEarnPointsContract
         return State.Admin?.Value;
     }
 
-    public override GetContractConfigOutput GetContractConfig(Empty input)
-    {
-        return new GetContractConfigOutput
-        {
-            PointsContract = State.PointsContract.Value,
-            EcoearnTokensContract = State.EcoEarnTokensContract.Value
-        };
-    }
-
     public override Config GetConfig(Empty input)
     {
         return State.Config?.Value;

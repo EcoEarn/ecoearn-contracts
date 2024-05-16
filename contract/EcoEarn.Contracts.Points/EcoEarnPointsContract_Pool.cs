@@ -105,24 +105,7 @@ public partial class EcoEarnPointsContract
 
         return new Empty();
     }
-
-    public override Empty ClosePointsPool(Hash input)
-    {
-        var poolInfo = GetPool(input);
-        CheckDAppAdminPermission(poolInfo.DappId);
-        Assert(CheckPoolEnabled(poolInfo.Config.EndBlockNumber), "Pool already closed.");
-
-        poolInfo.Config.EndBlockNumber = Context.CurrentHeight;
-
-        Context.Fire(new PointsPoolClosed
-        {
-            PoolId = input,
-            Config = poolInfo.Config
-        });
-
-        return new Empty();
-    }
-
+    
     public override Empty SetPointsPoolEndBlockNumber(SetPointsPoolEndBlockNumberInput input)
     {
         Assert(input != null, "Invalid input.");
@@ -131,9 +114,7 @@ public partial class EcoEarnPointsContract
 
         CheckDAppAdminPermission(poolInfo.DappId);
 
-        Assert(input.EndBlockNumber > poolInfo.Config.StartBlockNumber, "Invalid end block number.");
-
-        if (input.EndBlockNumber == poolInfo.Config.EndBlockNumber) return new Empty();
+        Assert(input.EndBlockNumber > poolInfo.Config.EndBlockNumber, "Invalid end block number.");
 
         var addedReward = input.EndBlockNumber > poolInfo.Config.EndBlockNumber
             ? CalculateTotalRewardAmount(poolInfo.Config.EndBlockNumber, input.EndBlockNumber,
@@ -268,7 +249,7 @@ public partial class EcoEarnPointsContract
         return end.Sub(start).Mul(rewardPerBlock);
     }
 
-    private Address CalculateVirtualAddress(Hash id)
+    private Address CalculateVirtualAddress(Hash id) 
     {
         return Context.ConvertVirtualAddressToContractAddress(id);
     }
