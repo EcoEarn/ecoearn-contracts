@@ -114,13 +114,16 @@ public partial class EcoEarnPointsContractTests
         await Register();
         var poolId = await CreatePointsPool();
 
+        var expirationTime = BlockTimeProvider.GetBlockTime().AddDays(1);
+        
         var input = new ClaimInput
         {
             PoolId = poolId,
             Account = UserAddress,
             Amount = 100,
             Seed = seed,
-            Signature = GenerateSignature(DefaultAccount.KeyPair.PrivateKey, poolId, 100, UserAddress, seed)
+            ExpirationTime = expirationTime,
+            Signature = GenerateSignature(DefaultAccount.KeyPair.PrivateKey, poolId, 100, UserAddress, seed, expirationTime)
         };
 
         var result = await EcoEarnPointsContractUserStub.Claim.SendAsync(input);
@@ -186,12 +189,21 @@ public partial class EcoEarnPointsContractTests
             Signature = ByteString.Empty
         });
         result.TransactionResult.Error.ShouldContain("Invalid signature.");
-
+        
         result = await EcoEarnPointsContractUserStub.Claim.SendWithExceptionAsync(new ClaimInput
         {
             Account = UserAddress,
             Amount = 1,
             Signature = Hash.Empty.ToByteString()
+        });
+        result.TransactionResult.Error.ShouldContain("Invalid expiration time.");
+
+        result = await EcoEarnPointsContractUserStub.Claim.SendWithExceptionAsync(new ClaimInput
+        {
+            Account = UserAddress,
+            Amount = 1,
+            Signature = Hash.Empty.ToByteString(),
+            ExpirationTime = BlockTimeProvider.GetBlockTime()
         });
         result.TransactionResult.Error.ShouldContain("Invalid seed.");
 
@@ -200,7 +212,8 @@ public partial class EcoEarnPointsContractTests
             Account = UserAddress,
             Amount = 1,
             Seed = new Hash(),
-            Signature = Hash.Empty.ToByteString()
+            Signature = Hash.Empty.ToByteString(),
+            ExpirationTime = BlockTimeProvider.GetBlockTime()
         });
         result.TransactionResult.Error.ShouldContain("Invalid seed.");
 
@@ -209,7 +222,8 @@ public partial class EcoEarnPointsContractTests
             Account = UserAddress,
             Amount = 1,
             Seed = seed,
-            Signature = Hash.Empty.ToByteString()
+            Signature = Hash.Empty.ToByteString(),
+            ExpirationTime = BlockTimeProvider.GetBlockTime()
         });
         result.TransactionResult.Error.ShouldContain("Invalid pool id.");
 
@@ -219,7 +233,8 @@ public partial class EcoEarnPointsContractTests
             Amount = 1,
             Seed = seed,
             Signature = Hash.Empty.ToByteString(),
-            PoolId = new Hash()
+            PoolId = new Hash(),
+            ExpirationTime = BlockTimeProvider.GetBlockTime()
         });
         result.TransactionResult.Error.ShouldContain("Invalid pool id.");
 
@@ -229,7 +244,8 @@ public partial class EcoEarnPointsContractTests
             Amount = 1,
             Seed = seed,
             Signature = Hash.Empty.ToByteString(),
-            PoolId = HashHelper.ComputeFrom(1)
+            PoolId = HashHelper.ComputeFrom(1),
+            ExpirationTime = BlockTimeProvider.GetBlockTime()
         });
         result.TransactionResult.Error.ShouldContain("Pool not exists.");
 
@@ -239,26 +255,31 @@ public partial class EcoEarnPointsContractTests
             Amount = 1,
             Seed = seed,
             Signature = Hash.Empty.ToByteString(),
-            PoolId = poolId
+            PoolId = poolId,
+            ExpirationTime = BlockTimeProvider.GetBlockTime()
         });
-        result.TransactionResult.Error.ShouldContain("Invalid signature.");
+        result.TransactionResult.Error.ShouldContain("Signature expired.");
 
+        var expirationTime = BlockTimeProvider.GetBlockTime().AddDays(1);
+        
         await EcoEarnPointsContractUserStub.Claim.SendAsync(new ClaimInput
         {
             Account = UserAddress,
             Amount = 1,
             Seed = seed,
             PoolId = poolId,
-            Signature = GenerateSignature(DefaultAccount.KeyPair.PrivateKey, poolId, 1, UserAddress, seed)
+            ExpirationTime = expirationTime,
+            Signature = GenerateSignature(DefaultAccount.KeyPair.PrivateKey, poolId, 1, UserAddress, seed, expirationTime)
         });
-
+        
         result = await EcoEarnPointsContractUserStub.Claim.SendWithExceptionAsync(new ClaimInput
         {
             Account = UserAddress,
             Amount = 1,
             Seed = seed,
             PoolId = poolId,
-            Signature = GenerateSignature(DefaultAccount.KeyPair.PrivateKey, poolId, 1, UserAddress, seed)
+            ExpirationTime = expirationTime,
+            Signature = GenerateSignature(DefaultAccount.KeyPair.PrivateKey, poolId, 1, UserAddress, seed, expirationTime)
         });
         result.TransactionResult.Error.ShouldContain("Invalid seed.");
     }
@@ -275,6 +296,8 @@ public partial class EcoEarnPointsContractTests
 
         var balance = await GetTokenBalance(Symbol, UserAddress);
         balance.ShouldBe(0);
+        
+        var expirationTime = BlockTimeProvider.GetBlockTime().AddDays(1);
 
         var result = await EcoEarnPointsContractUserStub.Claim.SendAsync(new ClaimInput
         {
@@ -282,7 +305,8 @@ public partial class EcoEarnPointsContractTests
             Account = UserAddress,
             Amount = 100,
             Seed = seed1,
-            Signature = GenerateSignature(DefaultAccount.KeyPair.PrivateKey, poolId, 100, UserAddress, seed1)
+            ExpirationTime = expirationTime,
+            Signature = GenerateSignature(DefaultAccount.KeyPair.PrivateKey, poolId, 100, UserAddress, seed1, expirationTime)
         });
         var claimId1 = GetLogEvent<Claimed>(result.TransactionResult).ClaimInfo.ClaimId;
 
@@ -292,7 +316,8 @@ public partial class EcoEarnPointsContractTests
             Account = UserAddress,
             Amount = 100,
             Seed = seed2,
-            Signature = GenerateSignature(DefaultAccount.KeyPair.PrivateKey, poolId, 100, UserAddress, seed2)
+            ExpirationTime = expirationTime,
+            Signature = GenerateSignature(DefaultAccount.KeyPair.PrivateKey, poolId, 100, UserAddress, seed2, expirationTime)
         });
         var claimId2 = GetLogEvent<Claimed>(result.TransactionResult).ClaimInfo.ClaimId;
 
@@ -329,6 +354,8 @@ public partial class EcoEarnPointsContractTests
 
         await Register();
         var poolId = await CreatePointsPool();
+        
+        var expirationTime = BlockTimeProvider.GetBlockTime().AddDays(1);
 
         var result = await EcoEarnPointsContractUserStub.Claim.SendAsync(new ClaimInput
         {
@@ -336,7 +363,8 @@ public partial class EcoEarnPointsContractTests
             Account = UserAddress,
             Amount = 100,
             Seed = seed1,
-            Signature = GenerateSignature(DefaultAccount.KeyPair.PrivateKey, poolId, 100, UserAddress, seed1)
+            ExpirationTime = expirationTime,
+            Signature = GenerateSignature(DefaultAccount.KeyPair.PrivateKey, poolId, 100, UserAddress, seed1, expirationTime)
         });
         var claimId1 = GetLogEvent<Claimed>(result.TransactionResult).ClaimInfo.ClaimId;
 
@@ -348,7 +376,8 @@ public partial class EcoEarnPointsContractTests
             Account = UserAddress,
             Amount = 100,
             Seed = seed2,
-            Signature = GenerateSignature(DefaultAccount.KeyPair.PrivateKey, poolId, 100, UserAddress, seed2)
+            ExpirationTime = expirationTime,
+            Signature = GenerateSignature(DefaultAccount.KeyPair.PrivateKey, poolId, 100, UserAddress, seed2, expirationTime)
         });
         var claimId2 = GetLogEvent<Claimed>(result.TransactionResult).ClaimInfo.ClaimId;
 
@@ -498,6 +527,8 @@ public partial class EcoEarnPointsContractTests
 
         await Register();
         var poolId = await CreatePointsPool();
+        
+        var expirationTime = BlockTimeProvider.GetBlockTime().AddDays(1);
 
         var result = await EcoEarnPointsContractUserStub.Claim.SendAsync(new ClaimInput
         {
@@ -505,7 +536,8 @@ public partial class EcoEarnPointsContractTests
             Account = UserAddress,
             Amount = 100,
             Seed = seed,
-            Signature = GenerateSignature(DefaultAccount.KeyPair.PrivateKey, poolId, 100, UserAddress, seed)
+            ExpirationTime = expirationTime,
+            Signature = GenerateSignature(DefaultAccount.KeyPair.PrivateKey, poolId, 100, UserAddress, seed, expirationTime)
         });
         var claimInfo = GetLogEvent<Claimed>(result.TransactionResult).ClaimInfo;
         claimInfo.EarlyStakeTime.ShouldBeNull();
@@ -575,6 +607,8 @@ public partial class EcoEarnPointsContractTests
         await Register();
         var poolId = await CreatePointsPool();
         var tokensPoolId = await CreateTokensPool(DefaultSymbol);
+        
+        var expirationTime = BlockTimeProvider.GetBlockTime().AddDays(1);
 
         var result = await EcoEarnPointsContractUserStub.Claim.SendAsync(new ClaimInput
         {
@@ -582,7 +616,8 @@ public partial class EcoEarnPointsContractTests
             Account = UserAddress,
             Amount = 100,
             Seed = seed,
-            Signature = GenerateSignature(DefaultAccount.KeyPair.PrivateKey, poolId, 100, UserAddress, seed)
+            ExpirationTime = expirationTime,
+            Signature = GenerateSignature(DefaultAccount.KeyPair.PrivateKey, poolId, 100, UserAddress, seed, expirationTime)
         });
         var claimId = GetLogEvent<Claimed>(result.TransactionResult).ClaimInfo.ClaimId;
 
@@ -683,14 +718,15 @@ public partial class EcoEarnPointsContractTests
         result.TransactionResult.Error.ShouldContain("Already withdrawn.");
     }
 
-    private ByteString GenerateSignature(byte[] privateKey, Hash poolId, long amount, Address account, Hash seed)
+    private ByteString GenerateSignature(byte[] privateKey, Hash poolId, long amount, Address account, Hash seed, Timestamp expirationTime)
     {
         var data = new ClaimInput
         {
             PoolId = poolId,
             Account = account,
             Amount = amount,
-            Seed = seed
+            Seed = seed,
+            ExpirationTime = expirationTime
         };
         var dataHash = HashHelper.ComputeFrom(data);
         var signature = CryptoHelper.SignWithPrivateKey(privateKey, dataHash.ToByteArray());

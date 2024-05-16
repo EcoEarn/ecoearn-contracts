@@ -26,7 +26,7 @@ public partial class EcoEarnTokensContract
         var poolInfo = GetPool(stakeInfo.PoolId);
 
         var actualReward = ProcessClaim(poolInfo, stakeInfo);
-        Assert(actualReward >= poolInfo.Config.MinimumClaimAmount, "Reward not enough.");
+        Assert(actualReward > poolInfo.Config.MinimumClaimAmount, "Reward not enough.");
 
         return new Empty();
     }
@@ -58,7 +58,7 @@ public partial class EcoEarnTokensContract
 
         var poolInfo = GetPool(input.PoolId);
         CheckDAppAdminPermission(poolInfo.DappId);
-        
+
         Assert(!CheckPoolEnabled(poolInfo.Config.EndBlockNumber), "Pool not closed.");
 
         var output = Context.Call<GetBalanceOutput>(poolInfo.Config.RewardTokenContract, "GetBalance",
@@ -103,7 +103,7 @@ public partial class EcoEarnTokensContract
     {
         var poolData = State.PoolDataMap[poolInfo.PoolId];
 
-        var pending = CalculateRewardAmount(poolInfo, poolData, stakeInfo.BoostedAmount, stakeInfo.RewardDebt);
+        var pending = CalculateRewardAmount(poolInfo, poolData, stakeInfo);
         var actualReward = ProcessCommissionFee(pending, poolInfo).Add(stakeInfo.RewardAmount);
 
         if (actualReward == 0) return 0;
@@ -195,7 +195,7 @@ public partial class EcoEarnTokensContract
         return amount.Mul(commissionRate).Div(EcoEarnTokensContractConstants.Denominator);
     }
 
-    private long CalculateRewardAmount(PoolInfo poolInfo, PoolData poolData, long amount, long debt)
+    private long CalculateRewardAmount(PoolInfo poolInfo, PoolData poolData, StakeInfo stakeInfo)
     {
         var multiplier = GetMultiplier(poolData.LastRewardBlock, Context.CurrentHeight, poolInfo.Config.EndBlockNumber);
         var rewards = new BigIntValue(multiplier.Mul(poolInfo.Config.RewardPerBlock));
@@ -205,7 +205,8 @@ public partial class EcoEarnTokensContract
                 .Div(poolData.TotalStakedAmount))
             : accTokenPerShare;
 
-        return CalculatePending(amount, adjustedTokenPerShare, debt, EcoEarnTokensContractConstants.Denominator);
+        return CalculatePending(stakeInfo.BoostedAmount, adjustedTokenPerShare, stakeInfo.RewardDebt,
+            EcoEarnTokensContractConstants.Denominator);
     }
 
     #endregion

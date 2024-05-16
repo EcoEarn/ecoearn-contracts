@@ -605,7 +605,7 @@ public partial class EcoEarnTokensContractTests
         {
             StakeIds = { stakeInfo.StakeId }
         });
-        result.TransactionResult.Error.ShouldContain("Not unlock yet.");
+        result.TransactionResult.Error.ShouldContain("Cannot update yet.");
 
         BlockTimeProvider.SetBlockTime(BlockTimeProvider.GetBlockTime().AddSeconds(86400));
 

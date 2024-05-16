@@ -429,14 +429,14 @@ public partial class EcoEarnTokensContract
         foreach (var id in stakeIds)
         {
             Assert(IsHashValid(id), "Invalid stake id.");
-            Assert(!State.StakeInfoUpdateStatusMap[id], "Already updated.");
+            Assert(State.StakeInfoUpdateTimeMap[id] == null, "Already updated.");
 
-            State.StakeInfoUpdateStatusMap[id] = true;
+            State.StakeInfoUpdateTimeMap[id] = Context.CurrentBlockTime;
 
             var stakeInfo = State.StakeInfoMap[id];
             Assert(stakeInfo != null, "Stake id not exists.");
 
-            Assert(Context.CurrentBlockTime >= stakeInfo.StakedTime.AddSeconds(stakeInfo.Period), "Not unlock yet.");
+            Assert(Context.CurrentBlockTime >= stakeInfo.StakedTime.AddSeconds(stakeInfo.Period), "Cannot update yet.");
 
             var poolInfo = GetPool(stakeInfo.PoolId);
             Assert(poolInfo.Config.UpdateAddress == Context.Sender, "No permission.");

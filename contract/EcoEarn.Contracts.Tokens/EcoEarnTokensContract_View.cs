@@ -1,4 +1,5 @@
 using AElf.CSharp.Core;
+using AElf.CSharp.Core.Extension;
 using AElf.Types;
 using Google.Protobuf.WellKnownTypes;
 
@@ -92,9 +93,10 @@ public partial class EcoEarnTokensContract
 
         long reward;
 
-        if (blockNumber > poolData.LastRewardBlock && poolData.TotalStakedAmount != 0)
+        if (blockNumber > poolData.LastRewardBlock && poolData.TotalStakedAmount != 0 &&
+            Context.CurrentBlockTime < stakeInfo.StakedTime.AddSeconds(stakeInfo.Period))
         {
-            reward = CalculateRewardAmount(poolInfo, poolData, stakeInfo.BoostedAmount, stakeInfo.RewardDebt);
+            reward = CalculateRewardAmount(poolInfo, poolData, stakeInfo);
         }
         else
         {

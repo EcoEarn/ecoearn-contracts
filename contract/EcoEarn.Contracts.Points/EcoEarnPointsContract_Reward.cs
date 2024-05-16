@@ -51,6 +51,7 @@ public partial class EcoEarnPointsContract
 
         var poolInfo = GetPool(input.PoolId);
         Assert(Context.CurrentHeight >= poolInfo.Config.StartBlockNumber, "Pool not start.");
+        Assert(Context.CurrentBlockTime < input.ExpirationTime, "Signature expired.");
 
         Assert(RecoverAddressFromSignature(input) == poolInfo.Config.UpdateAddress, "Signature not valid.");
         
@@ -233,7 +234,8 @@ public partial class EcoEarnPointsContract
             PoolId = input.PoolId,
             Account = input.Account,
             Amount = input.Amount,
-            Seed = input.Seed
+            Seed = input.Seed,
+            ExpirationTime = input.ExpirationTime
         }.ToByteArray());
     }
 
@@ -243,6 +245,7 @@ public partial class EcoEarnPointsContract
         Assert(IsAddressValid(input.Account) && input.Account == Context.Sender, "Invalid account.");
         Assert(input.Amount > 0, "Invalid amount.");
         Assert(!input.Signature.IsNullOrEmpty(), "Invalid signature.");
+        Assert(input.ExpirationTime != null, "Invalid expiration time.");
         Assert(IsHashValid(input.Seed) && !State.SignatureMap[HashHelper.ComputeFrom(input.Signature.ToBase64())],
             "Invalid seed.");
     }
