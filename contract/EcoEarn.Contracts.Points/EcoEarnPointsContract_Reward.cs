@@ -55,7 +55,7 @@ public partial class EcoEarnPointsContract
 
         Assert(RecoverAddressFromSignature(input) == poolInfo.Config.UpdateAddress, "Signature not valid.");
         
-        State.SignatureMap[HashHelper.ComputeFrom(input.Signature.ToBase64())] = true;
+        State.SignatureMap[HashHelper.ComputeFrom(input.Signature.ToByteArray())] = true;
 
         var claimId = GenerateClaimId(input);
         Assert(State.ClaimInfoMap[claimId] == null, "Claim id taken.");
@@ -244,10 +244,11 @@ public partial class EcoEarnPointsContract
         Assert(input != null, "Invalid input.");
         Assert(IsAddressValid(input.Account) && input.Account == Context.Sender, "Invalid account.");
         Assert(input.Amount > 0, "Invalid amount.");
-        Assert(!input.Signature.IsNullOrEmpty(), "Invalid signature.");
+        Assert(IsHashValid(input.Seed), "Invalid seed.");
         Assert(input.ExpirationTime != null, "Invalid expiration time.");
-        Assert(IsHashValid(input.Seed) && !State.SignatureMap[HashHelper.ComputeFrom(input.Signature.ToBase64())],
-            "Invalid seed.");
+        Assert(
+            !input.Signature.IsNullOrEmpty() &&
+            !State.SignatureMap[HashHelper.ComputeFrom(input.Signature.ToByteArray())], "Invalid signature.");
     }
 
     private long CalculateCommissionFee(long amount, long commissionRate)

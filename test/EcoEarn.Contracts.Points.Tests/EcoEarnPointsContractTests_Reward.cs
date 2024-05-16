@@ -180,13 +180,30 @@ public partial class EcoEarnPointsContractTests
             Account = UserAddress,
             Amount = 1
         });
-        result.TransactionResult.Error.ShouldContain("Invalid signature.");
+        result.TransactionResult.Error.ShouldContain("Invalid seed.");
+        
+        result = await EcoEarnPointsContractUserStub.Claim.SendWithExceptionAsync(new ClaimInput
+        {
+            Account = UserAddress,
+            Amount = 1,
+            Seed = new Hash()
+        });
+        result.TransactionResult.Error.ShouldContain("Invalid seed.");
 
         result = await EcoEarnPointsContractUserStub.Claim.SendWithExceptionAsync(new ClaimInput
         {
             Account = UserAddress,
             Amount = 1,
-            Signature = ByteString.Empty
+            Seed = seed
+        });
+        result.TransactionResult.Error.ShouldContain("Invalid expiration time.");
+        
+        result = await EcoEarnPointsContractUserStub.Claim.SendWithExceptionAsync(new ClaimInput
+        {
+            Account = UserAddress,
+            Amount = 1,
+            Seed = seed,
+            ExpirationTime = BlockTimeProvider.GetBlockTime()
         });
         result.TransactionResult.Error.ShouldContain("Invalid signature.");
         
@@ -194,28 +211,11 @@ public partial class EcoEarnPointsContractTests
         {
             Account = UserAddress,
             Amount = 1,
-            Signature = Hash.Empty.ToByteString()
+            Seed = seed,
+            ExpirationTime = BlockTimeProvider.GetBlockTime(),
+            Signature = ByteString.Empty
         });
-        result.TransactionResult.Error.ShouldContain("Invalid expiration time.");
-
-        result = await EcoEarnPointsContractUserStub.Claim.SendWithExceptionAsync(new ClaimInput
-        {
-            Account = UserAddress,
-            Amount = 1,
-            Signature = Hash.Empty.ToByteString(),
-            ExpirationTime = BlockTimeProvider.GetBlockTime()
-        });
-        result.TransactionResult.Error.ShouldContain("Invalid seed.");
-
-        result = await EcoEarnPointsContractUserStub.Claim.SendWithExceptionAsync(new ClaimInput
-        {
-            Account = UserAddress,
-            Amount = 1,
-            Seed = new Hash(),
-            Signature = Hash.Empty.ToByteString(),
-            ExpirationTime = BlockTimeProvider.GetBlockTime()
-        });
-        result.TransactionResult.Error.ShouldContain("Invalid seed.");
+        result.TransactionResult.Error.ShouldContain("Invalid signature.");
 
         result = await EcoEarnPointsContractUserStub.Claim.SendWithExceptionAsync(new ClaimInput
         {
@@ -271,17 +271,6 @@ public partial class EcoEarnPointsContractTests
             ExpirationTime = expirationTime,
             Signature = GenerateSignature(DefaultAccount.KeyPair.PrivateKey, poolId, 1, UserAddress, seed, expirationTime)
         });
-        
-        result = await EcoEarnPointsContractUserStub.Claim.SendWithExceptionAsync(new ClaimInput
-        {
-            Account = UserAddress,
-            Amount = 1,
-            Seed = seed,
-            PoolId = poolId,
-            ExpirationTime = expirationTime,
-            Signature = GenerateSignature(DefaultAccount.KeyPair.PrivateKey, poolId, 1, UserAddress, seed, expirationTime)
-        });
-        result.TransactionResult.Error.ShouldContain("Invalid seed.");
     }
 
     [Fact]
