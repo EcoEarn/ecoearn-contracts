@@ -2,10 +2,12 @@ using System.Linq;
 using System.Threading.Tasks;
 using AElf;
 using AElf.Contracts.MultiToken;
+using AElf.CSharp.Core;
 using AElf.CSharp.Core.Extension;
 using AElf.Types;
 using Shouldly;
 using Xunit;
+using static System.Int64;
 
 namespace EcoEarn.Contracts.Tokens;
 
@@ -134,7 +136,7 @@ public partial class EcoEarnTokensContractTests
             log.PoolData.TotalStakedAmount.ShouldBe(tokenBalance * 4);
             log.PoolData.LastRewardBlock.ShouldBe(result.TransactionResult.BlockNumber);
 
-            var acc = 100_00000000 * 10000 / (poolData.TotalStakedAmount);
+            var acc = new BigIntValue(100_00000000).Mul(1000000000000000000).Div(poolData.TotalStakedAmount);
             log.PoolData.AccTokenPerShare.ShouldBe(acc);
 
             var stakeInfo = log.StakeInfo;
@@ -143,7 +145,10 @@ public partial class EcoEarnTokensContractTests
             stakeInfo.BoostedAmount.ShouldBe(tokenBalance * 4);
             stakeInfo.StakedAmount.ShouldBe(tokenBalance * 2);
             stakeInfo.RewardAmount.ShouldBe(100_00000000 - 100_00000000 * 100 / 10000); // minus commission fee
-            stakeInfo.RewardDebt.ShouldBe(acc * tokenBalance * 4 / 10000);
+            
+            TryParse(new BigIntValue(acc.Mul(tokenBalance).Mul(4).Div(1000000000000000000)).Value, out var value);
+            
+            stakeInfo.RewardDebt.ShouldBe(value);
             stakeInfo.LastOperationTime.ShouldBe(stakeInfo.StakedTime);
 
             stakeCount = await EcoEarnTokensContractStub.GetUserStakeCount.CallAsync(new GetUserStakeCountInput
@@ -186,7 +191,9 @@ public partial class EcoEarnTokensContractTests
             log.PoolData.TotalStakedAmount.ShouldBe(tokenBalance * 8);
             log.PoolData.LastRewardBlock.ShouldBe(result.TransactionResult.BlockNumber);
 
-            var acc = 100_00000000 * 10000 / (tokenBalance * 4) + 100_00000000 * 10000 / (tokenBalance * 2);
+
+            var acc = new BigIntValue(100_00000000).Mul(1000000000000000000).Div(tokenBalance.Mul(4))
+                .Add((new BigIntValue(100_00000000).Mul(1000000000000000000).Div(tokenBalance.Mul(2))));
             log.PoolData.AccTokenPerShare.ShouldBe(acc);
 
             var stakeInfo = log.StakeInfo;
@@ -195,7 +202,10 @@ public partial class EcoEarnTokensContractTests
             stakeInfo.BoostedAmount.ShouldBe(tokenBalance * 8);
             stakeInfo.StakedAmount.ShouldBe(tokenBalance * 2);
             stakeInfo.RewardAmount.ShouldBe((100_00000000 - 100_00000000 * 100 / 10000) * 2); // minus commission fee
-            stakeInfo.RewardDebt.ShouldBe(acc * tokenBalance * 8 / 10000);
+            
+            TryParse(new BigIntValue(acc.Mul(tokenBalance).Mul(8).Div(1000000000000000000)).Value, out var value);
+
+            stakeInfo.RewardDebt.ShouldBe(value);
             stakeInfo.LastOperationTime.ShouldBe(stakeInfo.StakedTime);
 
             stakeCount = await EcoEarnTokensContractStub.GetUserStakeCount.CallAsync(new GetUserStakeCountInput
@@ -614,12 +624,6 @@ public partial class EcoEarnTokensContractTests
         result.TransactionResult.Error.ShouldContain("Stake id not exists.");
 
         BlockTimeProvider.SetBlockTime(BlockTimeProvider.GetBlockTime().AddSeconds(86400));
-
-        result = await EcoEarnTokensContractUserStub.UpdateStakeInfo.SendWithExceptionAsync(new UpdateStakeInfoInput
-        {
-            StakeIds = { stakeInfo.StakeId }
-        });
-        result.TransactionResult.Error.ShouldContain("No permission.");
 
         await EcoEarnTokensContractStub.UpdateStakeInfo.SendAsync(new UpdateStakeInfoInput
         {

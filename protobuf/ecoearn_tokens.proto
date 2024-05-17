@@ -124,7 +124,7 @@ message PoolInfo {
   aelf.Hash dapp_id = 1;
   aelf.Hash pool_id = 2;
   TokensPoolConfig config = 3;
-  int64 precision_factor = 4;
+  aelf.BigIntValue precision_factor = 4;
 }
 
 message PoolData {

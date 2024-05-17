@@ -347,10 +347,10 @@ public partial class EcoEarnTokensContract
         return poolInfo;
     }
 
-    private long CalculatePrecisionFactor(int decimals)
+    private BigIntValue CalculatePrecisionFactor(int decimals)
     {
-        var tryParse = TryParse(new BigIntValue(EcoEarnTokensContractConstants.Ten).Pow(decimals).Value, out var value);
-        return !tryParse || value <= 1 ? EcoEarnTokensContractConstants.Denominator : value;
+        return new BigIntValue(EcoEarnTokensContractConstants.Ten).Pow(
+            EcoEarnTokensContractConstants.MaxDecimals.Sub(decimals));
     }
 
     #endregion

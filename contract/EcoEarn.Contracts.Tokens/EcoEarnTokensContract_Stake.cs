@@ -61,11 +61,11 @@ public partial class EcoEarnTokensContract
         stakeInfo.LastOperationTime = Context.CurrentBlockTime;
 
         var poolInfo = GetPool(stakeInfo.PoolId);
-        
+
         ProcessClaim(poolInfo, stakeInfo);
 
         if (State.StakeInfoUpdateTimeMap[stakeInfo.StakeId] == null) ProcessStakeInfo(stakeInfo, poolInfo, out _);
-        
+
         if (stakeInfo.StakedAmount > 0)
         {
             Context.SendVirtualInline(GetStakeVirtualAddress(input), poolInfo.Config.StakeTokenContract,
@@ -238,8 +238,7 @@ public partial class EcoEarnTokensContract
         var rewards = new BigIntValue(multiplier.Mul(poolInfo.Config.RewardPerBlock));
         var accTokenPerShare = poolData.AccTokenPerShare ?? new BigIntValue(0);
         poolData.AccTokenPerShare =
-            accTokenPerShare.Add(
-                rewards.Mul(EcoEarnTokensContractConstants.Denominator).Div(poolData.TotalStakedAmount));
+            accTokenPerShare.Add(rewards.Mul(poolInfo.PrecisionFactor).Div(poolData.TotalStakedAmount));
         poolData.LastRewardBlock = blockNumber;
     }
 
@@ -250,14 +249,14 @@ public partial class EcoEarnTokensContract
         return endBlockNumber.Sub(from);
     }
 
-    private long CalculatePending(long amount, BigIntValue accTokenPerShare, long debt, long precisionFactor)
+    private long CalculatePending(long amount, BigIntValue accTokenPerShare, long debt, BigIntValue precisionFactor)
     {
         if (accTokenPerShare == null) return 0;
         TryParse(accTokenPerShare.Mul(amount).Div(precisionFactor).Sub(debt).Value, out long result);
         return result;
     }
 
-    private long CalculateDebt(long amount, BigIntValue accTokenPerShare, long precisionFactor)
+    private long CalculateDebt(long amount, BigIntValue accTokenPerShare, BigIntValue precisionFactor)
     {
         if (accTokenPerShare == null) return 0;
         TryParse(accTokenPerShare.Mul(amount).Div(precisionFactor).Value, out long result);
@@ -354,15 +353,14 @@ public partial class EcoEarnTokensContract
         if (stakeInfo.BoostedAmount > 0)
         {
             var pending = CalculatePending(stakeInfo.BoostedAmount, poolData.AccTokenPerShare, stakeInfo.RewardDebt,
-                EcoEarnTokensContractConstants.Denominator);
+                poolInfo.PrecisionFactor);
             var actualReward = ProcessCommissionFee(pending, poolInfo);
             stakeInfo.RewardAmount = stakeInfo.RewardAmount.Add(actualReward);
         }
 
         poolData.TotalStakedAmount = poolData.TotalStakedAmount.Add(boostedAmount).Sub(stakeInfo.BoostedAmount);
         stakeInfo.BoostedAmount = boostedAmount;
-        stakeInfo.RewardDebt = CalculateDebt(boostedAmount, poolData.AccTokenPerShare,
-            EcoEarnTokensContractConstants.Denominator);
+        stakeInfo.RewardDebt = CalculateDebt(boostedAmount, poolData.AccTokenPerShare, poolInfo.PrecisionFactor);
         stakeInfo.LastOperationTime = Context.CurrentBlockTime;
 
         Context.Fire(new Staked
@@ -428,26 +426,29 @@ public partial class EcoEarnTokensContract
         foreach (var id in stakeIds)
         {
             Assert(IsHashValid(id), "Invalid stake id.");
-            
+
             Assert(State.StakeInfoUpdateTimeMap[id] == null, "Already updated.");
             State.StakeInfoUpdateTimeMap[id] = Context.CurrentBlockTime;
-            
+
             var stakeInfo = State.StakeInfoMap[id];
             Assert(stakeInfo != null, "Stake id not exists.");
-            
+
             var poolInfo = GetPool(stakeInfo.PoolId);
-            
+            var advancedTime = poolInfo.Config.UpdateAddress == Context.Sender
+                ? EcoEarnTokensContractConstants.AdvancedSeconds
+                : 0;
+            Assert(Context.CurrentBlockTime.AddSeconds(advancedTime) >= CalculateUnlockTime(stakeInfo),
+                "Cannot update yet.");
+
             ProcessStakeInfo(stakeInfo, poolInfo, out var poolData);
-            
+
             if (stakeInfo.BoostedAmount > 0)
             {
                 var pending = CalculatePending(stakeInfo.BoostedAmount, poolData.AccTokenPerShare, stakeInfo.RewardDebt,
-                    EcoEarnTokensContractConstants.Denominator);
+                    poolInfo.PrecisionFactor);
                 var actualReward = ProcessCommissionFee(pending, poolInfo);
                 stakeInfo.RewardAmount = stakeInfo.RewardAmount.Add(actualReward);
             }
-            
-            Assert(poolInfo.Config.UpdateAddress == Context.Sender, "No permission.");
 
             result[poolData.PoolId] = poolData;
         }
@@ -459,12 +460,12 @@ public partial class EcoEarnTokensContract
     {
         poolData = State.PoolDataMap[stakeInfo.PoolId];
         UpdatePool(poolInfo, poolData);
-        
+
         poolData.TotalStakedAmount = poolData.TotalStakedAmount.Sub(stakeInfo.BoostedAmount);
 
         State.StakeInfoUpdateTimeMap[stakeInfo.StakeId] = Context.CurrentBlockTime;
     }
-    
+
     private long CalculateStakeEndBlockNumber(StakeInfo stakeInfo)
     {
         return stakeInfo.StakedBlockNumber.Add(stakeInfo.Period.Mul(EcoEarnTokensContractConstants.BlocksPerSecond));

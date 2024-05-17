@@ -209,12 +209,12 @@ public partial class EcoEarnTokensContract
         var rewards = new BigIntValue(multiplier.Mul(poolInfo.Config.RewardPerBlock));
         var accTokenPerShare = poolData.AccTokenPerShare ?? new BigIntValue(0);
         var adjustedTokenPerShare = poolData.TotalStakedAmount > 0
-            ? accTokenPerShare.Add(rewards.Mul(EcoEarnTokensContractConstants.Denominator)
+            ? accTokenPerShare.Add(rewards.Mul(poolInfo.PrecisionFactor)
                 .Div(poolData.TotalStakedAmount))
             : accTokenPerShare;
 
         return CalculatePending(stakeInfo.BoostedAmount, adjustedTokenPerShare, stakeInfo.RewardDebt,
-            EcoEarnTokensContractConstants.Denominator);
+            poolInfo.PrecisionFactor);
     }
 
     #endregion
