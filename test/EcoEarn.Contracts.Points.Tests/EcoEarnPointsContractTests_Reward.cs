@@ -114,7 +114,7 @@ public partial class EcoEarnPointsContractTests
         await Register();
         var poolId = await CreatePointsPool();
 
-        var expirationTime = BlockTimeProvider.GetBlockTime().AddDays(1);
+        var expirationTime = BlockTimeProvider.GetBlockTime().AddDays(1).Seconds;
         
         var input = new ClaimInput
         {
@@ -203,7 +203,7 @@ public partial class EcoEarnPointsContractTests
             Account = UserAddress,
             Amount = 1,
             Seed = seed,
-            ExpirationTime = BlockTimeProvider.GetBlockTime()
+            ExpirationTime = BlockTimeProvider.GetBlockTime().Seconds
         });
         result.TransactionResult.Error.ShouldContain("Invalid signature.");
         
@@ -212,7 +212,7 @@ public partial class EcoEarnPointsContractTests
             Account = UserAddress,
             Amount = 1,
             Seed = seed,
-            ExpirationTime = BlockTimeProvider.GetBlockTime(),
+            ExpirationTime = BlockTimeProvider.GetBlockTime().Seconds,
             Signature = ByteString.Empty
         });
         result.TransactionResult.Error.ShouldContain("Invalid signature.");
@@ -223,7 +223,7 @@ public partial class EcoEarnPointsContractTests
             Amount = 1,
             Seed = seed,
             Signature = Hash.Empty.ToByteString(),
-            ExpirationTime = BlockTimeProvider.GetBlockTime()
+            ExpirationTime = BlockTimeProvider.GetBlockTime().Seconds
         });
         result.TransactionResult.Error.ShouldContain("Invalid pool id.");
 
@@ -234,7 +234,7 @@ public partial class EcoEarnPointsContractTests
             Seed = seed,
             Signature = Hash.Empty.ToByteString(),
             PoolId = new Hash(),
-            ExpirationTime = BlockTimeProvider.GetBlockTime()
+            ExpirationTime = BlockTimeProvider.GetBlockTime().Seconds
         });
         result.TransactionResult.Error.ShouldContain("Invalid pool id.");
 
@@ -245,7 +245,7 @@ public partial class EcoEarnPointsContractTests
             Seed = seed,
             Signature = Hash.Empty.ToByteString(),
             PoolId = HashHelper.ComputeFrom(1),
-            ExpirationTime = BlockTimeProvider.GetBlockTime()
+            ExpirationTime = BlockTimeProvider.GetBlockTime().Seconds
         });
         result.TransactionResult.Error.ShouldContain("Pool not exists.");
 
@@ -256,11 +256,11 @@ public partial class EcoEarnPointsContractTests
             Seed = seed,
             Signature = Hash.Empty.ToByteString(),
             PoolId = poolId,
-            ExpirationTime = BlockTimeProvider.GetBlockTime()
+            ExpirationTime = BlockTimeProvider.GetBlockTime().Seconds
         });
         result.TransactionResult.Error.ShouldContain("Signature expired.");
 
-        var expirationTime = BlockTimeProvider.GetBlockTime().AddDays(1);
+        var expirationTime = BlockTimeProvider.GetBlockTime().AddDays(1).Seconds;
         
         await EcoEarnPointsContractUserStub.Claim.SendAsync(new ClaimInput
         {
@@ -286,7 +286,7 @@ public partial class EcoEarnPointsContractTests
         var balance = await GetTokenBalance(Symbol, UserAddress);
         balance.ShouldBe(0);
         
-        var expirationTime = BlockTimeProvider.GetBlockTime().AddDays(1);
+        var expirationTime = BlockTimeProvider.GetBlockTime().AddDays(1).Seconds;
 
         var result = await EcoEarnPointsContractUserStub.Claim.SendAsync(new ClaimInput
         {
@@ -344,7 +344,7 @@ public partial class EcoEarnPointsContractTests
         await Register();
         var poolId = await CreatePointsPool();
         
-        var expirationTime = BlockTimeProvider.GetBlockTime().AddDays(1);
+        var expirationTime = BlockTimeProvider.GetBlockTime().AddDays(1).Seconds;
 
         var result = await EcoEarnPointsContractUserStub.Claim.SendAsync(new ClaimInput
         {
@@ -517,7 +517,7 @@ public partial class EcoEarnPointsContractTests
         await Register();
         var poolId = await CreatePointsPool();
         
-        var expirationTime = BlockTimeProvider.GetBlockTime().AddDays(1);
+        var expirationTime = BlockTimeProvider.GetBlockTime().AddDays(1).Seconds;
 
         var result = await EcoEarnPointsContractUserStub.Claim.SendAsync(new ClaimInput
         {
@@ -597,7 +597,7 @@ public partial class EcoEarnPointsContractTests
         var poolId = await CreatePointsPool();
         var tokensPoolId = await CreateTokensPool(DefaultSymbol);
         
-        var expirationTime = BlockTimeProvider.GetBlockTime().AddDays(1);
+        var expirationTime = BlockTimeProvider.GetBlockTime().AddDays(1).Seconds;
 
         var result = await EcoEarnPointsContractUserStub.Claim.SendAsync(new ClaimInput
         {
@@ -707,7 +707,7 @@ public partial class EcoEarnPointsContractTests
         result.TransactionResult.Error.ShouldContain("Already withdrawn.");
     }
 
-    private ByteString GenerateSignature(byte[] privateKey, Hash poolId, long amount, Address account, Hash seed, Timestamp expirationTime)
+    private ByteString GenerateSignature(byte[] privateKey, Hash poolId, long amount, Address account, Hash seed, long expirationTime)
     {
         var data = new ClaimInput
         {

@@ -118,7 +118,7 @@ message ClaimInput {
   aelf.Address account = 2;
   int64 amount = 3;
   aelf.Hash seed = 4;
-  google.protobuf.Timestamp expiration_time = 5;
+  int64 expiration_time = 5;
   bytes signature = 10000;
 }
 

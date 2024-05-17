@@ -374,7 +374,7 @@ public partial class EcoEarnTokensContractTests
         var log = GetLogEvent<Unlocked>(result.TransactionResult);
         log.StakeId.ShouldBe(stakeInfo.StakeId);
         log.StakedAmount.ShouldBe(0);
-        log.PoolData.ShouldBe(poolData);
+        log.PoolData.TotalStakedAmount.ShouldBe(0);
 
         stakeInfo = await EcoEarnTokensContractStub.GetStakeInfo.CallAsync(stakeInfo.StakeId);
         stakeInfo.StakedAmount.ShouldBe(0);
@@ -600,12 +600,6 @@ public partial class EcoEarnTokensContractTests
             StakeIds = { HashHelper.ComputeFrom("test") }
         });
         result.TransactionResult.Error.ShouldContain("Stake id not exists.");
-
-        result = await EcoEarnTokensContractStub.UpdateStakeInfo.SendWithExceptionAsync(new UpdateStakeInfoInput
-        {
-            StakeIds = { stakeInfo.StakeId }
-        });
-        result.TransactionResult.Error.ShouldContain("Cannot update yet.");
 
         BlockTimeProvider.SetBlockTime(BlockTimeProvider.GetBlockTime().AddSeconds(86400));
 

@@ -62,6 +62,8 @@ public partial class EcoEarnTokensContract
 
         var poolInfo = GetPool(stakeInfo.PoolId);
 
+        if (State.StakeInfoUpdateTimeMap[stakeInfo.StakeId] == null) ProcessStakeInfo(stakeInfo, poolInfo, out _);
+
         ProcessClaim(poolInfo, stakeInfo);
 
         if (stakeInfo.StakedAmount > 0)
@@ -244,9 +246,9 @@ public partial class EcoEarnTokensContract
 
     private long GetMultiplier(long from, long to, long endBlockNumber)
     {
-        if (to <= endBlockNumber) return to - from;
+        if (to <= endBlockNumber) return to.Sub(from);
         if (from >= endBlockNumber) return 0;
-        return endBlockNumber - from;
+        return endBlockNumber.Sub(from);
     }
 
     private long CalculatePending(long amount, BigIntValue accTokenPerShare, long debt, long precisionFactor)
@@ -283,8 +285,7 @@ public partial class EcoEarnTokensContract
             if (claimInfo.StakeId != null)
             {
                 var stakeInfo = State.StakeInfoMap[claimInfo.StakeId];
-                Assert(stakeInfo?.WithdrawTime != null && Context.CurrentBlockTime >= stakeInfo.WithdrawTime,
-                    "Not unlocked.");
+                Assert(stakeInfo != null && stakeInfo.WithdrawTime != null, "Not unlocked.");
             }
 
             amount = amount.Add(claimInfo.ClaimedAmount);
@@ -394,7 +395,7 @@ public partial class EcoEarnTokensContract
                 });
         }
 
-        return pending - commissionFee;
+        return pending.Sub(commissionFee);
     }
 
     private void RecordEarlyStakeInfo(Hash stakeId, long stakedAmount, string address)
@@ -429,34 +430,44 @@ public partial class EcoEarnTokensContract
         foreach (var id in stakeIds)
         {
             Assert(IsHashValid(id), "Invalid stake id.");
-            Assert(State.StakeInfoUpdateTimeMap[id] == null, "Already updated.");
-
+            
+            Assert(State.StakeInfoUpdateTimeMap[id] == null, $"{id.ToHex()} already updated.");
             State.StakeInfoUpdateTimeMap[id] = Context.CurrentBlockTime;
-
+            
             var stakeInfo = State.StakeInfoMap[id];
             Assert(stakeInfo != null, "Stake id not exists.");
-
-            Assert(Context.CurrentBlockTime >= stakeInfo.StakedTime.AddSeconds(stakeInfo.Period), "Cannot update yet.");
-
+            
             var poolInfo = GetPool(stakeInfo.PoolId);
-            Assert(poolInfo.Config.UpdateAddress == Context.Sender, "No permission.");
-            var poolData = State.PoolDataMap[stakeInfo.PoolId];
-            UpdatePool(poolInfo, poolData);
-
+            
+            ProcessStakeInfo(stakeInfo, poolInfo, out var poolData);
+            
             if (stakeInfo.BoostedAmount > 0)
             {
-                var pending = CalculatePending(stakeInfo.BoostedAmount, poolData.AccTokenPerShare,
-                    stakeInfo.RewardDebt, EcoEarnTokensContractConstants.Denominator);
+                var pending = CalculatePending(stakeInfo.BoostedAmount, poolData.AccTokenPerShare, stakeInfo.RewardDebt,
+                    EcoEarnTokensContractConstants.Denominator);
                 var actualReward = ProcessCommissionFee(pending, poolInfo);
                 stakeInfo.RewardAmount = stakeInfo.RewardAmount.Add(actualReward);
             }
+            
+            Assert(poolInfo.Config.UpdateAddress == Context.Sender, "No permission.");
 
-            poolData.TotalStakedAmount = poolData.TotalStakedAmount.Sub(stakeInfo.BoostedAmount);
-
-            result[stakeInfo.PoolId] = poolData;
+            result[poolData.PoolId] = poolData;
         }
 
         return result.Values.ToList();
+    }
+
+    private long CalculateStakeEndBlockNumber(StakeInfo stakeInfo)
+    {
+        return stakeInfo.StakedBlockNumber.Add(stakeInfo.Period.Mul(EcoEarnTokensContractConstants.BlocksPerSecond));
+    }
+
+    private void ProcessStakeInfo(StakeInfo stakeInfo, PoolInfo poolInfo, out PoolData poolData)
+    {
+        poolData = State.PoolDataMap[stakeInfo.PoolId];
+        UpdatePool(poolInfo, poolData);
+
+        poolData.TotalStakedAmount = poolData.TotalStakedAmount.Sub(stakeInfo.BoostedAmount);
     }
 
     #endregion

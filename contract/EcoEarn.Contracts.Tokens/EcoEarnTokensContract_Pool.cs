@@ -126,10 +126,8 @@ public partial class EcoEarnTokensContract
 
         Assert(input.EndBlockNumber > poolInfo.Config.EndBlockNumber, "Invalid end block number.");
 
-        var totalRewards = input.EndBlockNumber > poolInfo.Config.EndBlockNumber
-            ? CalculateTotalRewardAmount(poolInfo.Config.EndBlockNumber, input.EndBlockNumber,
-                poolInfo.Config.RewardPerBlock)
-            : 0L;
+        var addedAmount = CalculateTotalRewardAmount(poolInfo.Config.EndBlockNumber, input.EndBlockNumber,
+            poolInfo.Config.RewardPerBlock);
 
         poolInfo.Config.EndBlockNumber = input.EndBlockNumber;
 
@@ -137,7 +135,7 @@ public partial class EcoEarnTokensContract
         {
             PoolId = input.PoolId,
             EndBlockNumber = input.EndBlockNumber,
-            Amount = totalRewards
+            Amount = addedAmount
         });
 
         return new Empty();
@@ -316,7 +314,7 @@ public partial class EcoEarnTokensContract
 
     private long CalculateTotalRewardAmount(long start, long end, long rewardPerBlock)
     {
-        return end.Sub(start) * rewardPerBlock;
+        return end.Sub(start).Mul(rewardPerBlock);
     }
 
     private Address CalculateVirtualAddress(Hash id)
@@ -334,7 +332,7 @@ public partial class EcoEarnTokensContract
         return HashHelper.ConcatAndCompute(id, HashHelper.ComputeFrom(EcoEarnTokensContractConstants.StakeAddress));
     }
 
-    private Hash GetRewardVirtualAddress(Hash id) 
+    private Hash GetRewardVirtualAddress(Hash id)
     {
         return HashHelper.ConcatAndCompute(id, HashHelper.ComputeFrom(EcoEarnTokensContractConstants.RewardAddress));
     }
