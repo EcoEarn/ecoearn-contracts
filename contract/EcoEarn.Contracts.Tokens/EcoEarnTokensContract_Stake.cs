@@ -61,11 +61,11 @@ public partial class EcoEarnTokensContract
         stakeInfo.LastOperationTime = Context.CurrentBlockTime;
 
         var poolInfo = GetPool(stakeInfo.PoolId);
-
-        if (State.StakeInfoUpdateTimeMap[stakeInfo.StakeId] == null) ProcessStakeInfo(stakeInfo, poolInfo, out _);
-
+        
         ProcessClaim(poolInfo, stakeInfo);
 
+        if (State.StakeInfoUpdateTimeMap[stakeInfo.StakeId] == null) ProcessStakeInfo(stakeInfo, poolInfo, out _);
+        
         if (stakeInfo.StakedAmount > 0)
         {
             Context.SendVirtualInline(GetStakeVirtualAddress(input), poolInfo.Config.StakeTokenContract,
@@ -460,8 +460,15 @@ public partial class EcoEarnTokensContract
     {
         poolData = State.PoolDataMap[stakeInfo.PoolId];
         UpdatePool(poolInfo, poolData);
-
+        
         poolData.TotalStakedAmount = poolData.TotalStakedAmount.Sub(stakeInfo.BoostedAmount);
+
+        State.StakeInfoUpdateTimeMap[stakeInfo.StakeId] = Context.CurrentBlockTime;
+    }
+    
+    private long CalculateStakeEndBlockNumber(StakeInfo stakeInfo)
+    {
+        return stakeInfo.StakedBlockNumber.Add(stakeInfo.Period.Mul(EcoEarnTokensContractConstants.BlocksPerSecond));
     }
 
     #endregion

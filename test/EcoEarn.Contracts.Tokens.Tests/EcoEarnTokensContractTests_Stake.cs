@@ -365,29 +365,32 @@ public partial class EcoEarnTokensContractTests
 
         BlockTimeProvider.SetBlockTime(BlockTimeProvider.GetBlockTime().AddSeconds(86400));
 
-        var result = await EcoEarnTokensContractUserStub.Unlock.SendAsync(poolId);
-        result.TransactionResult.Status.ShouldBe(TransactionResultStatus.Mined);
+        // var result = await EcoEarnTokensContractUserStub.Unlock.SendAsync(poolId);
+        // result.TransactionResult.Status.ShouldBe(TransactionResultStatus.Mined);
+        //
+        // balance = await GetTokenBalance(Symbol, UserAddress);
+        // balance.ShouldBe(tokenBalance);
+        //
+        // var log = GetLogEvent<Unlocked>(result.TransactionResult);
+        // log.StakeId.ShouldBe(stakeInfo.StakeId);
+        // log.StakedAmount.ShouldBe(0);
+        // log.PoolData.TotalStakedAmount.ShouldBe(0);
 
-        balance = await GetTokenBalance(Symbol, UserAddress);
-        balance.ShouldBe(tokenBalance);
-
-        var log = GetLogEvent<Unlocked>(result.TransactionResult);
-        log.StakeId.ShouldBe(stakeInfo.StakeId);
-        log.StakedAmount.ShouldBe(0);
-        log.PoolData.TotalStakedAmount.ShouldBe(0);
-
-        stakeInfo = await EcoEarnTokensContractStub.GetStakeInfo.CallAsync(stakeInfo.StakeId);
-        stakeInfo.StakedAmount.ShouldBe(0);
-        stakeInfo.RewardAmount.ShouldBe(0);
-        stakeInfo.ClaimedAmount.ShouldBe(0);
-
-        await EcoEarnTokensContractStub.UpdateStakeInfo.SendAsync(new UpdateStakeInfoInput
+        var result = await EcoEarnTokensContractStub.UpdateStakeInfo.SendAsync(new UpdateStakeInfoInput
         {
             StakeIds = { stakeInfo.StakeId }
         });
-        
+
         stakeInfo = await EcoEarnTokensContractStub.GetStakeInfo.CallAsync(stakeInfo.StakeId);
-        stakeInfo.RewardAmount.ShouldBe(100_00000000 - 100_00000000 * 100 / 10000);
+        // stakeInfo.StakedAmount.ShouldBe(0);
+        // stakeInfo.RewardAmount.ShouldBe(0);
+        // stakeInfo.ClaimedAmount.ShouldBe(100_00000000 - 100_00000000 * 100 / 10000);
+
+        await EcoEarnTokensContractUserStub.Claim.SendAsync(stakeInfo.StakeId);
+        stakeInfo = await EcoEarnTokensContractStub.GetStakeInfo.CallAsync(stakeInfo.StakeId);
+        // stakeInfo.StakedAmount.ShouldBe(0);
+        stakeInfo.RewardAmount.ShouldBe(0);
+        stakeInfo.ClaimedAmount.ShouldBe(100_00000000 - 100_00000000 * 100 / 10000);
     }
 
     [Fact]

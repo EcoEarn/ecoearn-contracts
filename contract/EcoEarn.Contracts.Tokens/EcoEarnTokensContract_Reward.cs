@@ -25,7 +25,9 @@ public partial class EcoEarnTokensContract
 
         var poolInfo = GetPool(stakeInfo.PoolId);
 
-        var actualReward = ProcessClaim(poolInfo, stakeInfo);
+        var actualReward = Context.CurrentHeight >= CalculateStakeEndBlockNumber(stakeInfo)
+            ? stakeInfo.RewardAmount
+            : ProcessClaim(poolInfo, stakeInfo);
         Assert(actualReward > poolInfo.Config.MinimumClaimAmount, "Reward not enough.");
 
         return new Empty();
@@ -197,12 +199,13 @@ public partial class EcoEarnTokensContract
 
     private long CalculateRewardAmount(PoolInfo poolInfo, PoolData poolData, StakeInfo stakeInfo)
     {
-        if (Context.CurrentBlockTime >= CalculateUnlockTime(stakeInfo))
-        {
-            return stakeInfo.RewardAmount;
-        }
-        
-        var multiplier = GetMultiplier(poolData.LastRewardBlock, Context.CurrentHeight, poolInfo.Config.EndBlockNumber);
+        if (State.StakeInfoUpdateTimeMap[stakeInfo.StakeId] != null) return 0;
+
+        var stakeEndBlockNumber = CalculateStakeEndBlockNumber(stakeInfo);
+
+        var multiplier = Context.CurrentHeight > stakeEndBlockNumber
+            ? 0
+            : GetMultiplier(poolData.LastRewardBlock, Context.CurrentHeight, poolInfo.Config.EndBlockNumber);
         var rewards = new BigIntValue(multiplier.Mul(poolInfo.Config.RewardPerBlock));
         var accTokenPerShare = poolData.AccTokenPerShare ?? new BigIntValue(0);
         var adjustedTokenPerShare = poolData.TotalStakedAmount > 0

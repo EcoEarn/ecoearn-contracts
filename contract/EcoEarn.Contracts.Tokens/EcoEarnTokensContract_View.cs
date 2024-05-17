@@ -93,8 +93,7 @@ public partial class EcoEarnTokensContract
 
         long reward;
 
-        if (blockNumber > poolData.LastRewardBlock && poolData.TotalStakedAmount != 0 &&
-            Context.CurrentBlockTime < CalculateUnlockTime(stakeInfo))
+        if (blockNumber > poolData.LastRewardBlock && poolData.TotalStakedAmount != 0)
         {
             reward = CalculateRewardAmount(poolInfo, poolData, stakeInfo);
         }
