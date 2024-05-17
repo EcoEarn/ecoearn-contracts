@@ -430,7 +430,7 @@ public partial class EcoEarnTokensContract
         {
             Assert(IsHashValid(id), "Invalid stake id.");
             
-            Assert(State.StakeInfoUpdateTimeMap[id] == null, $"{id.ToHex()} already updated.");
+            Assert(State.StakeInfoUpdateTimeMap[id] == null, "Already updated.");
             State.StakeInfoUpdateTimeMap[id] = Context.CurrentBlockTime;
             
             var stakeInfo = State.StakeInfoMap[id];
