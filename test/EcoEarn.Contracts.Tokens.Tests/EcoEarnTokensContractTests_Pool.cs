@@ -323,14 +323,14 @@ public partial class EcoEarnTokensContractTests
     [InlineData(Symbol, 0, 0, 0, 0, 0, 0, 0, 0, 0, "", "Invalid start block number.")]
     [InlineData(Symbol, 100, 0, 0, 0, 0, 0, 0, 0, 0, "", "Invalid end block number.")]
     [InlineData(Symbol, 100, 150, 0, 0, 0, 0, 0, 0, 0, "", "Invalid reward per block.")]
-    [InlineData(Symbol, 100, 150, 100, -1, 0, 0, 0, 0, 0, "", "Invalid fixed boost factor.")]
-    [InlineData(Symbol, 100, 150, 100, 0, -1, 0, 0, 0, 0, "", "Invalid minimum amount.")]
-    [InlineData(Symbol, 100, 150, 100, 0, 0, -1, 0, 0, 0, "", "Invalid release period.")]
-    [InlineData(Symbol, 100, 150, 100, 0, 0, 0, 0, 0, 0, "", "Invalid maximum stake duration.")]
-    [InlineData(Symbol, 100, 150, 100, 0, 0, 0, 1, -1, 0, "", "Invalid minimum claim amount.")]
-    [InlineData(Symbol, 100, 150, 100, 0, 0, 0, 1, 0, 0, "", "Invalid minimum stake duration.")]
-    [InlineData(Symbol, 100, 150, 100, 0, 0, 0, 1, 0, 1, "", "Invalid staking token.")]
-    [InlineData(Symbol, 100, 150, 100, 0, 0, 0, 1, 0, 1, "TEST", "TEST not exists.")]
+    [InlineData(Symbol, 100, 150, 100, 0, 0, 0, 0, 0, 0, "", "Invalid fixed boost factor.")]
+    [InlineData(Symbol, 100, 150, 100, 1, -1, 0, 0, 0, 0, "", "Invalid minimum amount.")]
+    [InlineData(Symbol, 100, 150, 100, 1, 0, -1, 0, 0, 0, "", "Invalid release period.")]
+    [InlineData(Symbol, 100, 150, 100, 1, 0, 0, 0, 0, 0, "", "Invalid maximum stake duration.")]
+    [InlineData(Symbol, 100, 150, 100, 1, 0, 0, 1, -1, 0, "", "Invalid minimum claim amount.")]
+    [InlineData(Symbol, 100, 150, 100, 1, 0, 0, 1, 0, 0, "", "Invalid minimum stake duration.")]
+    [InlineData(Symbol, 100, 150, 100, 1, 0, 0, 1, 0, 1, "", "Invalid staking token.")]
+    [InlineData(Symbol, 100, 150, 100, 1, 0, 0, 1, 0, 1, "TEST", "TEST not exists.")]
     public async Task CreateTokensPoolTests_Config_Fail(string rewardToken, long startBlockNumber, long endBlockNumber,
         long rewardPerBlock, long fixedBoostFactor, long minimumAmount, long releasePeriod, long maximumStakeDuration,
         long minimumClaimAmount, long minimumStakeDuration, string stakingSymbol, string error)
@@ -591,7 +591,7 @@ public partial class EcoEarnTokensContractTests
         var poolId = await CreateTokensPool();
 
         var output = await EcoEarnTokensContractStub.GetPoolInfo.CallAsync(poolId);
-        output.PoolInfo.Config.FixedBoostFactor.ShouldBe(10000);
+        output.PoolInfo.Config.FixedBoostFactor.ShouldBe(1);
 
         var input = new SetTokensPoolStakeConfigInput
         {
@@ -698,7 +698,7 @@ public partial class EcoEarnTokensContractTests
         var poolId = await CreateTokensPool();
 
         var output = await EcoEarnTokensContractStub.GetPoolInfo.CallAsync(poolId);
-        output.PoolInfo.Config.FixedBoostFactor.ShouldBe(10000);
+        output.PoolInfo.Config.FixedBoostFactor.ShouldBe(1);
 
         var input = new SetTokensPoolFixedBoostFactorInput
         {
@@ -728,35 +728,36 @@ public partial class EcoEarnTokensContractTests
 
         var result = await EcoEarnTokensContractStub.SetTokensPoolFixedBoostFactor.SendWithExceptionAsync(
             new SetTokensPoolFixedBoostFactorInput());
-        result.TransactionResult.Error.ShouldContain("Invalid pool id.");
-
+        result.TransactionResult.Error.ShouldContain("Invalid fixed boost factor.");
+        
         result = await EcoEarnTokensContractStub.SetTokensPoolFixedBoostFactor.SendWithExceptionAsync(
             new SetTokensPoolFixedBoostFactorInput
             {
-                PoolId = new Hash()
+                FixedBoostFactor = 1
             });
         result.TransactionResult.Error.ShouldContain("Invalid pool id.");
 
         result = await EcoEarnTokensContractStub.SetTokensPoolFixedBoostFactor.SendWithExceptionAsync(
             new SetTokensPoolFixedBoostFactorInput
             {
-                PoolId = HashHelper.ComputeFrom(1)
+                PoolId = new Hash(),
+                FixedBoostFactor = 1
+            });
+        result.TransactionResult.Error.ShouldContain("Invalid pool id.");
+
+        result = await EcoEarnTokensContractStub.SetTokensPoolFixedBoostFactor.SendWithExceptionAsync(
+            new SetTokensPoolFixedBoostFactorInput
+            {
+                PoolId = HashHelper.ComputeFrom(1),
+                FixedBoostFactor = 1
             });
         result.TransactionResult.Error.ShouldContain("Pool not exists.");
-
-        result = await EcoEarnTokensContractStub.SetTokensPoolFixedBoostFactor.SendWithExceptionAsync(
-            new SetTokensPoolFixedBoostFactorInput
-            {
-                PoolId = poolId,
-                FixedBoostFactor = -1
-            });
-        result.TransactionResult.Error.ShouldContain("Invalid fixed boost factor.");
 
         result = await EcoEarnTokensContractUserStub.SetTokensPoolFixedBoostFactor.SendWithExceptionAsync(
             new SetTokensPoolFixedBoostFactorInput
             {
                 PoolId = poolId,
-                FixedBoostFactor = 0
+                FixedBoostFactor = 1
             });
         result.TransactionResult.Error.ShouldContain("No permission.");
     }
@@ -902,7 +903,7 @@ public partial class EcoEarnTokensContractTests
                 EndBlockNumber = blockNumber + 10,
                 RewardToken = Symbol,
                 StakingToken = Symbol,
-                FixedBoostFactor = 10000,
+                FixedBoostFactor = 1,
                 MaximumStakeDuration = 500000,
                 MinimumAmount = 1_00000000,
                 MinimumClaimAmount = 1_00000000,

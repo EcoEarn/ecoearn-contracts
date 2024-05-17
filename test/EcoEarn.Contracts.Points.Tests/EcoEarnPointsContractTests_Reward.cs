@@ -748,7 +748,7 @@ public partial class EcoEarnPointsContractTests
                 EndBlockNumber = blockNumber + 10,
                 RewardToken = Symbol,
                 StakingToken = stakingToken,
-                FixedBoostFactor = 0,
+                FixedBoostFactor = 1,
                 MaximumStakeDuration = 10,
                 MinimumAmount = 1,
                 MinimumClaimAmount = 1,

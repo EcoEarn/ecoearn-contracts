@@ -226,7 +226,7 @@ public partial class EcoEarnTokensContract
     public override Empty SetTokensPoolFixedBoostFactor(SetTokensPoolFixedBoostFactorInput input)
     {
         Assert(input != null, "Invalid input.");
-        Assert(input.FixedBoostFactor >= 0, "Invalid fixed boost factor.");
+        Assert(input.FixedBoostFactor > 0, "Invalid fixed boost factor.");
 
         var poolInfo = GetPool(input.PoolId);
 
@@ -287,7 +287,7 @@ public partial class EcoEarnTokensContract
         Assert(config.StartBlockNumber >= Context.CurrentHeight, "Invalid start block number.");
         Assert(config.EndBlockNumber > config.StartBlockNumber, "Invalid end block number.");
         Assert(config.RewardPerBlock > 0, "Invalid reward per block.");
-        Assert(config.FixedBoostFactor >= 0, "Invalid fixed boost factor.");
+        Assert(config.FixedBoostFactor > 0, "Invalid fixed boost factor.");
         Assert(config.MinimumAmount >= 0, "Invalid minimum amount.");
         Assert(config.ReleasePeriod >= 0, "Invalid release period.");
         Assert(config.MaximumStakeDuration > 0, "Invalid maximum stake duration.");

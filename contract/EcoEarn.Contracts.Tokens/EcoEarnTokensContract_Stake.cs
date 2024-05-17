@@ -217,8 +217,7 @@ public partial class EcoEarnTokensContract
     {
         period = period >= config.MaximumStakeDuration ? config.MaximumStakeDuration : period;
         var days = period.Div(EcoEarnTokensContractConstants.SecondsPerDay);
-        return amount.Mul(config.FixedBoostFactor).Div(EcoEarnTokensContractConstants.Denominator).Mul(days)
-            .Add(amount);
+        return amount.Div(config.FixedBoostFactor).Mul(days).Add(amount);
     }
 
     private void UpdatePool(PoolInfo poolInfo, PoolData poolData)
