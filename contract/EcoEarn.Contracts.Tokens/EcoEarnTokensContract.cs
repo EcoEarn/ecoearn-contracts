@@ -58,7 +58,7 @@ public partial class EcoEarnTokensContract : EcoEarnTokensContractContainer.EcoE
 
         Assert(input != null, "Invalid input.");
         Assert(input.CommissionRate >= 0, "Invalid commission rate.");
-        Assert(input.Recipient == null || !input.Recipient.Value.IsNullOrEmpty(), "Invalid recipient.");
+        Assert(IsAddressValid(input.Recipient), "Invalid recipient.");
 
         if (input.Equals(State.Config.Value)) return new Empty();
 
