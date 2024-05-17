@@ -8,5 +8,4 @@ public static class EcoEarnTokensContractConstants
     public const string RewardAddress = "RewardAddress";
 
     public const long SecondsPerDay = 60 * 60 * 24;
-    public const long BlocksPerSecond = 2;
 }

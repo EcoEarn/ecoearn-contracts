@@ -197,6 +197,11 @@ public partial class EcoEarnTokensContract
 
     private long CalculateRewardAmount(PoolInfo poolInfo, PoolData poolData, StakeInfo stakeInfo)
     {
+        if (Context.CurrentBlockTime >= CalculateUnlockTime(stakeInfo))
+        {
+            return stakeInfo.RewardAmount;
+        }
+        
         var multiplier = GetMultiplier(poolData.LastRewardBlock, Context.CurrentHeight, poolInfo.Config.EndBlockNumber);
         var rewards = new BigIntValue(multiplier.Mul(poolInfo.Config.RewardPerBlock));
         var accTokenPerShare = poolData.AccTokenPerShare ?? new BigIntValue(0);

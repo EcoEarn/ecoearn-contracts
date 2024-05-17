@@ -55,7 +55,7 @@ public partial class EcoEarnTokensContract
         Assert(stakeInfo != null, "Stake info not exists.");
         Assert(stakeInfo.Account == Context.Sender, "No permission.");
         Assert(stakeInfo.WithdrawTime == null, "Already withdrawn.");
-        Assert(Context.CurrentBlockTime >= stakeInfo.StakedTime.AddSeconds(stakeInfo.Period), "No unlock yet.");
+        Assert(Context.CurrentBlockTime >= CalculateUnlockTime(stakeInfo), "No unlock yet.");
 
         stakeInfo.WithdrawTime = Context.CurrentBlockTime;
         stakeInfo.LastOperationTime = Context.CurrentBlockTime;
@@ -344,8 +344,7 @@ public partial class EcoEarnTokensContract
             State.UserStakeIdMap[poolInfo.PoolId][address] = stakeId;
         }
 
-        Assert(Context.CurrentBlockTime < stakeInfo.StakedTime.AddSeconds(stakeInfo.Period),
-            "Staking expires. Unlock first.");
+        Assert(Context.CurrentBlockTime < CalculateUnlockTime(stakeInfo), "Staking expires. Unlock first.");
 
         var poolData = State.PoolDataMap[poolInfo.PoolId];
         UpdatePool(poolInfo, poolData);
@@ -455,11 +454,6 @@ public partial class EcoEarnTokensContract
         }
 
         return result.Values.ToList();
-    }
-
-    private long CalculateStakeEndBlockNumber(StakeInfo stakeInfo)
-    {
-        return stakeInfo.StakedBlockNumber.Add(stakeInfo.Period.Mul(EcoEarnTokensContractConstants.BlocksPerSecond));
     }
 
     private void ProcessStakeInfo(StakeInfo stakeInfo, PoolInfo poolInfo, out PoolData poolData)

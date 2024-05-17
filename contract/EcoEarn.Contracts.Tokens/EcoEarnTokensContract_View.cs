@@ -94,7 +94,7 @@ public partial class EcoEarnTokensContract
         long reward;
 
         if (blockNumber > poolData.LastRewardBlock && poolData.TotalStakedAmount != 0 &&
-            Context.CurrentBlockTime < stakeInfo.StakedTime.AddSeconds(stakeInfo.Period))
+            Context.CurrentBlockTime < CalculateUnlockTime(stakeInfo))
         {
             reward = CalculateRewardAmount(poolInfo, poolData, stakeInfo);
         }
@@ -122,5 +122,10 @@ public partial class EcoEarnTokensContract
     public override Hash GetUserStakeId(GetUserStakeIdInput input)
     {
         return State.UserStakeIdMap[input.PoolId]?[input.Account];
+    }
+
+    private Timestamp CalculateUnlockTime(StakeInfo stakeInfo)
+    {
+        return stakeInfo.StakedTime.AddSeconds(stakeInfo.Period);
     }
 }

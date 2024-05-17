@@ -378,7 +378,16 @@ public partial class EcoEarnTokensContractTests
 
         stakeInfo = await EcoEarnTokensContractStub.GetStakeInfo.CallAsync(stakeInfo.StakeId);
         stakeInfo.StakedAmount.ShouldBe(0);
-        stakeInfo.ClaimedAmount.ShouldBe(100_00000000 - 100_00000000 * 100 / 10000);
+        stakeInfo.RewardAmount.ShouldBe(0);
+        stakeInfo.ClaimedAmount.ShouldBe(0);
+
+        await EcoEarnTokensContractStub.UpdateStakeInfo.SendAsync(new UpdateStakeInfoInput
+        {
+            StakeIds = { stakeInfo.StakeId }
+        });
+        
+        stakeInfo = await EcoEarnTokensContractStub.GetStakeInfo.CallAsync(stakeInfo.StakeId);
+        stakeInfo.RewardAmount.ShouldBe(100_00000000 - 100_00000000 * 100 / 10000);
     }
 
     [Fact]
