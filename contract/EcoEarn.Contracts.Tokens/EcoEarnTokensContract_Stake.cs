@@ -448,6 +448,8 @@ public partial class EcoEarnTokensContract
                     poolInfo.PrecisionFactor);
                 var actualReward = ProcessCommissionFee(pending, poolInfo);
                 stakeInfo.RewardAmount = stakeInfo.RewardAmount.Add(actualReward);
+                
+                stakeInfo.RewardDebt = CalculateDebt(stakeInfo.BoostedAmount, poolData.AccTokenPerShare, poolInfo.PrecisionFactor);
             }
 
             result[poolData.PoolId] = poolData;
