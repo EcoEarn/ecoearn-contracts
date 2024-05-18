@@ -1,9 +1,8 @@
-using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 using AElf.Contracts.MultiToken;
 using AElf.CSharp.Core;
-using AElf.Kernel.Blockchain;
+using AElf.CSharp.Core.Extension;
 using AElf.Types;
 using Google.Protobuf;
 using Shouldly;
@@ -28,11 +27,6 @@ public partial class EcoEarnPointsContractTests
         return logEvent;
     }
 
-    private Task<BlockExecutedSet> SimulateBlockMining()
-    {
-        return Task.FromResult(ContractTestService.MineAsync(new List<Transaction>()).Result);
-    }
-
     private async Task<long> GetTokenBalance(string token, Address address)
     {
         var output = await TokenContractStub.GetBalance.CallAsync(new GetBalanceInput
@@ -42,5 +36,10 @@ public partial class EcoEarnPointsContractTests
         });
 
         return output.Balance;
+    }
+
+    private void SetBlockTime(long seconds)
+    {
+        BlockTimeProvider.SetBlockTime(BlockTimeProvider.GetBlockTime().AddSeconds(seconds));
     }
 }

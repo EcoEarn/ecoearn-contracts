@@ -28,7 +28,7 @@ public partial class EcoEarnPointsContract
         var output = new GetPoolInfoOutput
         {
             PoolInfo = info,
-            Status = CheckPoolEnabled(info.Config.EndBlockNumber)
+            Status = CheckPoolEnabled(info.Config.EndTime)
         };
 
         return output;

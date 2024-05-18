@@ -71,40 +71,61 @@ public partial class EcoEarnTokensContract
         Assert(input != null, "Invalid input.");
         Assert(IsHashValid(input.DappId), "Invalid dapp id.");
         CheckDAppAdminPermission(input.DappId);
-        ValidateTokensPoolConfig(input.Config);
-        Assert(IsStringValid(input.Config.StakingToken), "Invalid staking token.");
-        CheckTokenExists(input.Config.StakingToken, input.Config.StakeTokenContract ?? State.TokenContract.Value,
+        ValidateTokensPoolConfig(input);
+        Assert(IsStringValid(input.StakingToken), "Invalid staking token.");
+        CheckTokenExists(input.StakingToken, input.StakeTokenContract ?? State.TokenContract.Value,
             out var decimals);
 
         var poolId = GeneratePoolId(input);
         Assert(State.PoolInfoMap[poolId] == null, "Pool exists.");
 
+        var config = new TokensPoolConfig
+        {
+            StakingToken = input.StakingToken,
+            FixedBoostFactor = input.FixedBoostFactor,
+            MinimumAmount = input.MinimumAmount,
+            ReleasePeriod = input.ReleasePeriod,
+            MaximumStakeDuration = input.MaximumStakeDuration,
+            RewardTokenContract = input.RewardTokenContract ?? State.TokenContract.Value,
+            StakeTokenContract = input.StakeTokenContract ?? State.TokenContract.Value,
+            MinimumClaimAmount = input.MinimumClaimAmount,
+            MinimumStakeDuration = input.MinimumStakeDuration,
+            RewardToken = input.RewardToken,
+            StartTime = new Timestamp
+            {
+                Seconds = input.StartTime
+            },
+            EndTime = new Timestamp
+            {
+                Seconds = input.EndTime
+            },
+            RewardPerSecond = input.RewardPerSecond,
+            UpdateAddress = input.UpdateAddress
+        };
+        
         var poolInfo = new PoolInfo
         {
             DappId = input.DappId,
             PoolId = poolId,
-            Config = input.Config,
+            Config = config,
             PrecisionFactor = CalculatePrecisionFactor(decimals)
         };
-        poolInfo.Config.RewardTokenContract = input.Config.RewardTokenContract ?? State.TokenContract.Value;
-        poolInfo.Config.StakeTokenContract = input.Config.StakeTokenContract ?? State.TokenContract.Value;
 
         State.PoolInfoMap[poolId] = poolInfo;
 
         State.PoolDataMap[poolId] = new PoolData
         {
             PoolId = poolId,
-            LastRewardBlock = input.Config.StartBlockNumber
+            LastRewardTime = config.StartTime
         };
 
-        var totalReward = CalculateTotalRewardAmount(input.Config.StartBlockNumber, input.Config.EndBlockNumber,
-            input.Config.RewardPerBlock);
+        var totalReward = CalculateTotalRewardAmount(input.StartTime, input.EndTime, input.RewardPerSecond);
 
         Context.Fire(new TokensPoolCreated
         {
             DappId = input.DappId,
             PoolId = poolId,
-            Config = input.Config,
+            Config = config,
             Amount = totalReward,
             AddressInfo = new PoolAddressInfo
             {
@@ -116,7 +137,7 @@ public partial class EcoEarnTokensContract
         return new Empty();
     }
 
-    public override Empty SetTokensPoolEndBlockNumber(SetTokensPoolEndBlockNumberInput input)
+    public override Empty SetTokensPoolEndTime(SetTokensPoolEndTimeInput input)
     {
         Assert(input != null, "Invalid input.");
 
@@ -124,17 +145,20 @@ public partial class EcoEarnTokensContract
 
         CheckDAppAdminPermission(poolInfo.DappId);
 
-        Assert(input.EndBlockNumber > poolInfo.Config.EndBlockNumber, "Invalid end block number.");
+        Assert(input.EndTime > poolInfo.Config.EndTime.Seconds, "Invalid end time.");
 
-        var addedAmount = CalculateTotalRewardAmount(poolInfo.Config.EndBlockNumber, input.EndBlockNumber,
-            poolInfo.Config.RewardPerBlock);
+        var addedAmount = CalculateTotalRewardAmount(poolInfo.Config.EndTime.Seconds, input.EndTime,
+            poolInfo.Config.RewardPerSecond);
 
-        poolInfo.Config.EndBlockNumber = input.EndBlockNumber;
+        poolInfo.Config.EndTime = new Timestamp
+        {
+            Seconds = input.EndTime
+        };
 
-        Context.Fire(new TokensPoolEndBlockNumberSet
+        Context.Fire(new TokensPoolEndTimeSet
         {
             PoolId = input.PoolId,
-            EndBlockNumber = input.EndBlockNumber,
+            EndTime = poolInfo.Config.EndTime,
             Amount = addedAmount
         });
 
@@ -245,10 +269,10 @@ public partial class EcoEarnTokensContract
         return new Empty();
     }
 
-    public override Empty SetTokensPoolRewardPerBlock(SetTokensPoolRewardPerBlockInput input)
+    public override Empty SetTokensPoolRewardPerSecond(SetTokensPoolRewardPerSecondInput input)
     {
         Assert(input != null, "Invalid input.");
-        Assert(input.RewardPerBlock > 0, "Invalid reward per block.");
+        Assert(input.RewardPerSecond > 0, "Invalid reward per block.");
 
         var poolInfo = GetPool(input.PoolId);
         var poolData = State.PoolDataMap[poolInfo.PoolId];
@@ -256,14 +280,14 @@ public partial class EcoEarnTokensContract
 
         CheckDAppAdminPermission(poolInfo.DappId);
 
-        if (poolInfo.Config.RewardPerBlock == input.RewardPerBlock) return new Empty();
+        if (poolInfo.Config.RewardPerSecond == input.RewardPerSecond) return new Empty();
 
-        poolInfo.Config.RewardPerBlock = input.RewardPerBlock;
+        poolInfo.Config.RewardPerSecond = input.RewardPerSecond;
 
-        Context.Fire(new TokensPoolRewardPerBlockSet
+        Context.Fire(new TokensPoolRewardPerSecondSet
         {
             PoolId = input.PoolId,
-            RewardPerBlock = input.RewardPerBlock,
+            RewardPerSecond = input.RewardPerSecond,
             PoolData = poolData
         });
 
@@ -274,25 +298,24 @@ public partial class EcoEarnTokensContract
 
     #region private
 
-    private void ValidateTokensPoolConfig(TokensPoolConfig config)
+    private void ValidateTokensPoolConfig(CreateTokensPoolInput input)
     {
-        Assert(config != null, "Invalid config.");
-        Assert(IsAddressValid(config.UpdateAddress), "Invalid update address.");
-        Assert(config.RewardTokenContract == null || !config.RewardTokenContract.Value.IsNullOrEmpty(),
+        Assert(IsAddressValid(input.UpdateAddress), "Invalid update address.");
+        Assert(input.RewardTokenContract == null || !input.RewardTokenContract.Value.IsNullOrEmpty(),
             "Invalid reward token contract.");
-        Assert(config.StakeTokenContract == null || !config.StakeTokenContract.Value.IsNullOrEmpty(),
+        Assert(input.StakeTokenContract == null || !input.StakeTokenContract.Value.IsNullOrEmpty(),
             "Invalid stake token contract.");
-        Assert(IsStringValid(config.RewardToken), "Invalid reward token.");
-        CheckTokenExists(config.RewardToken, config.RewardTokenContract ?? State.TokenContract.Value, out _);
-        Assert(config.StartBlockNumber >= Context.CurrentHeight, "Invalid start block number.");
-        Assert(config.EndBlockNumber > config.StartBlockNumber, "Invalid end block number.");
-        Assert(config.RewardPerBlock > 0, "Invalid reward per block.");
-        Assert(config.FixedBoostFactor > 0, "Invalid fixed boost factor.");
-        Assert(config.MinimumAmount >= 0, "Invalid minimum amount.");
-        Assert(config.ReleasePeriod >= 0, "Invalid release period.");
-        Assert(config.MaximumStakeDuration > 0, "Invalid maximum stake duration.");
-        Assert(config.MinimumClaimAmount >= 0, "Invalid minimum claim amount.");
-        Assert(config.MinimumStakeDuration > 0, "Invalid minimum stake duration.");
+        Assert(IsStringValid(input.RewardToken), "Invalid reward token.");
+        CheckTokenExists(input.RewardToken, input.RewardTokenContract ?? State.TokenContract.Value, out _);
+        Assert(input.StartTime >= Context.CurrentBlockTime.Seconds, "Invalid start time.");
+        Assert(input.EndTime > input.StartTime, "Invalid end time.");
+        Assert(input.RewardPerSecond > 0, "Invalid reward per block.");
+        Assert(input.FixedBoostFactor > 0, "Invalid fixed boost factor.");
+        Assert(input.MinimumAmount >= 0, "Invalid minimum amount.");
+        Assert(input.ReleasePeriod >= 0, "Invalid release period.");
+        Assert(input.MaximumStakeDuration > 0, "Invalid maximum stake duration.");
+        Assert(input.MinimumClaimAmount >= 0, "Invalid minimum claim amount.");
+        Assert(input.MinimumStakeDuration > 0, "Invalid minimum stake duration.");
     }
 
     private void CheckTokenExists(string symbol, Address tokenContract, out int decimals)
@@ -312,9 +335,9 @@ public partial class EcoEarnTokensContract
         return poolId;
     }
 
-    private long CalculateTotalRewardAmount(long start, long end, long rewardPerBlock)
+    private long CalculateTotalRewardAmount(long start, long end, long RewardPerSecond)
     {
-        return end.Sub(start).Mul(rewardPerBlock);
+        return end.Sub(start).Mul(RewardPerSecond);
     }
 
     private Address CalculateVirtualAddress(Hash id)

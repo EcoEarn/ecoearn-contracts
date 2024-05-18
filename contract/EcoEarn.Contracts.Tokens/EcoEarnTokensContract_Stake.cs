@@ -24,7 +24,7 @@ public partial class EcoEarnTokensContract
 
         var poolInfo = GetPool(input.PoolId);
 
-        Assert(CheckPoolEnabled(poolInfo.Config.EndBlockNumber), "Pool closed.");
+        Assert(CheckPoolEnabled(poolInfo.Config.EndTime), "Pool closed.");
 
         ProcessStake(poolInfo, input.Amount, 0, input.Period, Context.Sender);
 
@@ -54,10 +54,10 @@ public partial class EcoEarnTokensContract
         var stakeInfo = State.StakeInfoMap[existId];
         Assert(stakeInfo != null, "Stake info not exists.");
         Assert(stakeInfo.Account == Context.Sender, "No permission.");
-        Assert(stakeInfo.WithdrawTime == null, "Already withdrawn.");
+        Assert(stakeInfo.UnlockTime == null, "Already withdrawn.");
         Assert(Context.CurrentBlockTime >= CalculateUnlockTime(stakeInfo), "No unlock yet.");
 
-        stakeInfo.WithdrawTime = Context.CurrentBlockTime;
+        stakeInfo.UnlockTime = Context.CurrentBlockTime;
         stakeInfo.LastOperationTime = Context.CurrentBlockTime;
 
         var poolInfo = GetPool(stakeInfo.PoolId);
@@ -115,7 +115,7 @@ public partial class EcoEarnTokensContract
 
         var poolInfo = GetPool(input.PoolId);
         Assert(input.Period >= 0 && input.Period <= poolInfo.Config.MaximumStakeDuration, "Invalid period.");
-        Assert(CheckPoolEnabled(poolInfo.Config.EndBlockNumber), "Pool closed.");
+        Assert(CheckPoolEnabled(poolInfo.Config.EndTime), "Pool closed.");
 
         var stakeId = GetStakeId(input.PoolId);
         var list = ProcessEarlyStake(input.ClaimIds.ToList(), poolInfo, stakeId, out var stakedAmount);
@@ -158,7 +158,7 @@ public partial class EcoEarnTokensContract
         var poolInfo = GetPool(input.PoolId);
         Assert(input.Amount >= poolInfo.Config.MinimumAmount, "Invalid amount.");
         Assert(input.Period >= 0 && input.Period <= poolInfo.Config.MaximumStakeDuration, "Invalid period.");
-        Assert(CheckPoolEnabled(poolInfo.Config.EndBlockNumber), "Pool closed.");
+        Assert(CheckPoolEnabled(poolInfo.Config.EndTime), "Pool closed.");
 
         Context.SendInline(poolInfo.Config.StakeTokenContract, nameof(State.TokenContract.TransferFrom),
             new TransferFromInput
@@ -217,36 +217,36 @@ public partial class EcoEarnTokensContract
     {
         period = period >= config.MaximumStakeDuration ? config.MaximumStakeDuration : period;
         var days = period.Div(EcoEarnTokensContractConstants.SecondsPerDay);
-        return amount.Div(config.FixedBoostFactor).Mul(days).Add(amount);
+        return amount.Mul(days).Div(config.FixedBoostFactor).Add(amount);
     }
 
     private void UpdatePool(PoolInfo poolInfo, PoolData poolData)
     {
-        var blockNumber = Context.CurrentHeight;
+        var blockTime = Context.CurrentBlockTime;
 
         if (poolData == null) return;
 
-        if (blockNumber <= poolData.LastRewardBlock) return;
+        if (blockTime <= poolData.LastRewardTime) return;
 
         if (poolData.TotalStakedAmount == 0)
         {
-            poolData.LastRewardBlock = blockNumber;
+            poolData.LastRewardTime = blockTime;
             return;
         }
 
-        var multiplier = GetMultiplier(poolData.LastRewardBlock, blockNumber, poolInfo.Config.EndBlockNumber);
-        var rewards = new BigIntValue(multiplier.Mul(poolInfo.Config.RewardPerBlock));
+        var multiplier = GetMultiplier(poolData.LastRewardTime, blockTime, poolInfo.Config.EndTime);
+        var rewards = new BigIntValue(multiplier.Mul(poolInfo.Config.RewardPerSecond));
         var accTokenPerShare = poolData.AccTokenPerShare ?? new BigIntValue(0);
         poolData.AccTokenPerShare =
-            accTokenPerShare.Add(rewards.Mul(poolInfo.PrecisionFactor).Div(poolData.TotalStakedAmount));
-        poolData.LastRewardBlock = blockNumber;
+            rewards.Mul(poolInfo.PrecisionFactor).Div(poolData.TotalStakedAmount).Add(accTokenPerShare);
+        poolData.LastRewardTime = blockTime;
     }
 
-    private long GetMultiplier(long from, long to, long endBlockNumber)
+    private long GetMultiplier(Timestamp from, Timestamp to, Timestamp endTime)
     {
-        if (to <= endBlockNumber) return to.Sub(from);
-        if (from >= endBlockNumber) return 0;
-        return endBlockNumber.Sub(from);
+        if (to <= endTime) return (to - from).Seconds;
+        if (from >= endTime) return 0;
+        return (endTime - from).Seconds;
     }
 
     private long CalculatePending(long amount, BigIntValue accTokenPerShare, long debt, BigIntValue precisionFactor)
@@ -283,7 +283,7 @@ public partial class EcoEarnTokensContract
             if (claimInfo.StakeId != null)
             {
                 var stakeInfo = State.StakeInfoMap[claimInfo.StakeId];
-                Assert(stakeInfo != null && stakeInfo.WithdrawTime != null, "Not unlocked.");
+                Assert(stakeInfo != null && stakeInfo.UnlockTime != null, "Not unlocked.");
             }
 
             amount = amount.Add(claimInfo.ClaimedAmount);
@@ -317,7 +317,7 @@ public partial class EcoEarnTokensContract
         }
 
         // create position
-        if (existId == null || stakeInfo.WithdrawTime != null)
+        if (existId == null || stakeInfo.UnlockTime != null)
         {
             Assert(amount > 0 && period > 0, "New position requires both amount and period.");
             Assert(amount >= poolInfo.Config.MinimumAmount, "Amount not enough.");
@@ -410,7 +410,7 @@ public partial class EcoEarnTokensContract
     {
         var stakeId = State.UserStakeIdMap[poolId]?[Context.Sender];
 
-        if (IsHashValid(stakeId) && State.StakeInfoMap[stakeId]?.WithdrawTime == null) return stakeId;
+        if (IsHashValid(stakeId) && State.StakeInfoMap[stakeId]?.UnlockTime == null) return stakeId;
 
         var count = State.UserStakeCountMap[poolId][Context.Sender];
         stakeId = HashHelper.ConcatAndCompute(
@@ -468,9 +468,9 @@ public partial class EcoEarnTokensContract
         State.StakeInfoUpdateTimeMap[stakeInfo.StakeId] = Context.CurrentBlockTime;
     }
 
-    private long CalculateStakeEndBlockNumber(StakeInfo stakeInfo)
+    private Timestamp CalculateStakeEndTime(StakeInfo stakeInfo)
     {
-        return stakeInfo.StakedBlockNumber.Add(stakeInfo.Period.Mul(EcoEarnTokensContractConstants.BlocksPerSecond));
+        return stakeInfo.StakedTime.AddSeconds(stakeInfo.Period);
     }
 
     #endregion

@@ -1,5 +1,6 @@
 using AElf;
 using AElf.Types;
+using Google.Protobuf.WellKnownTypes;
 
 namespace EcoEarn.Contracts.Points;
 
@@ -36,8 +37,8 @@ public partial class EcoEarnPointsContract
         Assert(dappInfo != null && dappInfo.Admin == Context.Sender, "No permission.");
     }
 
-    private bool CheckPoolEnabled(long endBlockNumber)
+    private bool CheckPoolEnabled(Timestamp endTime)
     {
-        return Context.CurrentHeight < endBlockNumber;
+        return Context.CurrentBlockTime < endTime;
     }
 }

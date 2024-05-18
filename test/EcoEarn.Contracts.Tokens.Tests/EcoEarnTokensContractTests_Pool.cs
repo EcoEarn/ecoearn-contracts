@@ -2,6 +2,7 @@ using System.Linq;
 using System.Threading.Tasks;
 using AElf;
 using AElf.Contracts.MultiToken;
+using AElf.CSharp.Core.Extension;
 using AElf.Types;
 using Google.Protobuf.WellKnownTypes;
 using Shouldly;
@@ -193,28 +194,25 @@ public partial class EcoEarnTokensContractTests
             Symbol = Symbol
         });
 
-        var blockNumber = SimulateBlockMining().Result.Block.Height;
+        var blockTime = BlockTimeProvider.GetBlockTime();
 
         var input = new CreateTokensPoolInput
         {
             DappId = _appId,
-            Config = new TokensPoolConfig
-            {
-                StartBlockNumber = blockNumber,
-                EndBlockNumber = blockNumber + 10,
-                RewardToken = Symbol,
-                StakingToken = Symbol,
-                FixedBoostFactor = 1000,
-                MaximumStakeDuration = 1000000000,
-                MinimumAmount = 1_00000000,
-                MinimumClaimAmount = 1_00000000,
-                RewardPerBlock = 100_00000000,
-                ReleasePeriod = 10,
-                RewardTokenContract = TokenContractAddress,
-                StakeTokenContract = TokenContractAddress,
-                UpdateAddress = DefaultAddress,
-                MinimumStakeDuration = 1
-            }
+            StartTime = blockTime.Seconds,
+            EndTime = blockTime.Seconds + 10,
+            RewardToken = Symbol,
+            StakingToken = Symbol,
+            FixedBoostFactor = 1000,
+            MaximumStakeDuration = 1000000000,
+            MinimumAmount = 1_00000000,
+            MinimumClaimAmount = 1_00000000,
+            RewardPerSecond = 100_00000000,
+            ReleasePeriod = 10,
+            RewardTokenContract = TokenContractAddress,
+            StakeTokenContract = TokenContractAddress,
+            UpdateAddress = DefaultAddress,
+            MinimumStakeDuration = 1
         };
 
         var result = await EcoEarnTokensContractStub.CreateTokensPool.SendAsync(input);
@@ -223,7 +221,6 @@ public partial class EcoEarnTokensContractTests
         var log = GetLogEvent<TokensPoolCreated>(result.TransactionResult);
         log.DappId.ShouldBe(_appId);
         log.Amount.ShouldBe(1000_00000000);
-        log.Config.ShouldBe(input.Config);
         log.PoolId.ShouldBe(HashHelper.ConcatAndCompute(HashHelper.ComputeFrom(poolCount.Value),
             HashHelper.ComputeFrom(input)));
 
@@ -234,13 +231,13 @@ public partial class EcoEarnTokensContractTests
         poolInfo.Status.ShouldBeTrue();
         poolInfo.PoolInfo.PoolId.ShouldBe(log.PoolId);
         poolInfo.PoolInfo.DappId.ShouldBe(_appId);
-        poolInfo.PoolInfo.Config.ShouldBe(input.Config);
+        poolInfo.PoolInfo.Config.ShouldBe(log.Config);
 
         var poolData = await EcoEarnTokensContractStub.GetPoolData.CallAsync(log.PoolId);
         poolData.PoolId.ShouldBe(log.PoolId);
         poolData.TotalStakedAmount.ShouldBe(0);
         poolData.AccTokenPerShare.ShouldBeNull();
-        poolData.LastRewardBlock.ShouldBe(blockNumber);
+        poolData.LastRewardTime.Seconds.ShouldBe(blockTime.Seconds);
     }
 
     [Fact]
@@ -275,44 +272,28 @@ public partial class EcoEarnTokensContractTests
         {
             DappId = _appId
         });
-        result.TransactionResult.Error.ShouldContain("Invalid config.");
+        result.TransactionResult.Error.ShouldContain("Invalid update address.");
 
         result = await EcoEarnTokensContractStub.CreateTokensPool.SendWithExceptionAsync(new CreateTokensPoolInput
         {
             DappId = _appId,
-            Config = new TokensPoolConfig()
+            UpdateAddress = new Address()
         });
         result.TransactionResult.Error.ShouldContain("Invalid update address.");
 
         result = await EcoEarnTokensContractStub.CreateTokensPool.SendWithExceptionAsync(new CreateTokensPoolInput
         {
             DappId = _appId,
-            Config = new TokensPoolConfig
-            {
-                UpdateAddress = new Address()
-            }
-        });
-        result.TransactionResult.Error.ShouldContain("Invalid update address.");
-
-        result = await EcoEarnTokensContractStub.CreateTokensPool.SendWithExceptionAsync(new CreateTokensPoolInput
-        {
-            DappId = _appId,
-            Config = new TokensPoolConfig
-            {
-                UpdateAddress = DefaultAddress,
+           UpdateAddress = DefaultAddress,
                 RewardTokenContract = new Address()
-            }
         });
         result.TransactionResult.Error.ShouldContain("Invalid reward token contract.");
 
         result = await EcoEarnTokensContractStub.CreateTokensPool.SendWithExceptionAsync(new CreateTokensPoolInput
         {
             DappId = _appId,
-            Config = new TokensPoolConfig
-            {
-                UpdateAddress = DefaultAddress,
+             UpdateAddress = DefaultAddress,
                 StakeTokenContract = new Address()
-            }
         });
         result.TransactionResult.Error.ShouldContain("Invalid stake token contract.");
     }
@@ -320,19 +301,19 @@ public partial class EcoEarnTokensContractTests
     [Theory]
     [InlineData("", 0, 0, 0, 0, 0, 0, 0, 0, 0, "", "Invalid reward token.")]
     [InlineData("TEST", 0, 0, 0, 0, 0, 0, 0, 0, 0, "", "TEST not exists.")]
-    [InlineData(Symbol, 0, 0, 0, 0, 0, 0, 0, 0, 0, "", "Invalid start block number.")]
-    [InlineData(Symbol, 100, 0, 0, 0, 0, 0, 0, 0, 0, "", "Invalid end block number.")]
-    [InlineData(Symbol, 100, 150, 0, 0, 0, 0, 0, 0, 0, "", "Invalid reward per block.")]
-    [InlineData(Symbol, 100, 150, 100, 0, 0, 0, 0, 0, 0, "", "Invalid fixed boost factor.")]
-    [InlineData(Symbol, 100, 150, 100, 1, -1, 0, 0, 0, 0, "", "Invalid minimum amount.")]
-    [InlineData(Symbol, 100, 150, 100, 1, 0, -1, 0, 0, 0, "", "Invalid release period.")]
-    [InlineData(Symbol, 100, 150, 100, 1, 0, 0, 0, 0, 0, "", "Invalid maximum stake duration.")]
-    [InlineData(Symbol, 100, 150, 100, 1, 0, 0, 1, -1, 0, "", "Invalid minimum claim amount.")]
-    [InlineData(Symbol, 100, 150, 100, 1, 0, 0, 1, 0, 0, "", "Invalid minimum stake duration.")]
-    [InlineData(Symbol, 100, 150, 100, 1, 0, 0, 1, 0, 1, "", "Invalid staking token.")]
-    [InlineData(Symbol, 100, 150, 100, 1, 0, 0, 1, 0, 1, "TEST", "TEST not exists.")]
-    public async Task CreateTokensPoolTests_Config_Fail(string rewardToken, long startBlockNumber, long endBlockNumber,
-        long rewardPerBlock, long fixedBoostFactor, long minimumAmount, long releasePeriod, long maximumStakeDuration,
+    [InlineData(Symbol, 0, 0, 0, 0, 0, 0, 0, 0, 0, "", "Invalid start time.")]
+    [InlineData(Symbol, 1, 0, 0, 0, 0, 0, 0, 0, 0, "", "Invalid end time.")]
+    [InlineData(Symbol, 1, 1, 0, 0, 0, 0, 0, 0, 0, "", "Invalid reward per block.")]
+    [InlineData(Symbol, 1, 1, 100, 0, 0, 0, 0, 0, 0, "", "Invalid fixed boost factor.")]
+    [InlineData(Symbol, 1, 1, 100, 1, -1, 0, 0, 0, 0, "", "Invalid minimum amount.")]
+    [InlineData(Symbol, 1, 1, 100, 1, 0, -1, 0, 0, 0, "", "Invalid release period.")]
+    [InlineData(Symbol, 1, 1, 100, 1, 0, 0, 0, 0, 0, "", "Invalid maximum stake duration.")]
+    [InlineData(Symbol, 1, 1, 100, 1, 0, 0, 1, -1, 0, "", "Invalid minimum claim amount.")]
+    [InlineData(Symbol, 1, 1, 100, 1, 0, 0, 1, 0, 0, "", "Invalid minimum stake duration.")]
+    [InlineData(Symbol, 1, 1, 100, 1, 0, 0, 1, 0, 1, "", "Invalid staking token.")]
+    [InlineData(Symbol, 1, 1, 100, 1, 0, 0, 1, 0, 1, "TEST", "TEST not exists.")]
+    public async Task CreateTokensPoolTests_Config_Fail(string rewardToken, long startTime, long endTime,
+        long rewardPerSecond, long fixedBoostFactor, long minimumAmount, long releasePeriod, long maximumStakeDuration,
         long minimumClaimAmount, long minimumStakeDuration, string stakingSymbol, string error)
     {
         await Register();
@@ -341,98 +322,95 @@ public partial class EcoEarnTokensContractTests
         var result = await EcoEarnTokensContractStub.CreateTokensPool.SendWithExceptionAsync(
             new CreateTokensPoolInput
             {
-                DappId = _appId,
-                Config = new TokensPoolConfig
-                {
-                    UpdateAddress = DefaultAddress,
+                DappId = _appId, 
+                UpdateAddress = DefaultAddress,
                     RewardTokenContract = TokenContractAddress,
                     StakeTokenContract = TokenContractAddress,
                     RewardToken = rewardToken,
-                    StartBlockNumber = startBlockNumber,
-                    EndBlockNumber = endBlockNumber,
-                    RewardPerBlock = rewardPerBlock,
+                    StartTime = startTime == 1 ? BlockTimeProvider.GetBlockTime().Seconds : 0,
+                    EndTime = endTime == 1 ? BlockTimeProvider.GetBlockTime().Seconds + endTime : 0,
+                    RewardPerSecond = rewardPerSecond,
                     FixedBoostFactor = fixedBoostFactor,
                     MinimumAmount = minimumAmount,
                     ReleasePeriod = releasePeriod,
                     MaximumStakeDuration = maximumStakeDuration,
                     MinimumClaimAmount = minimumClaimAmount,
                     MinimumStakeDuration = minimumStakeDuration,
-                    StakingToken = stakingSymbol,
-                }
+                    StakingToken = stakingSymbol
             });
         result.TransactionResult.Error.ShouldContain(error);
     }
 
     [Fact]
-    public async Task SetTokensPoolEndBlockNumberTests()
+    public async Task SetTokensPoolEndTimeTests()
     {
         const long rewardBalance = 500_00000000;
 
         var poolId = await CreateTokensPool();
 
         var output = await EcoEarnTokensContractStub.GetPoolInfo.CallAsync(poolId);
-        var endBlockNumber = output.PoolInfo.Config.EndBlockNumber;
-        
-        var input = new SetTokensPoolEndBlockNumberInput
+        var endTime = output.PoolInfo.Config.EndTime;
+
+        var input = new SetTokensPoolEndTimeInput
         {
             PoolId = poolId,
-            EndBlockNumber = endBlockNumber + 5
+            EndTime = endTime.Seconds + 5
         };
 
-        var result = await EcoEarnTokensContractStub.SetTokensPoolEndBlockNumber.SendAsync(input);
+        var result = await EcoEarnTokensContractStub.SetTokensPoolEndTime.SendAsync(input);
         result.TransactionResult.Status.ShouldBe(TransactionResultStatus.Mined);
 
-        var log = GetLogEvent<TokensPoolEndBlockNumberSet>(result.TransactionResult);
+        var log = GetLogEvent<TokensPoolEndTimeSet>(result.TransactionResult);
         log.PoolId.ShouldBe(poolId);
         log.Amount.ShouldBe(rewardBalance);
-        log.EndBlockNumber.ShouldBe(input.EndBlockNumber);
+        log.EndTime.ShouldBe(output.PoolInfo.Config.EndTime.AddSeconds(5));
 
         output = await EcoEarnTokensContractStub.GetPoolInfo.CallAsync(poolId);
-        output.PoolInfo.Config.EndBlockNumber.ShouldBe(input.EndBlockNumber);
+        output.PoolInfo.Config.EndTime.ShouldBe(endTime.AddSeconds(5));
     }
 
     [Fact]
-    public async Task SetTokensPoolEndBlockNumberTests_Fail()
+    public async Task SetTokensPoolEndTimeTests_Fail()
     {
         var poolId = await CreateTokensPool();
 
-        var result = await EcoEarnTokensContractStub.SetTokensPoolEndBlockNumber.SendWithExceptionAsync(
-            new SetTokensPoolEndBlockNumberInput());
+        var result = await EcoEarnTokensContractStub.SetTokensPoolEndTime.SendWithExceptionAsync(
+            new SetTokensPoolEndTimeInput());
         result.TransactionResult.Error.ShouldContain("Invalid pool id.");
 
-        result = await EcoEarnTokensContractStub.SetTokensPoolEndBlockNumber.SendWithExceptionAsync(
-            new SetTokensPoolEndBlockNumberInput
+        result = await EcoEarnTokensContractStub.SetTokensPoolEndTime.SendWithExceptionAsync(
+            new SetTokensPoolEndTimeInput
             {
                 PoolId = new Hash()
             });
         result.TransactionResult.Error.ShouldContain("Invalid pool id.");
 
-        result = await EcoEarnTokensContractStub.SetTokensPoolEndBlockNumber.SendWithExceptionAsync(
-            new SetTokensPoolEndBlockNumberInput
+        result = await EcoEarnTokensContractStub.SetTokensPoolEndTime.SendWithExceptionAsync(
+            new SetTokensPoolEndTimeInput
             {
                 PoolId = HashHelper.ComputeFrom(1)
             });
         result.TransactionResult.Error.ShouldContain("Pool not exists.");
 
-        result = await EcoEarnTokensContractStub.SetTokensPoolEndBlockNumber.SendWithExceptionAsync(
-            new SetTokensPoolEndBlockNumberInput
+        result = await EcoEarnTokensContractStub.SetTokensPoolEndTime.SendWithExceptionAsync(
+            new SetTokensPoolEndTimeInput
             {
                 PoolId = poolId
             });
-        result.TransactionResult.Error.ShouldContain("Invalid end block number.");
+        result.TransactionResult.Error.ShouldContain("Invalid end time.");
 
         var poolInfo = await EcoEarnTokensContractStub.GetPoolInfo.CallAsync(poolId);
 
-        result = await EcoEarnTokensContractStub.SetTokensPoolEndBlockNumber.SendWithExceptionAsync(
-            new SetTokensPoolEndBlockNumberInput
+        result = await EcoEarnTokensContractStub.SetTokensPoolEndTime.SendWithExceptionAsync(
+            new SetTokensPoolEndTimeInput
             {
                 PoolId = poolId,
-                EndBlockNumber = poolInfo.PoolInfo.Config.StartBlockNumber
+                EndTime = poolInfo.PoolInfo.Config.StartTime.Seconds
             });
-        result.TransactionResult.Error.ShouldContain("Invalid end block number.");
+        result.TransactionResult.Error.ShouldContain("Invalid end time.");
 
-        result = await EcoEarnTokensContractUserStub.SetTokensPoolEndBlockNumber.SendWithExceptionAsync(
-            new SetTokensPoolEndBlockNumberInput
+        result = await EcoEarnTokensContractUserStub.SetTokensPoolEndTime.SendWithExceptionAsync(
+            new SetTokensPoolEndTimeInput
             {
                 PoolId = poolId
             });
@@ -729,7 +707,7 @@ public partial class EcoEarnTokensContractTests
         var result = await EcoEarnTokensContractStub.SetTokensPoolFixedBoostFactor.SendWithExceptionAsync(
             new SetTokensPoolFixedBoostFactorInput());
         result.TransactionResult.Error.ShouldContain("Invalid fixed boost factor.");
-        
+
         result = await EcoEarnTokensContractStub.SetTokensPoolFixedBoostFactor.SendWithExceptionAsync(
             new SetTokensPoolFixedBoostFactorInput
             {
@@ -763,100 +741,107 @@ public partial class EcoEarnTokensContractTests
     }
 
     [Fact]
-    public async Task SetTokensPoolRewardPerBlockTests()
+    public async Task SetTokensPoolRewardPerSecondTests()
     {
         var poolId = await CreateTokensPool();
-        
-        var output = await EcoEarnTokensContractStub.GetPoolInfo.CallAsync(poolId);
-        output.PoolInfo.Config.RewardPerBlock.ShouldBe(100_00000000);
 
-        var input = new SetTokensPoolRewardPerBlockInput
+        var output = await EcoEarnTokensContractStub.GetPoolInfo.CallAsync(poolId);
+        output.PoolInfo.Config.RewardPerSecond.ShouldBe(100_00000000);
+
+        var input = new SetTokensPoolRewardPerSecondInput
         {
             PoolId = poolId,
-            RewardPerBlock = 10_00000000
+            RewardPerSecond = 10_00000000
         };
 
-        var result = await EcoEarnTokensContractStub.SetTokensPoolRewardPerBlock.SendAsync(input);
+        var result = await EcoEarnTokensContractStub.SetTokensPoolRewardPerSecond.SendAsync(input);
         result.TransactionResult.Status.ShouldBe(TransactionResultStatus.Mined);
 
-        var log = GetLogEvent<TokensPoolRewardPerBlockSet>(result.TransactionResult);
+        var log = GetLogEvent<TokensPoolRewardPerSecondSet>(result.TransactionResult);
         log.PoolId.ShouldBe(poolId);
-        log.RewardPerBlock.ShouldBe(10_00000000);
+        log.RewardPerSecond.ShouldBe(10_00000000);
 
         output = await EcoEarnTokensContractStub.GetPoolInfo.CallAsync(poolId);
-        output.PoolInfo.Config.RewardPerBlock.ShouldBe(10_00000000);
+        output.PoolInfo.Config.RewardPerSecond.ShouldBe(10_00000000);
 
-        result = await EcoEarnTokensContractStub.SetTokensPoolRewardPerBlock.SendAsync(input);
-        result.TransactionResult.Logs.FirstOrDefault(l => l.Name.Contains(nameof(TokensPoolRewardPerBlockSet)))
+        result = await EcoEarnTokensContractStub.SetTokensPoolRewardPerSecond.SendAsync(input);
+        result.TransactionResult.Logs.FirstOrDefault(l => l.Name.Contains(nameof(TokensPoolRewardPerSecondSet)))
             .ShouldBeNull();
-        
+
         const long tokenBalance = 5_00000000;
 
         poolId = await CreateTokensPool();
         var stakeInfo = await Stake(poolId, tokenBalance);
+        
+        SetBlockTime(1);
+        
         var reward = await EcoEarnTokensContractStub.GetReward.CallAsync(stakeInfo.StakeId);
         reward.Amount.ShouldBe(99_00000000);
 
-        await EcoEarnTokensContractStub.SetTokensPoolRewardPerBlock.SendAsync(new SetTokensPoolRewardPerBlockInput
+        await EcoEarnTokensContractStub.SetTokensPoolRewardPerSecond.SendAsync(new SetTokensPoolRewardPerSecondInput
         {
             PoolId = poolId,
-            RewardPerBlock = 10_00000000
+            RewardPerSecond = 10_00000000
         });
+        
+        SetBlockTime(1);
 
         var reward2 = await EcoEarnTokensContractStub.GetReward.CallAsync(stakeInfo.StakeId);
         reward2.Amount.ShouldBe(99_00000000 + 99_0000000);
-        
-        await EcoEarnTokensContractStub.SetTokensPoolRewardPerBlock.SendAsync(new SetTokensPoolRewardPerBlockInput
+
+        await EcoEarnTokensContractStub.SetTokensPoolRewardPerSecond.SendAsync(new SetTokensPoolRewardPerSecondInput
         {
             PoolId = poolId,
-            RewardPerBlock = 100_00000000
+            RewardPerSecond = 100_00000000
         });
         
+        SetBlockTime(1);
+
         var reward3 = await EcoEarnTokensContractStub.GetReward.CallAsync(stakeInfo.StakeId);
         reward3.Amount.ShouldBe(99_00000000 + 99_0000000 + 99_00000000);
     }
-    
+
     [Fact]
-    public async Task SetTokensPoolRewardPerBlockTests_Fail()
+    public async Task SetTokensPoolRewardPerSecondTests_Fail()
     {
         var poolId = await CreateTokensPool();
 
-        var result = await EcoEarnTokensContractStub.SetTokensPoolRewardPerBlock.SendWithExceptionAsync(
-            new SetTokensPoolRewardPerBlockInput
+        var result = await EcoEarnTokensContractStub.SetTokensPoolRewardPerSecond.SendWithExceptionAsync(
+            new SetTokensPoolRewardPerSecondInput
             {
-                RewardPerBlock = 1
+                RewardPerSecond = 1
             });
         result.TransactionResult.Error.ShouldContain("Invalid pool id.");
 
-        result = await EcoEarnTokensContractStub.SetTokensPoolRewardPerBlock.SendWithExceptionAsync(
-            new SetTokensPoolRewardPerBlockInput
+        result = await EcoEarnTokensContractStub.SetTokensPoolRewardPerSecond.SendWithExceptionAsync(
+            new SetTokensPoolRewardPerSecondInput
             {
-                RewardPerBlock = 1,
+                RewardPerSecond = 1,
                 PoolId = new Hash()
             });
         result.TransactionResult.Error.ShouldContain("Invalid pool id.");
 
-        result = await EcoEarnTokensContractStub.SetTokensPoolRewardPerBlock.SendWithExceptionAsync(
-            new SetTokensPoolRewardPerBlockInput
+        result = await EcoEarnTokensContractStub.SetTokensPoolRewardPerSecond.SendWithExceptionAsync(
+            new SetTokensPoolRewardPerSecondInput
             {
-                RewardPerBlock = 1,
+                RewardPerSecond = 1,
                 PoolId = HashHelper.ComputeFrom(1)
             });
         result.TransactionResult.Error.ShouldContain("Pool not exists.");
 
-        result = await EcoEarnTokensContractStub.SetTokensPoolRewardPerBlock.SendWithExceptionAsync(
-            new SetTokensPoolRewardPerBlockInput
+        result = await EcoEarnTokensContractStub.SetTokensPoolRewardPerSecond.SendWithExceptionAsync(
+            new SetTokensPoolRewardPerSecondInput
             {
                 PoolId = poolId,
-                RewardPerBlock = 0
+                RewardPerSecond = 0
             });
         result.TransactionResult.Error.ShouldContain("Invalid reward per block.");
 
-        result = await EcoEarnTokensContractUserStub.SetTokensPoolRewardPerBlock.SendWithExceptionAsync(
-            new SetTokensPoolRewardPerBlockInput
+        result = await EcoEarnTokensContractUserStub.SetTokensPoolRewardPerSecond.SendWithExceptionAsync(
+            new SetTokensPoolRewardPerSecondInput
             {
                 PoolId = poolId,
-                RewardPerBlock = 1
+                RewardPerSecond = 1
             });
         result.TransactionResult.Error.ShouldContain("No permission.");
     }
@@ -892,69 +877,63 @@ public partial class EcoEarnTokensContractTests
             await CreateToken();
         }
 
-        var blockNumber = SimulateBlockMining().Result.Block.Height;
+        var blockTime = BlockTimeProvider.GetBlockTime().Seconds;
 
         var input = new CreateTokensPoolInput
         {
             DappId = _appId,
-            Config = new TokensPoolConfig
-            {
-                StartBlockNumber = blockNumber,
-                EndBlockNumber = blockNumber + 10,
-                RewardToken = Symbol,
-                StakingToken = Symbol,
-                FixedBoostFactor = 1,
-                MaximumStakeDuration = 500000,
-                MinimumAmount = 1_00000000,
-                MinimumClaimAmount = 1_00000000,
-                RewardPerBlock = 100_00000000,
-                ReleasePeriod = 10,
-                RewardTokenContract = TokenContractAddress,
-                StakeTokenContract = TokenContractAddress,
-                UpdateAddress = DefaultAddress,
-                MinimumStakeDuration = 86400
-            }
+            StartTime = blockTime,
+            EndTime = blockTime + 100,
+            RewardToken = Symbol,
+            StakingToken = Symbol,
+            FixedBoostFactor = 1,
+            MaximumStakeDuration = 500000,
+            MinimumAmount = 1_00000000,
+            MinimumClaimAmount = 1_00000000,
+            RewardPerSecond = 100_00000000,
+            ReleasePeriod = 10,
+            RewardTokenContract = TokenContractAddress,
+            StakeTokenContract = TokenContractAddress,
+            UpdateAddress = DefaultAddress,
+            MinimumStakeDuration = 86400
         };
         var result = await EcoEarnTokensContractStub.CreateTokensPool.SendAsync(input);
         var log = GetLogEvent<TokensPoolCreated>(result.TransactionResult);
 
         await TokenContractStub.Transfer.SendAsync(new TransferInput
         {
-            Amount = 1000_00000000,
+            Amount = 100000_00000000,
             To = log.AddressInfo.RewardAddress,
             Symbol = Symbol
         });
-        
+
         return log.PoolId;
     }
 
     private async Task<Hash> CreateTokensPool(string symbol)
     {
-        var blockNumber = SimulateBlockMining().Result.Block.Height;
+        var blockTime = BlockTimeProvider.GetBlockTime().Seconds;
 
         var input = new CreateTokensPoolInput
         {
             DappId = _appId,
-            Config = new TokensPoolConfig
-            {
-                StartBlockNumber = blockNumber,
-                EndBlockNumber = blockNumber + 10,
-                RewardToken = Symbol,
-                StakingToken = symbol,
-                FixedBoostFactor = 10000,
-                MaximumStakeDuration = 500000,
-                MinimumAmount = 1_00000000,
-                MinimumClaimAmount = 1_00000000,
-                RewardPerBlock = 100_00000000,
-                ReleasePeriod = 10,
-                RewardTokenContract = TokenContractAddress,
-                StakeTokenContract = TokenContractAddress,
-                UpdateAddress = DefaultAddress,
-                MinimumStakeDuration = 86400
-            }
+            StartTime = blockTime,
+            EndTime = blockTime + 10,
+            RewardToken = Symbol,
+            StakingToken = symbol,
+            FixedBoostFactor = 10000,
+            MaximumStakeDuration = 500000,
+            MinimumAmount = 1_00000000,
+            MinimumClaimAmount = 1_00000000,
+            RewardPerSecond = 100_00000000,
+            ReleasePeriod = 10,
+            RewardTokenContract = TokenContractAddress,
+            StakeTokenContract = TokenContractAddress,
+            UpdateAddress = DefaultAddress,
+            MinimumStakeDuration = 86400
         };
         var result = await EcoEarnTokensContractStub.CreateTokensPool.SendAsync(input);
-        
+
         var log = GetLogEvent<TokensPoolCreated>(result.TransactionResult);
 
         await TokenContractStub.Transfer.SendAsync(new TransferInput
@@ -963,37 +942,76 @@ public partial class EcoEarnTokensContractTests
             To = log.AddressInfo.RewardAddress,
             Symbol = Symbol
         });
-        
+
+        return log.PoolId;
+    }
+    
+    private async Task<Hash> CreateTokensPoolWithLongEndTime()
+    {
+        var admin = await EcoEarnTokensContractStub.GetAdmin.CallAsync(new Empty());
+        if (admin == new Address())
+        {
+            await Register();
+            await CreateToken();
+        }
+
+        var blockTime = BlockTimeProvider.GetBlockTime().Seconds;
+
+        var input = new CreateTokensPoolInput
+        {
+            DappId = _appId,
+            StartTime = blockTime,
+            EndTime = blockTime + 86401,
+            RewardToken = Symbol,
+            StakingToken = Symbol,
+            FixedBoostFactor = 1,
+            MaximumStakeDuration = 500000,
+            MinimumAmount = 1_00000000,
+            MinimumClaimAmount = 1_00000000,
+            RewardPerSecond = 100_00000000,
+            ReleasePeriod = 10,
+            RewardTokenContract = TokenContractAddress,
+            StakeTokenContract = TokenContractAddress,
+            UpdateAddress = DefaultAddress,
+            MinimumStakeDuration = 86400
+        };
+        var result = await EcoEarnTokensContractStub.CreateTokensPool.SendAsync(input);
+        var log = GetLogEvent<TokensPoolCreated>(result.TransactionResult);
+
+        await TokenContractStub.Transfer.SendAsync(new TransferInput
+        {
+            Amount = 10000000_00000000,
+            To = log.AddressInfo.RewardAddress,
+            Symbol = Symbol
+        });
+
         return log.PoolId;
     }
 
-    private async Task<Hash> CreateTokensPoolWithLowRewardPerBlock()
+    private async Task<Hash> CreateTokensPoolWithLowRewardPerSecond()
     {
-        var blockNumber = SimulateBlockMining().Result.Block.Height;
+        var blockTime = BlockTimeProvider.GetBlockTime().Seconds;
 
         var input = new CreateTokensPoolInput
         {
             DappId = _appId,
-            Config = new TokensPoolConfig
-            {
-                StartBlockNumber = blockNumber,
-                EndBlockNumber = blockNumber + 10,
-                RewardToken = Symbol,
-                StakingToken = Symbol,
-                FixedBoostFactor = 10000,
-                MaximumStakeDuration = 500000,
-                MinimumAmount = 2_00000000,
-                MinimumClaimAmount = 1,
-                RewardPerBlock = 1_00000000,
-                ReleasePeriod = 10,
-                RewardTokenContract = TokenContractAddress,
-                StakeTokenContract = TokenContractAddress,
-                UpdateAddress = DefaultAddress,
-                MinimumStakeDuration = 86400
-            }
+            StartTime = blockTime,
+            EndTime = blockTime + 10,
+            RewardToken = Symbol,
+            StakingToken = Symbol,
+            FixedBoostFactor = 10000,
+            MaximumStakeDuration = 500000,
+            MinimumAmount = 2_00000000,
+            MinimumClaimAmount = 1,
+            RewardPerSecond = 1_00000000,
+            ReleasePeriod = 10,
+            RewardTokenContract = TokenContractAddress,
+            StakeTokenContract = TokenContractAddress,
+            UpdateAddress = DefaultAddress,
+            MinimumStakeDuration = 86400
         };
         var result = await EcoEarnTokensContractStub.CreateTokensPool.SendAsync(input);
-        
+
         var log = GetLogEvent<TokensPoolCreated>(result.TransactionResult);
 
         await TokenContractStub.Transfer.SendAsync(new TransferInput
@@ -1002,7 +1020,7 @@ public partial class EcoEarnTokensContractTests
             To = log.AddressInfo.RewardAddress,
             Symbol = Symbol
         });
-        
+
         return log.PoolId;
     }
 
@@ -1069,7 +1087,7 @@ public partial class EcoEarnTokensContractTests
         {
             Symbol = "SGR-1",
             TokenName = "SGR-1 token",
-            TotalSupply = 1000000_00000000,
+            TotalSupply = 1000000000_00000000,
             Decimals = 0,
             Issuer = DefaultAddress,
             IsBurnable = true,
@@ -1078,7 +1096,7 @@ public partial class EcoEarnTokensContractTests
         });
         await TokenContractStub.Issue.SendAsync(new IssueInput
         {
-            Amount = 1000000_00000000,
+            Amount = 1000000000_00000000,
             Symbol = Symbol,
             To = DefaultAddress
         });

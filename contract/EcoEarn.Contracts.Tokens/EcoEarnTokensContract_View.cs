@@ -30,7 +30,7 @@ public partial class EcoEarnTokensContract
         var output = new GetPoolInfoOutput
         {
             PoolInfo = info,
-            Status = CheckPoolEnabled(info.Config.EndBlockNumber)
+            Status = CheckPoolEnabled(info.Config.EndTime)
         };
 
         return output;
@@ -89,11 +89,11 @@ public partial class EcoEarnTokensContract
         var poolData = State.PoolDataMap[stakeInfo.PoolId];
         if (poolData == null) return output;
 
-        var blockNumber = Context.CurrentHeight;
+        var blockTime = Context.CurrentBlockTime;
 
         long reward;
 
-        if (blockNumber > poolData.LastRewardBlock && poolData.TotalStakedAmount != 0)
+        if (blockTime > poolData.LastRewardTime && poolData.TotalStakedAmount != 0)
         {
             reward = CalculateRewardAmount(poolInfo, poolData, stakeInfo);
         }

@@ -73,7 +73,7 @@ public partial class EcoEarnPointsContract
         Assert(input != null, "Invalid input.");
         Assert(IsHashValid(input.DappId), "Invalid dapp id.");
         CheckDAppAdminPermission(input.DappId);
-        ValidatePointsPoolConfig(input.Config);
+        ValidatePointsPoolConfig(input);
         CheckPointExists(input.DappId, input.PointsName);
 
         var poolId = GeneratePoolId(input);
@@ -82,31 +82,46 @@ public partial class EcoEarnPointsContract
         Assert(State.PointsNameMap[input.DappId][input.PointsName] == null, "Points name taken.");
         State.PointsNameMap[input.DappId][input.PointsName] = poolId;
 
+        var config = new PointsPoolConfig
+        {
+            RewardToken = input.RewardToken,
+            RewardPerSecond = input.RewardPerSecond,
+            ReleasePeriod = input.ReleasePeriod,
+            UpdateAddress = input.UpdateAddress,
+            StartTime = new Timestamp
+            {
+                Seconds = input.StartTime
+            },
+            EndTime = new Timestamp
+            {
+                Seconds = input.EndTime
+            }
+        };
+
         State.PoolInfoMap[poolId] = new PoolInfo
         {
             DappId = input.DappId,
             PoolId = poolId,
             PointsName = input.PointsName,
-            Config = input.Config
+            Config = config
         };
 
-        var totalReward = CalculateTotalRewardAmount(input.Config.StartBlockNumber, input.Config.EndBlockNumber,
-            input.Config.RewardPerBlock);
+        var totalReward = CalculateTotalRewardAmount(input.StartTime, input.EndTime, input.RewardPerSecond);
 
         Context.Fire(new PointsPoolCreated
         {
             DappId = input.DappId,
             PoolId = poolId,
             PointsName = input.PointsName,
-            Config = input.Config,
+            Config = config,
             Amount = totalReward,
             PoolAddress = CalculateVirtualAddress(poolId)
         });
 
         return new Empty();
     }
-    
-    public override Empty SetPointsPoolEndBlockNumber(SetPointsPoolEndBlockNumberInput input)
+
+    public override Empty SetPointsPoolEndTime(SetPointsPoolEndTimeInput input)
     {
         Assert(input != null, "Invalid input.");
 
@@ -114,19 +129,20 @@ public partial class EcoEarnPointsContract
 
         CheckDAppAdminPermission(poolInfo.DappId);
 
-        Assert(input.EndBlockNumber > poolInfo.Config.EndBlockNumber, "Invalid end block number.");
+        Assert(input.EndTime > poolInfo.Config.EndTime.Seconds, "Invalid end time.");
 
-        var addedReward = input.EndBlockNumber > poolInfo.Config.EndBlockNumber
-            ? CalculateTotalRewardAmount(poolInfo.Config.EndBlockNumber, input.EndBlockNumber,
-                poolInfo.Config.RewardPerBlock)
-            : 0L;
+        var addedReward = CalculateTotalRewardAmount(poolInfo.Config.EndTime.Seconds, input.EndTime,
+            poolInfo.Config.RewardPerSecond);
 
-        poolInfo.Config.EndBlockNumber = input.EndBlockNumber;
+        poolInfo.Config.EndTime = new Timestamp
+        {
+            Seconds = input.EndTime
+        };
 
-        Context.Fire(new PointsPoolEndBlockNumberSet
+        Context.Fire(new PointsPoolEndTimeSet
         {
             PoolId = input.PoolId,
-            EndBlockNumber = input.EndBlockNumber,
+            EndTime = poolInfo.Config.EndTime,
             Amount = addedReward
         });
 
@@ -136,22 +152,35 @@ public partial class EcoEarnPointsContract
     public override Empty RestartPointsPool(RestartPointsPoolInput input)
     {
         Assert(input != null, "Invalid input.");
-        ValidatePointsPoolConfig(input.Config);
+        ValidatePointsPoolConfig(input);
 
         var poolInfo = GetPool(input.PoolId);
-        Assert(!CheckPoolEnabled(poolInfo.Config.EndBlockNumber), "Can not restart yet.");
+        Assert(!CheckPoolEnabled(poolInfo.Config.EndTime), "Can not restart yet.");
         CheckDAppAdminPermission(poolInfo.DappId);
 
-        poolInfo.Config = input.Config;
+        poolInfo.Config = new PointsPoolConfig
+        {
+            RewardToken = input.RewardToken,
+            RewardPerSecond = input.RewardPerSecond,
+            ReleasePeriod = input.ReleasePeriod,
+            UpdateAddress = input.UpdateAddress,
+            StartTime = new Timestamp
+            {
+                Seconds = input.StartTime
+            },
+            EndTime = new Timestamp
+            {
+                Seconds = input.EndTime
+            }
+        };
 
-        var totalReward = CalculateTotalRewardAmount(input.Config.StartBlockNumber, input.Config.EndBlockNumber,
-            input.Config.RewardPerBlock);
+        var totalReward = CalculateTotalRewardAmount(input.StartTime, input.EndTime, input.RewardPerSecond);
 
         Context.Fire(new PointsPoolRestarted
         {
             PoolId = input.PoolId,
             Amount = totalReward,
-            Config = input.Config
+            Config = poolInfo.Config
         });
 
         return new Empty();
@@ -205,15 +234,25 @@ public partial class EcoEarnPointsContract
 
     #region private
 
-    private void ValidatePointsPoolConfig(PointsPoolConfig config)
+    private void ValidatePointsPoolConfig(CreatePointsPoolInput input)
     {
-        Assert(config != null, "Invalid config.");
-        Assert(IsAddressValid(config.UpdateAddress), "Invalid update address.");
-        CheckTokenExists(config.RewardToken);
-        Assert(config.StartBlockNumber >= Context.CurrentHeight, "Invalid start block number.");
-        Assert(config.EndBlockNumber > config.StartBlockNumber, "Invalid end block number.");
-        Assert(config.RewardPerBlock > 0, "Invalid reward per block.");
-        Assert(config.ReleasePeriod >= 0, "Invalid release period.");
+        Assert(IsAddressValid(input.UpdateAddress), "Invalid update address.");
+        CheckTokenExists(input.RewardToken);
+        Assert(input.StartTime >= Context.CurrentBlockTime.Seconds, "Invalid start time.");
+        Assert(input.EndTime > input.StartTime, "Invalid end time.");
+        Assert(input.RewardPerSecond > 0, "Invalid reward per block.");
+        Assert(input.ReleasePeriod >= 0, "Invalid release period.");
+    }
+
+    private void ValidatePointsPoolConfig(RestartPointsPoolInput input)
+    {
+        Assert(input != null, "Invalid config.");
+        Assert(IsAddressValid(input.UpdateAddress), "Invalid update address.");
+        CheckTokenExists(input.RewardToken);
+        Assert(input.StartTime >= Context.CurrentBlockTime.Seconds, "Invalid start time.");
+        Assert(input.EndTime > input.StartTime, "Invalid end time.");
+        Assert(input.RewardPerSecond > 0, "Invalid reward per block.");
+        Assert(input.ReleasePeriod >= 0, "Invalid release period.");
     }
 
     private void CheckTokenExists(string symbol)
@@ -244,12 +283,12 @@ public partial class EcoEarnPointsContract
         return HashHelper.ComputeFrom(input);
     }
 
-    private long CalculateTotalRewardAmount(long start, long end, long rewardPerBlock)
+    private long CalculateTotalRewardAmount(long start, long end, long RewardPerSecond)
     {
-        return end.Sub(start).Mul(rewardPerBlock);
+        return end.Sub(start).Mul(RewardPerSecond);
     }
 
-    private Address CalculateVirtualAddress(Hash id) 
+    private Address CalculateVirtualAddress(Hash id)
     {
         return Context.ConvertVirtualAddressToContractAddress(id);
     }

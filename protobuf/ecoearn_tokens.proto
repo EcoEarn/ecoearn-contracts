@@ -17,7 +17,7 @@ service EcoEarnTokensContract {
   rpc SetDappAdmin (SetDappAdminInput) returns (google.protobuf.Empty) {}
   rpc GetDappInfo (aelf.Hash) returns (DappInfo) {option (aelf.is_view) = true;}
   rpc CreateTokensPool (CreateTokensPoolInput) returns (google.protobuf.Empty) {}
-  rpc SetTokensPoolEndBlockNumber (SetTokensPoolEndBlockNumberInput) returns (google.protobuf.Empty) {}
+  rpc SetTokensPoolEndTime (SetTokensPoolEndTimeInput) returns (google.protobuf.Empty) {}
   rpc SetTokensPoolUpdateAddress (SetTokensPoolUpdateAddressInput) returns (google.protobuf.Empty) {}
   rpc SetTokensPoolRewardReleasePeriod (SetTokensPoolRewardReleasePeriodInput) returns (google.protobuf.Empty) {}
   rpc SetTokensPoolStakeConfig (SetTokensPoolStakeConfigInput) returns (google.protobuf.Empty) {}
@@ -26,7 +26,7 @@ service EcoEarnTokensContract {
   rpc GetPoolAddressInfo (aelf.Hash) returns (PoolAddressInfo) {option (aelf.is_view) = true;}
   rpc GetPoolCount (aelf.Hash) returns (google.protobuf.Int64Value) {option (aelf.is_view) = true;}
   rpc SetTokensPoolFixedBoostFactor (SetTokensPoolFixedBoostFactorInput) returns (google.protobuf.Empty) {}
-  rpc SetTokensPoolRewardPerBlock (SetTokensPoolRewardPerBlockInput) returns (google.protobuf.Empty) {}
+  rpc SetTokensPoolRewardPerSecond (SetTokensPoolRewardPerSecondInput) returns (google.protobuf.Empty) {}
 
   rpc Stake (StakeInput) returns (google.protobuf.Empty) {}
   rpc EarlyStake (EarlyStakeInput) returns (google.protobuf.Empty) {}
@@ -62,14 +62,27 @@ message DappInfo {
 
 message CreateTokensPoolInput {
   aelf.Hash dapp_id = 1;
-  TokensPoolConfig config = 2;
+  string reward_token = 2;
+  int64 start_time = 3;
+  int64 end_time = 4;
+  int64 reward_per_second = 5;
+  aelf.Address update_address = 6;
+  string staking_token = 7;
+  int64 fixed_boost_factor = 8;
+  int64 minimum_amount = 9;
+  int64 release_period = 10;
+  int64 maximum_stake_duration = 11;
+  aelf.Address reward_token_contract = 12;
+  aelf.Address stake_token_contract = 13;
+  int64 minimum_claim_amount = 14;
+  int64 minimum_stake_duration = 15;
 }
 
 message TokensPoolConfig {
   string reward_token = 1;
-  int64 start_block_number = 2;
-  int64 end_block_number = 3;
-  int64 reward_per_block = 4;
+  google.protobuf.Timestamp start_time = 2;
+  google.protobuf.Timestamp end_time = 3;
+  int64 reward_per_second = 4;
   aelf.Address update_address = 5;
   string staking_token = 6;
   int64 fixed_boost_factor = 7;
@@ -82,9 +95,9 @@ message TokensPoolConfig {
   int64 minimum_stake_duration = 14;
 }
 
-message SetTokensPoolEndBlockNumberInput {
+message SetTokensPoolEndTimeInput {
   aelf.Hash pool_id = 1;
-  int64 end_block_number = 2;
+  int64 end_time = 2;
 }
 
 message SetTokensPoolUpdateAddressInput {
@@ -110,9 +123,9 @@ message SetTokensPoolFixedBoostFactorInput {
   int64 fixed_boost_factor = 2;
 }
 
-message SetTokensPoolRewardPerBlockInput {
+message SetTokensPoolRewardPerSecondInput {
   aelf.Hash pool_id = 1;
-  int64 reward_per_block = 2;
+  int64 reward_per_second = 2;
 }
 
 message GetPoolInfoOutput {
@@ -130,7 +143,7 @@ message PoolInfo {
 message PoolData {
   aelf.Hash pool_id = 1;
   aelf.BigIntValue acc_token_per_share = 2;  // Accrued token per share
-  int64 last_reward_block = 3;    // The block number of the last pool update
+  google.protobuf.Timestamp last_reward_time = 3;    // The block number of the last pool update
   int64 total_staked_amount = 4;  // The amount of token staked
 }
 
@@ -151,7 +164,7 @@ message StakeInfo {
   aelf.Address account = 8;
   int64 boosted_amount = 9;
   int64 reward_debt = 10;
-  google.protobuf.Timestamp withdraw_time = 11;
+  google.protobuf.Timestamp unlock_time = 11;
   int64 reward_amount = 12;
   int64 locked_reward_amount = 13;
   int64 claimed_amount = 14;
@@ -274,10 +287,10 @@ message TokensPoolCreated {
   PoolAddressInfo address_info = 5;
 }
 
-message TokensPoolEndBlockNumberSet {
+message TokensPoolEndTimeSet {
   option (aelf.is_event) = true;
   aelf.Hash pool_id = 1;
-  int64 end_block_number = 2;
+  google.protobuf.Timestamp end_time = 2;
   int64 amount = 3;
 }
 
@@ -371,9 +384,9 @@ message TokensPoolFixedBoostFactorSet {
   int64 fixed_boost_factor = 2;
 }
     
-message TokensPoolRewardPerBlockSet {
+message TokensPoolRewardPerSecondSet {
   option (aelf.is_event) = true;
   aelf.Hash pool_id = 1;
-  int64 reward_per_block = 2;
+  int64 reward_per_second = 2;
   PoolData pool_data = 3;
 }

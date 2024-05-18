@@ -21,7 +21,7 @@ public partial class EcoEarnPointsContract
         Assert(input != null, "Invalid input.");
         var poolInfo = GetPool(input.PoolId);
         Assert(poolInfo.Config.UpdateAddress == Context.Sender, "No permission.");
-        Assert(CheckPoolEnabled(poolInfo.Config.EndBlockNumber), "Pool disabled.");
+        Assert(CheckPoolEnabled(poolInfo.Config.EndTime), "Pool disabled.");
 
         var currentHeight = Context.CurrentHeight;
         Assert(State.SnapshotMap[input.PoolId]?[currentHeight] == null, "Duplicate Snapshot.");
@@ -50,7 +50,7 @@ public partial class EcoEarnPointsContract
         ValidateClaimInput(input);
 
         var poolInfo = GetPool(input.PoolId);
-        Assert(Context.CurrentHeight >= poolInfo.Config.StartBlockNumber, "Pool not start.");
+        Assert(Context.CurrentBlockTime >= poolInfo.Config.StartTime, "Pool not start.");
         Assert(Context.CurrentBlockTime.Seconds < input.ExpirationTime, "Signature expired.");
 
         Assert(RecoverAddressFromSignature(input) == poolInfo.Config.UpdateAddress, "Signature not valid.");
@@ -139,7 +139,7 @@ public partial class EcoEarnPointsContract
         var poolInfo = GetPool(input.PoolId);
         CheckDAppAdminPermission(poolInfo.DappId);
         
-        Assert(!CheckPoolEnabled(poolInfo.Config.EndBlockNumber), "Pool not closed.");
+        Assert(!CheckPoolEnabled(poolInfo.Config.EndTime), "Pool not closed.");
 
         var output = State.TokenContract.GetBalance.Call(new GetBalanceInput
         {
@@ -279,11 +279,7 @@ public partial class EcoEarnPointsContract
             Assert(claimInfo.WithdrawTime == null, "Already withdrawn.");
             Assert(Context.CurrentBlockTime >= claimInfo.UnlockTime, "Not unlock yet.");
 
-            if (IsHashValid(claimInfo.StakeId))
-            {
-                var stakeInfo = State.EcoEarnTokensContract.GetStakeInfo.Call(claimInfo.StakeId);
-                Assert(stakeInfo != null && stakeInfo.WithdrawTime != null, "Not unlocked.");
-            }
+            CheckStakeIdUnlocked(claimInfo.StakeId);
 
             claimInfo.WithdrawTime = Context.CurrentBlockTime;
             rewards.TryGetValue(claimInfo.ClaimedSymbol, out var value);
@@ -312,11 +308,7 @@ public partial class EcoEarnPointsContract
             Assert(claimInfo.WithdrawTime == null, "Already withdrawn.");
             Assert(claimInfo.ClaimedSymbol == token, "Token not matched.");
 
-            if (IsHashValid(claimInfo.StakeId))
-            {
-                var stakeInfo = State.EcoEarnTokensContract.GetStakeInfo.Call(claimInfo.StakeId);
-                Assert(stakeInfo != null && stakeInfo.WithdrawTime != null, "Not unlocked.");
-            }
+            CheckStakeIdUnlocked(claimInfo.StakeId);
 
             amount = amount.Add(claimInfo.ClaimedAmount);
             claimInfo.EarlyStakeTime = Context.CurrentBlockTime;
@@ -359,7 +351,7 @@ public partial class EcoEarnPointsContract
 
         var stakeInfo = State.EcoEarnTokensContract.GetStakeInfo.Call(stakeId);
 
-        if (IsHashValid(stakeId) && stakeInfo.WithdrawTime == null) return stakeId;
+        if (IsHashValid(stakeId) && stakeInfo.UnlockTime == null) return stakeId;
 
         var count = State.EcoEarnTokensContract.GetUserStakeCount.Call(new GetUserStakeCountInput
         {
@@ -370,6 +362,13 @@ public partial class EcoEarnPointsContract
         stakeId = GenerateStakeId(poolId, Context.Sender, count);
 
         return stakeId;
+    }
+
+    private void CheckStakeIdUnlocked(Hash stakeId)
+    {
+        if (!IsHashValid(stakeId)) return;
+        var stakeInfo = State.EcoEarnTokensContract.GetStakeInfo.Call(stakeId);
+        Assert(stakeInfo != null && stakeInfo.UnlockTime != null, "Not unlocked.");
     }
 
     #endregion

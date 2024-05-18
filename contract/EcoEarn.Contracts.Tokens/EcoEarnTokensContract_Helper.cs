@@ -1,5 +1,6 @@
 using AElf;
 using AElf.Types;
+using Google.Protobuf.WellKnownTypes;
 
 namespace EcoEarn.Contracts.Tokens;
 
@@ -41,8 +42,8 @@ public partial class EcoEarnTokensContract
         Assert(info != null && info.Admin == Context.Sender, "No permission.");
     }
 
-    private bool CheckPoolEnabled(long endBlockNumber)
+    private bool CheckPoolEnabled(Timestamp endBlockNumber)
     {
-        return Context.CurrentHeight < endBlockNumber;
+        return Context.CurrentBlockTime < endBlockNumber;
     }
 }

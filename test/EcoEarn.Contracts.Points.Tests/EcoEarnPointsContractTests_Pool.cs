@@ -2,6 +2,7 @@ using System.Linq;
 using System.Threading.Tasks;
 using AElf;
 using AElf.Contracts.MultiToken;
+using AElf.CSharp.Core.Extension;
 using AElf.Types;
 using Shouldly;
 using Xunit;
@@ -185,21 +186,18 @@ public partial class EcoEarnPointsContractTests
             Symbol = Symbol
         });
 
-        var blockNumber = SimulateBlockMining().Result.Block.Height;
+        var blockTime = BlockTimeProvider.GetBlockTime();
 
         var input = new CreatePointsPoolInput
         {
             DappId = _appId,
             PointsName = PointsName,
-            Config = new PointsPoolConfig
-            {
-                StartBlockNumber = blockNumber,
-                EndBlockNumber = blockNumber + 100,
-                RewardPerBlock = 10,
-                RewardToken = Symbol,
-                UpdateAddress = DefaultAddress,
-                ReleasePeriod = 0
-            }
+            StartTime = blockTime.Seconds,
+            EndTime = blockTime.Seconds + 100,
+            RewardPerSecond = 10,
+            RewardToken = Symbol,
+            UpdateAddress = DefaultAddress,
+            ReleasePeriod = 0
         };
         var result = await EcoEarnPointsContractStub.CreatePointsPool.SendAsync(input);
         result.TransactionResult.Status.ShouldBe(TransactionResultStatus.Mined);
@@ -208,11 +206,11 @@ public partial class EcoEarnPointsContractTests
         log.DappId.ShouldBe(_appId);
         log.PointsName.ShouldBe(PointsName);
         log.Config.RewardToken.ShouldBe(Symbol);
-        log.Config.StartBlockNumber.ShouldBe(blockNumber);
-        log.Config.EndBlockNumber.ShouldBe(blockNumber + 100);
+        log.Config.StartTime.Seconds.ShouldBe(blockTime.Seconds);
+        log.Config.EndTime.Seconds.ShouldBe(blockTime.Seconds + 100);
         log.Config.ReleasePeriod.ShouldBe(0);
         log.Config.UpdateAddress.ShouldBe(DefaultAddress);
-        log.Config.RewardPerBlock.ShouldBe(10);
+        log.Config.RewardPerSecond.ShouldBe(10);
         log.Amount.ShouldBe(1000);
         log.PoolId.ShouldBe(HashHelper.ComputeFrom(input));
 
@@ -222,7 +220,7 @@ public partial class EcoEarnPointsContractTests
             output.PoolInfo.PoolId.ShouldBe(log.PoolId);
             output.PoolInfo.PointsName.ShouldBe(PointsName);
             output.PoolInfo.DappId.ShouldBe(_appId);
-            output.PoolInfo.Config.ShouldBe(input.Config);
+            output.PoolInfo.Config.ShouldBe(log.Config);
         }
     }
 
@@ -250,13 +248,13 @@ public partial class EcoEarnPointsContractTests
             {
                 DappId = _appId
             });
-        result.TransactionResult.Error.ShouldContain("Invalid config.");
+        result.TransactionResult.Error.ShouldContain("Invalid update address.");
 
         result =
             await EcoEarnPointsContractStub.CreatePointsPool.SendWithExceptionAsync(new CreatePointsPoolInput
             {
                 DappId = _appId,
-                Config = new PointsPoolConfig()
+                UpdateAddress = new Address()
             });
         result.TransactionResult.Error.ShouldContain("Invalid update address.");
 
@@ -264,26 +262,12 @@ public partial class EcoEarnPointsContractTests
             await EcoEarnPointsContractStub.CreatePointsPool.SendWithExceptionAsync(new CreatePointsPoolInput
             {
                 DappId = _appId,
-                Config = new PointsPoolConfig
-                {
-                    UpdateAddress = new Address()
-                }
-            });
-        result.TransactionResult.Error.ShouldContain("Invalid update address.");
-
-        result =
-            await EcoEarnPointsContractStub.CreatePointsPool.SendWithExceptionAsync(new CreatePointsPoolInput
-            {
-                DappId = _appId,
-                Config = new PointsPoolConfig
-                {
-                    UpdateAddress = DefaultAddress,
-                    StartBlockNumber = 100,
-                    EndBlockNumber = 200,
-                    ReleasePeriod = 2,
-                    RewardPerBlock = 10,
-                    RewardToken = Symbol
-                }
+                UpdateAddress = DefaultAddress,
+                StartTime = BlockTimeProvider.GetBlockTime().Seconds,
+                EndTime = BlockTimeProvider.GetBlockTime().Seconds + 100,
+                ReleasePeriod = 2,
+                RewardPerSecond = 10,
+                RewardToken = Symbol
             });
         result.TransactionResult.Error.ShouldContain("Invalid points name.");
 
@@ -291,15 +275,12 @@ public partial class EcoEarnPointsContractTests
             await EcoEarnPointsContractStub.CreatePointsPool.SendWithExceptionAsync(new CreatePointsPoolInput
             {
                 DappId = _appId,
-                Config = new PointsPoolConfig
-                {
-                    UpdateAddress = DefaultAddress,
-                    StartBlockNumber = 100,
-                    EndBlockNumber = 200,
-                    ReleasePeriod = 2,
-                    RewardPerBlock = 10,
-                    RewardToken = Symbol
-                },
+                UpdateAddress = DefaultAddress,
+                StartTime = BlockTimeProvider.GetBlockTime().Seconds,
+                EndTime = BlockTimeProvider.GetBlockTime().Seconds + 100,
+                ReleasePeriod = 2,
+                RewardPerSecond = 10,
+                RewardToken = Symbol,
                 PointsName = "Test"
             });
         result.TransactionResult.Error.ShouldContain("Point not exists.");
@@ -315,15 +296,12 @@ public partial class EcoEarnPointsContractTests
         {
             DappId = _appId,
             PointsName = PointsName,
-            Config = new PointsPoolConfig
-            {
-                StartBlockNumber = 100,
-                EndBlockNumber = 200,
-                RewardPerBlock = 10,
-                RewardToken = Symbol,
-                UpdateAddress = DefaultAddress,
-                ReleasePeriod = 0
-            }
+            StartTime = BlockTimeProvider.GetBlockTime().Seconds,
+            EndTime = BlockTimeProvider.GetBlockTime().Seconds + 100,
+            RewardPerSecond = 10,
+            RewardToken = Symbol,
+            UpdateAddress = DefaultAddress,
+            ReleasePeriod = 0
         };
 
         await EcoEarnPointsContractStub.CreatePointsPool.SendAsync(input);
@@ -331,7 +309,7 @@ public partial class EcoEarnPointsContractTests
         result = await EcoEarnPointsContractStub.CreatePointsPool.SendWithExceptionAsync(input);
         result.TransactionResult.Error.ShouldContain("Pool exists.");
 
-        input.Config.StartBlockNumber = 150;
+        input.StartTime = BlockTimeProvider.GetBlockTime().Seconds + 50;
         result = await EcoEarnPointsContractStub.CreatePointsPool.SendWithExceptionAsync(input);
         result.TransactionResult.Error.ShouldContain("Points name taken.");
 
@@ -346,12 +324,12 @@ public partial class EcoEarnPointsContractTests
     [Theory]
     [InlineData("", 0, 0, 0, 0, "Invalid reward token.")]
     [InlineData("TEST", 0, 0, 0, 0, "TEST not exists.")]
-    [InlineData(Symbol, 0, 0, 0, 0, "Invalid start block number.")]
-    [InlineData(Symbol, 100, 100, 0, 0, "Invalid end block number.")]
-    [InlineData(Symbol, 100, 200, 0, 0, "Invalid reward per block.")]
-    [InlineData(Symbol, 100, 200, 10, -1, "Invalid release period.")]
-    public async Task CreatePointsPoolTests_Config_Fail(string rewardToken, long startBlockNumber, long endBlockNumber,
-        long rewardPerBlock, long releasePeriod, string error)
+    [InlineData(Symbol, 0, 0, 0, 0, "Invalid start time.")]
+    [InlineData(Symbol, 1, 0, 0, 0, "Invalid end time.")]
+    [InlineData(Symbol, 1, 1, 0, 0, "Invalid reward per block.")]
+    [InlineData(Symbol, 1, 1, 10, -1, "Invalid release period.")]
+    public async Task CreatePointsPoolTests_Config_Fail(string rewardToken, long startTime, long endTime,
+        long rewardPerSecond, long releasePeriod, string error)
     {
         await Initialize();
 
@@ -362,21 +340,18 @@ public partial class EcoEarnPointsContractTests
             new CreatePointsPoolInput
             {
                 DappId = _appId,
-                Config = new PointsPoolConfig
-                {
-                    RewardToken = rewardToken,
-                    StartBlockNumber = startBlockNumber,
-                    EndBlockNumber = endBlockNumber,
-                    RewardPerBlock = rewardPerBlock,
-                    ReleasePeriod = releasePeriod,
-                    UpdateAddress = UserAddress
-                }
+                RewardToken = rewardToken,
+                StartTime = startTime == 1 ? BlockTimeProvider.GetBlockTime().Seconds : 0,
+                EndTime = endTime == 1 ? BlockTimeProvider.GetBlockTime().Seconds + endTime : 0,
+                RewardPerSecond = rewardPerSecond,
+                ReleasePeriod = releasePeriod,
+                UpdateAddress = UserAddress
             });
         result.TransactionResult.Error.ShouldContain(error);
     }
 
     [Fact]
-    public async Task SetPointsPoolEndBlockNumberTests()
+    public async Task SetPointsPoolEndTimeTests()
     {
         await Initialize();
 
@@ -384,70 +359,70 @@ public partial class EcoEarnPointsContractTests
         var poolId = await CreatePointsPool();
 
         var output = await EcoEarnPointsContractStub.GetPoolInfo.CallAsync(poolId);
-        var endBlockNumber = output.PoolInfo.Config.EndBlockNumber;
+        var endTime = output.PoolInfo.Config.EndTime;
 
-        var result = await EcoEarnPointsContractStub.SetPointsPoolEndBlockNumber.SendAsync(
-            new SetPointsPoolEndBlockNumberInput
+        var result = await EcoEarnPointsContractStub.SetPointsPoolEndTime.SendAsync(
+            new SetPointsPoolEndTimeInput
             {
                 PoolId = poolId,
-                EndBlockNumber = endBlockNumber + 50
+                EndTime = endTime.Seconds + 50
             });
         result.TransactionResult.Status.ShouldBe(TransactionResultStatus.Mined);
 
-        var log = GetLogEvent<PointsPoolEndBlockNumberSet>(result.TransactionResult);
+        var log = GetLogEvent<PointsPoolEndTimeSet>(result.TransactionResult);
         log.PoolId.ShouldBe(poolId);
         log.Amount.ShouldBe(500);
-        log.EndBlockNumber.ShouldBe(endBlockNumber + 50);
+        log.EndTime.ShouldBe(endTime.AddSeconds(50));
 
         output = await EcoEarnPointsContractStub.GetPoolInfo.CallAsync(poolId);
-        output.PoolInfo.Config.EndBlockNumber.ShouldBe(endBlockNumber + 50);
+        output.PoolInfo.Config.EndTime.ShouldBe(endTime.AddSeconds(50));
     }
 
     [Fact]
-    public async Task SetPointsPoolEndBlockNumberTests_Fail()
+    public async Task SetPointsPoolEndTimeTests_Fail()
     {
         await Initialize();
 
         await Register();
         var poolId = await CreatePointsPool();
 
-        var result = await EcoEarnPointsContractStub.SetPointsPoolEndBlockNumber.SendWithExceptionAsync(
-            new SetPointsPoolEndBlockNumberInput());
+        var result = await EcoEarnPointsContractStub.SetPointsPoolEndTime.SendWithExceptionAsync(
+            new SetPointsPoolEndTimeInput());
         result.TransactionResult.Error.ShouldContain("Invalid pool id.");
 
-        result = await EcoEarnPointsContractStub.SetPointsPoolEndBlockNumber.SendWithExceptionAsync(
-            new SetPointsPoolEndBlockNumberInput
+        result = await EcoEarnPointsContractStub.SetPointsPoolEndTime.SendWithExceptionAsync(
+            new SetPointsPoolEndTimeInput
             {
                 PoolId = new Hash()
             });
         result.TransactionResult.Error.ShouldContain("Invalid pool id.");
 
-        result = await EcoEarnPointsContractStub.SetPointsPoolEndBlockNumber.SendWithExceptionAsync(
-            new SetPointsPoolEndBlockNumberInput
+        result = await EcoEarnPointsContractStub.SetPointsPoolEndTime.SendWithExceptionAsync(
+            new SetPointsPoolEndTimeInput
             {
                 PoolId = HashHelper.ComputeFrom(1)
             });
         result.TransactionResult.Error.ShouldContain("Pool not exists.");
 
-        result = await EcoEarnPointsContractStub.SetPointsPoolEndBlockNumber.SendWithExceptionAsync(
-            new SetPointsPoolEndBlockNumberInput
+        result = await EcoEarnPointsContractStub.SetPointsPoolEndTime.SendWithExceptionAsync(
+            new SetPointsPoolEndTimeInput
             {
                 PoolId = poolId
             });
-        result.TransactionResult.Error.ShouldContain("Invalid end block number.");
+        result.TransactionResult.Error.ShouldContain("Invalid end time.");
 
         var poolInfo = await EcoEarnPointsContractStub.GetPoolInfo.CallAsync(poolId);
 
-        result = await EcoEarnPointsContractStub.SetPointsPoolEndBlockNumber.SendWithExceptionAsync(
-            new SetPointsPoolEndBlockNumberInput
+        result = await EcoEarnPointsContractStub.SetPointsPoolEndTime.SendWithExceptionAsync(
+            new SetPointsPoolEndTimeInput
             {
                 PoolId = poolId,
-                EndBlockNumber = poolInfo.PoolInfo.Config.StartBlockNumber
+                EndTime = poolInfo.PoolInfo.Config.StartTime.Seconds
             });
-        result.TransactionResult.Error.ShouldContain("Invalid end block number.");
+        result.TransactionResult.Error.ShouldContain("Invalid end time.");
 
-        result = await EcoEarnPointsContractUserStub.SetPointsPoolEndBlockNumber.SendWithExceptionAsync(
-            new SetPointsPoolEndBlockNumberInput
+        result = await EcoEarnPointsContractUserStub.SetPointsPoolEndTime.SendWithExceptionAsync(
+            new SetPointsPoolEndTimeInput
             {
                 PoolId = poolId
             });
@@ -460,33 +435,29 @@ public partial class EcoEarnPointsContractTests
         await Initialize();
 
         await Register();
-        var poolId = await CreatePointsPoolWithShortTime(2);
-
+        var poolId = await CreatePointsPool();
+        
+        SetBlockTime(100);
+        
         var output = await EcoEarnPointsContractStub.GetPoolInfo.CallAsync(poolId);
         output.Status.ShouldBeFalse();
 
-        var blockNumber = SimulateBlockMining().Result.Block.Height;
-
-        var config = new PointsPoolConfig
-        {
-            StartBlockNumber = blockNumber,
-            EndBlockNumber = blockNumber + 100,
-            RewardPerBlock = 10,
-            RewardToken = Symbol,
-            UpdateAddress = DefaultAddress,
-            ReleasePeriod = 10
-        };
+        var blockTime = BlockTimeProvider.GetBlockTime().Seconds;
 
         var result = await EcoEarnPointsContractStub.RestartPointsPool.SendAsync(new RestartPointsPoolInput
         {
             PoolId = poolId,
-            Config = config
+            StartTime = blockTime,
+            EndTime = blockTime + 100,
+            RewardPerSecond = 10,
+            RewardToken = Symbol,
+            UpdateAddress = DefaultAddress,
+            ReleasePeriod = 10
         });
         result.TransactionResult.Status.ShouldBe(TransactionResultStatus.Mined);
 
         var log = GetLogEvent<PointsPoolRestarted>(result.TransactionResult);
         log.PoolId.ShouldBe(poolId);
-        log.Config.ShouldBe(config);
         log.Amount.ShouldBe(1000);
 
         output = await EcoEarnPointsContractStub.GetPoolInfo.CallAsync(poolId);
@@ -499,60 +470,54 @@ public partial class EcoEarnPointsContractTests
         await Initialize();
 
         await Register();
-        var poolId = await CreatePointsPoolWithShortTime(3);
-        
-        var config = new PointsPoolConfig
-        {
-            UpdateAddress = UserAddress,
-            RewardToken = Symbol,
-            StartBlockNumber = 100,
-            EndBlockNumber = 200,
-            ReleasePeriod = 10,
-            RewardPerBlock = 1
-        };
-        
+        var poolId = await CreatePointsPool();
+
         var result = await EcoEarnPointsContractStub.RestartPointsPool.SendWithExceptionAsync(
             new RestartPointsPoolInput
             {
-                Config = config,
+                UpdateAddress = UserAddress,
+                RewardToken = Symbol,
+                StartTime = BlockTimeProvider.GetBlockTime().Seconds,
+                EndTime = BlockTimeProvider.GetBlockTime().Seconds + 100,
+                ReleasePeriod = 10,
+                RewardPerSecond = 1,
                 PoolId = poolId
             });
         result.TransactionResult.Error.ShouldContain("Can not restart yet.");
-        
+
         result =
             await EcoEarnPointsContractStub.RestartPointsPool.SendWithExceptionAsync(new RestartPointsPoolInput());
-        result.TransactionResult.Error.ShouldContain("Invalid config.");
-
-        result = await EcoEarnPointsContractStub.RestartPointsPool.SendWithExceptionAsync(
-            new RestartPointsPoolInput
-            {
-                PoolId = poolId,
-                Config = new PointsPoolConfig()
-            });
         result.TransactionResult.Error.ShouldContain("Invalid update address.");
 
         result = await EcoEarnPointsContractStub.RestartPointsPool.SendWithExceptionAsync(
             new RestartPointsPoolInput
             {
                 PoolId = poolId,
-                Config = new PointsPoolConfig
-                {
-                    UpdateAddress = new Address()
-                }
+                UpdateAddress = new Address()
             });
         result.TransactionResult.Error.ShouldContain("Invalid update address.");
-        
+
         result = await EcoEarnPointsContractStub.RestartPointsPool.SendWithExceptionAsync(
             new RestartPointsPoolInput
             {
-                Config = config
+                UpdateAddress = UserAddress,
+                RewardToken = Symbol,
+                StartTime = BlockTimeProvider.GetBlockTime().Seconds,
+                EndTime = BlockTimeProvider.GetBlockTime().Seconds + 100,
+                ReleasePeriod = 10,
+                RewardPerSecond = 1
             });
         result.TransactionResult.Error.ShouldContain("Invalid pool id.");
 
         result = await EcoEarnPointsContractStub.RestartPointsPool.SendWithExceptionAsync(
             new RestartPointsPoolInput
             {
-                Config = config,
+                UpdateAddress = UserAddress,
+                RewardToken = Symbol,
+                StartTime = BlockTimeProvider.GetBlockTime().Seconds,
+                EndTime = BlockTimeProvider.GetBlockTime().Seconds + 100,
+                ReleasePeriod = 10,
+                RewardPerSecond = 1,
                 PoolId = new Hash()
             });
         result.TransactionResult.Error.ShouldContain("Invalid pool id.");
@@ -560,15 +525,27 @@ public partial class EcoEarnPointsContractTests
         result = await EcoEarnPointsContractStub.RestartPointsPool.SendWithExceptionAsync(
             new RestartPointsPoolInput
             {
-                Config = config,
+                UpdateAddress = UserAddress,
+                RewardToken = Symbol,
+                StartTime = BlockTimeProvider.GetBlockTime().Seconds,
+                EndTime = BlockTimeProvider.GetBlockTime().Seconds + 100,
+                ReleasePeriod = 10,
+                RewardPerSecond = 1,
                 PoolId = HashHelper.ComputeFrom(1)
             });
         result.TransactionResult.Error.ShouldContain("Pool not exists.");
+        
+        SetBlockTime(100);
 
         result = await EcoEarnPointsContractUserStub.RestartPointsPool.SendWithExceptionAsync(
             new RestartPointsPoolInput
             {
-                Config = config,
+                UpdateAddress = UserAddress,
+                RewardToken = Symbol,
+                StartTime = BlockTimeProvider.GetBlockTime().Seconds,
+                EndTime = BlockTimeProvider.GetBlockTime().Seconds + 100,
+                ReleasePeriod = 10,
+                RewardPerSecond = 1,
                 PoolId = poolId
             });
         result.TransactionResult.Error.ShouldContain("No permission.");
@@ -577,31 +554,28 @@ public partial class EcoEarnPointsContractTests
     [Theory]
     [InlineData("", 0, 0, 0, 0, "Invalid reward token.")]
     [InlineData("TEST", 0, 0, 0, 0, "TEST not exists.")]
-    [InlineData(Symbol, 0, 0, 0, 0, "Invalid start block number.")]
-    [InlineData(Symbol, 100, 0, 0, 0, "Invalid end block number.")]
-    [InlineData(Symbol, 100, 200, 0, 0, "Invalid reward per block.")]
-    [InlineData(Symbol, 100, 200, 10, -1, "Invalid release period.")]
-    public async Task RestartPointsPoolTests_Config_Fail(string rewardToken, long startBlockNumber, long endBlockNumber,
-        long rewardPerBlock, long releasePeriod, string error)
+    [InlineData(Symbol, 0, 0, 0, 0, "Invalid start time.")]
+    [InlineData(Symbol, 1, 0, 0, 0, "Invalid end time.")]
+    [InlineData(Symbol, 1, 1, 0, 0, "Invalid reward per block.")]
+    [InlineData(Symbol, 1, 1, 10, -1, "Invalid release period.")]
+    public async Task RestartPointsPoolTests_Config_Fail(string rewardToken, long startTime, long endTime,
+        long rewardPerSecond, long releasePeriod, string error)
     {
         await Initialize();
 
         await Register();
-        var poolId = await CreatePointsPoolWithShortTime(2);
+        var poolId = await CreatePointsPool();
 
         var result = await EcoEarnPointsContractStub.RestartPointsPool.SendWithExceptionAsync(
             new RestartPointsPoolInput
             {
                 PoolId = poolId,
-                Config = new PointsPoolConfig
-                {
-                    RewardToken = rewardToken,
-                    StartBlockNumber = startBlockNumber,
-                    EndBlockNumber = endBlockNumber,
-                    RewardPerBlock = rewardPerBlock,
-                    ReleasePeriod = releasePeriod,
-                    UpdateAddress = UserAddress
-                }
+                RewardToken = rewardToken,
+                StartTime = startTime == 1 ? BlockTimeProvider.GetBlockTime().Seconds : 0,
+                EndTime = endTime == 1 ? BlockTimeProvider.GetBlockTime().Seconds + endTime : 0,
+                RewardPerSecond = rewardPerSecond,
+                ReleasePeriod = releasePeriod,
+                UpdateAddress = UserAddress
             });
         result.TransactionResult.Error.ShouldContain(error);
     }
@@ -785,21 +759,18 @@ public partial class EcoEarnPointsContractTests
     {
         await CreateToken();
 
-        var blockNumber = SimulateBlockMining().Result.Block.Height;
+        var blockTime = BlockTimeProvider.GetBlockTime().Seconds;
 
         var result = await EcoEarnPointsContractStub.CreatePointsPool.SendAsync(new CreatePointsPoolInput
         {
             DappId = _appId,
             PointsName = PointsName,
-            Config = new PointsPoolConfig
-            {
-                StartBlockNumber = blockNumber,
-                EndBlockNumber = blockNumber + 100,
-                RewardPerBlock = 10,
-                RewardToken = Symbol,
-                UpdateAddress = DefaultAddress,
-                ReleasePeriod = 10
-            }
+            StartTime = blockTime,
+            EndTime = blockTime + 100,
+            RewardPerSecond = 10,
+            RewardToken = Symbol,
+            UpdateAddress = DefaultAddress,
+            ReleasePeriod = 10
         });
 
         var log = GetLogEvent<PointsPoolCreated>(result.TransactionResult);
@@ -810,40 +781,7 @@ public partial class EcoEarnPointsContractTests
             Amount = 1000,
             Symbol = Symbol
         });
-        
-        return log.PoolId;
-    }
-    
-    private async Task<Hash> CreatePointsPoolWithShortTime(long amount)
-    {
-        await CreateToken();
 
-        var blockNumber = SimulateBlockMining().Result.Block.Height;
-
-        var result = await EcoEarnPointsContractStub.CreatePointsPool.SendAsync(new CreatePointsPoolInput
-        {
-            DappId = _appId,
-            PointsName = PointsName,
-            Config = new PointsPoolConfig
-            {
-                StartBlockNumber = blockNumber,
-                EndBlockNumber = blockNumber + amount,
-                RewardPerBlock = 10,
-                RewardToken = Symbol,
-                UpdateAddress = DefaultAddress,
-                ReleasePeriod = 10
-            }
-        });
-
-        var log = GetLogEvent<PointsPoolCreated>(result.TransactionResult);
-
-        await TokenContractStub.Transfer.SendAsync(new TransferInput
-        {
-            To = log.PoolAddress,
-            Amount = 1000,
-            Symbol = Symbol
-        });
-        
         return log.PoolId;
     }
 

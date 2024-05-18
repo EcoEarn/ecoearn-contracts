@@ -25,10 +25,11 @@ service EcoEarnPointsContract {
   rpc SetDappAdmin (SetDappAdminInput) returns (google.protobuf.Empty) {}
   rpc GetDappInfo (aelf.Hash) returns (DappInfo) {option (aelf.is_view) = true;}
   rpc CreatePointsPool (CreatePointsPoolInput) returns (google.protobuf.Empty) {}
-  rpc SetPointsPoolEndBlockNumber (SetPointsPoolEndBlockNumberInput) returns (google.protobuf.Empty) {}
+  rpc SetPointsPoolEndTime (SetPointsPoolEndTimeInput) returns (google.protobuf.Empty) {}
   rpc RestartPointsPool (RestartPointsPoolInput) returns (google.protobuf.Empty) {}
   rpc SetPointsPoolUpdateAddress (SetPointsPoolUpdateAddressInput) returns (google.protobuf.Empty) {}
   rpc SetPointsPoolRewardReleasePeriod (SetPointsPoolRewardReleasePeriodInput) returns (google.protobuf.Empty) {}
+  rpc SetPointsPoolRewardPerSecond (SetPointsPoolRewardPerSecondInput) returns (google.protobuf.Empty) {}
   rpc GetPoolInfo (aelf.Hash) returns (GetPoolInfoOutput) {option (aelf.is_view) = true;}
   rpc GetPoolAddress (aelf.Hash) returns (aelf.Address) {option (aelf.is_view) = true;}
 
@@ -67,15 +68,20 @@ message DappInfo {
 
 message CreatePointsPoolInput {
   aelf.Hash dapp_id = 1;
-  PointsPoolConfig config = 2;
-  string points_name = 3;
+  string points_name = 2;
+  string reward_token = 3;
+  int64 start_time = 4;
+  int64 end_time = 5;
+  int64 reward_per_second = 6;
+  aelf.Address update_address = 7;
+  int64 release_period = 8;
 }
 
 message PointsPoolConfig {
   string reward_token = 1;
-  int64 start_block_number = 2;
-  int64 end_block_number = 3;
-  int64 reward_per_block = 4;
+  google.protobuf.Timestamp start_time = 2;
+  google.protobuf.Timestamp end_time = 3;
+  int64 reward_per_second = 4;
   aelf.Address update_address = 5;
   int64 release_period = 6;
 }
@@ -152,14 +158,19 @@ message RecoverTokenInput {
   aelf.Address recipient = 3;
 }
 
-message SetPointsPoolEndBlockNumberInput {
+message SetPointsPoolEndTimeInput {
   aelf.Hash pool_id = 1;
-  int64 end_block_number = 2;
+  int64 end_time = 2;
 }
 
 message RestartPointsPoolInput {
   aelf.Hash pool_id = 1;
-  PointsPoolConfig config = 2;
+  string reward_token = 2;
+  int64 start_time = 3;
+  int64 end_time = 4;
+  int64 reward_per_second = 5;
+  aelf.Address update_address = 6;
+  int64 release_period = 7;
 }
 
 message SetPointsPoolUpdateAddressInput {
@@ -170,6 +181,11 @@ message SetPointsPoolUpdateAddressInput {
 message SetPointsPoolRewardReleasePeriodInput {
   aelf.Hash pool_id = 1;
   int64 release_period = 2;
+}
+
+message SetPointsPoolRewardPerSecondInput {
+  aelf.Hash pool_id = 1;
+  int64 reward_per_second = 2;
 }
 
 message SetDappAdminInput {
@@ -242,10 +258,10 @@ message TokenRecovered {
   aelf.Address account = 4;
 }
 
-message PointsPoolEndBlockNumberSet {
+message PointsPoolEndTimeSet {
   option (aelf.is_event) = true;
   aelf.Hash pool_id = 1;
-  int64 end_block_number = 2;
+  google.protobuf.Timestamp end_time = 2;
   int64 amount = 3;
 }
 
@@ -266,6 +282,12 @@ message PointsPoolRewardReleasePeriodSet {
   option (aelf.is_event) = true;
   aelf.Hash pool_id = 1;
   int64 release_period = 2;
+}
+
+message PointsPoolRewardPerSecondSet {
+  option (aelf.is_event) = true;
+  aelf.Hash pool_id = 1;
+  int64 reward_per_second = 2;
 }
 
 message DappAdminSet {
