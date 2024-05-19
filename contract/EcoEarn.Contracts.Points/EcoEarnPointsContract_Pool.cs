@@ -240,7 +240,7 @@ public partial class EcoEarnPointsContract
         CheckTokenExists(input.RewardToken);
         Assert(input.StartTime >= Context.CurrentBlockTime.Seconds, "Invalid start time.");
         Assert(input.EndTime > input.StartTime, "Invalid end time.");
-        Assert(input.RewardPerSecond > 0, "Invalid reward per block.");
+        Assert(input.RewardPerSecond > 0, "Invalid reward per second.");
         Assert(input.ReleasePeriod >= 0, "Invalid release period.");
     }
 
@@ -251,7 +251,7 @@ public partial class EcoEarnPointsContract
         CheckTokenExists(input.RewardToken);
         Assert(input.StartTime >= Context.CurrentBlockTime.Seconds, "Invalid start time.");
         Assert(input.EndTime > input.StartTime, "Invalid end time.");
-        Assert(input.RewardPerSecond > 0, "Invalid reward per block.");
+        Assert(input.RewardPerSecond > 0, "Invalid reward per second.");
         Assert(input.ReleasePeriod >= 0, "Invalid release period.");
     }
 

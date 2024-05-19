@@ -272,7 +272,7 @@ public partial class EcoEarnTokensContract
     public override Empty SetTokensPoolRewardPerSecond(SetTokensPoolRewardPerSecondInput input)
     {
         Assert(input != null, "Invalid input.");
-        Assert(input.RewardPerSecond > 0, "Invalid reward per block.");
+        Assert(input.RewardPerSecond > 0, "Invalid reward per second.");
 
         var poolInfo = GetPool(input.PoolId);
         var poolData = State.PoolDataMap[poolInfo.PoolId];
@@ -309,7 +309,7 @@ public partial class EcoEarnTokensContract
         CheckTokenExists(input.RewardToken, input.RewardTokenContract ?? State.TokenContract.Value, out _);
         Assert(input.StartTime >= Context.CurrentBlockTime.Seconds, "Invalid start time.");
         Assert(input.EndTime > input.StartTime, "Invalid end time.");
-        Assert(input.RewardPerSecond > 0, "Invalid reward per block.");
+        Assert(input.RewardPerSecond > 0, "Invalid reward per second.");
         Assert(input.FixedBoostFactor > 0, "Invalid fixed boost factor.");
         Assert(input.MinimumAmount >= 0, "Invalid minimum amount.");
         Assert(input.ReleasePeriod >= 0, "Invalid release period.");

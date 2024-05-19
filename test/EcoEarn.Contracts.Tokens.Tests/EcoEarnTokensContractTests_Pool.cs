@@ -303,7 +303,7 @@ public partial class EcoEarnTokensContractTests
     [InlineData("TEST", 0, 0, 0, 0, 0, 0, 0, 0, 0, "", "TEST not exists.")]
     [InlineData(Symbol, 0, 0, 0, 0, 0, 0, 0, 0, 0, "", "Invalid start time.")]
     [InlineData(Symbol, 1, 0, 0, 0, 0, 0, 0, 0, 0, "", "Invalid end time.")]
-    [InlineData(Symbol, 1, 1, 0, 0, 0, 0, 0, 0, 0, "", "Invalid reward per block.")]
+    [InlineData(Symbol, 1, 1, 0, 0, 0, 0, 0, 0, 0, "", "Invalid reward per second.")]
     [InlineData(Symbol, 1, 1, 100, 0, 0, 0, 0, 0, 0, "", "Invalid fixed boost factor.")]
     [InlineData(Symbol, 1, 1, 100, 1, -1, 0, 0, 0, 0, "", "Invalid minimum amount.")]
     [InlineData(Symbol, 1, 1, 100, 1, 0, -1, 0, 0, 0, "", "Invalid release period.")]
@@ -835,7 +835,7 @@ public partial class EcoEarnTokensContractTests
                 PoolId = poolId,
                 RewardPerSecond = 0
             });
-        result.TransactionResult.Error.ShouldContain("Invalid reward per block.");
+        result.TransactionResult.Error.ShouldContain("Invalid reward per second.");
 
         result = await EcoEarnTokensContractUserStub.SetTokensPoolRewardPerSecond.SendWithExceptionAsync(
             new SetTokensPoolRewardPerSecondInput

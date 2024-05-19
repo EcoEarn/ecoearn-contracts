@@ -326,7 +326,7 @@ public partial class EcoEarnPointsContractTests
     [InlineData("TEST", 0, 0, 0, 0, "TEST not exists.")]
     [InlineData(Symbol, 0, 0, 0, 0, "Invalid start time.")]
     [InlineData(Symbol, 1, 0, 0, 0, "Invalid end time.")]
-    [InlineData(Symbol, 1, 1, 0, 0, "Invalid reward per block.")]
+    [InlineData(Symbol, 1, 1, 0, 0, "Invalid reward per second.")]
     [InlineData(Symbol, 1, 1, 10, -1, "Invalid release period.")]
     public async Task CreatePointsPoolTests_Config_Fail(string rewardToken, long startTime, long endTime,
         long rewardPerSecond, long releasePeriod, string error)
@@ -556,7 +556,7 @@ public partial class EcoEarnPointsContractTests
     [InlineData("TEST", 0, 0, 0, 0, "TEST not exists.")]
     [InlineData(Symbol, 0, 0, 0, 0, "Invalid start time.")]
     [InlineData(Symbol, 1, 0, 0, 0, "Invalid end time.")]
-    [InlineData(Symbol, 1, 1, 0, 0, "Invalid reward per block.")]
+    [InlineData(Symbol, 1, 1, 0, 0, "Invalid reward per second.")]
     [InlineData(Symbol, 1, 1, 10, -1, "Invalid release period.")]
     public async Task RestartPointsPoolTests_Config_Fail(string rewardToken, long startTime, long endTime,
         long rewardPerSecond, long releasePeriod, string error)
