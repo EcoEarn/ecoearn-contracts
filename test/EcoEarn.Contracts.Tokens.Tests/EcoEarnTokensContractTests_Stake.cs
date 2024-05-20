@@ -419,7 +419,7 @@ public partial class EcoEarnTokensContractTests
         await EcoEarnTokensContractUserStub.Unlock.SendAsync(poolId);
 
         result = await EcoEarnTokensContractUserStub.Unlock.SendWithExceptionAsync(poolId);
-        result.TransactionResult.Error.ShouldContain("Already withdrawn.");
+        result.TransactionResult.Error.ShouldContain("Already unlocked.");
     }
 
     [Fact]
