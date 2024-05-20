@@ -4,7 +4,6 @@ using AElf.CSharp.Core;
 using AElf.Sdk.CSharp;
 using AElf.Types;
 using Google.Protobuf.WellKnownTypes;
-using static System.Int64;
 
 namespace EcoEarn.Contracts.Tokens;
 
@@ -102,7 +101,7 @@ public partial class EcoEarnTokensContract
             RewardPerSecond = input.RewardPerSecond,
             UpdateAddress = input.UpdateAddress
         };
-        
+
         var poolInfo = new PoolInfo
         {
             DappId = input.DappId,
@@ -335,9 +334,9 @@ public partial class EcoEarnTokensContract
         return poolId;
     }
 
-    private long CalculateTotalRewardAmount(long start, long end, long RewardPerSecond)
+    private long CalculateTotalRewardAmount(long start, long end, long rewardPerSecond)
     {
-        return end.Sub(start).Mul(RewardPerSecond);
+        return end.Sub(start).Mul(rewardPerSecond);
     }
 
     private Address CalculateVirtualAddress(Hash id)

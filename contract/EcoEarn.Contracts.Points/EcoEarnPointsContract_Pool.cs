@@ -283,9 +283,9 @@ public partial class EcoEarnPointsContract
         return HashHelper.ComputeFrom(input);
     }
 
-    private long CalculateTotalRewardAmount(long start, long end, long RewardPerSecond)
+    private long CalculateTotalRewardAmount(long start, long end, long rewardPerSecond)
     {
-        return end.Sub(start).Mul(RewardPerSecond);
+        return end.Sub(start).Mul(rewardPerSecond);
     }
 
     private Address CalculateVirtualAddress(Hash id)
