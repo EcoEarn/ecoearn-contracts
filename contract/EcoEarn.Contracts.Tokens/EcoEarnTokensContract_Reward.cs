@@ -25,9 +25,7 @@ public partial class EcoEarnTokensContract
 
         var poolInfo = GetPool(stakeInfo.PoolId);
 
-        var actualReward = Context.CurrentBlockTime >= CalculateStakeEndTime(stakeInfo)
-            ? stakeInfo.RewardAmount
-            : ProcessClaim(poolInfo, stakeInfo);
+        var actualReward = ProcessClaim(poolInfo, stakeInfo);
         Assert(actualReward > poolInfo.Config.MinimumClaimAmount, "Reward not enough.");
 
         return new Empty();

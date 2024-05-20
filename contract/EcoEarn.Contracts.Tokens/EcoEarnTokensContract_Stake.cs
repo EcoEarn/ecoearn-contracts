@@ -252,6 +252,7 @@ public partial class EcoEarnTokensContract
     private long CalculatePending(long amount, BigIntValue accTokenPerShare, long debt, BigIntValue precisionFactor)
     {
         if (accTokenPerShare == null) return 0;
+        
         TryParse(accTokenPerShare.Mul(amount).Div(precisionFactor).Sub(debt).Value, out long result);
         return result;
     }
@@ -444,8 +445,21 @@ public partial class EcoEarnTokensContract
 
             if (stakeInfo.BoostedAmount > 0)
             {
-                var pending = CalculatePending(stakeInfo.BoostedAmount, poolData.AccTokenPerShare, stakeInfo.RewardDebt,
+                var accTokenPerShare = poolData.AccTokenPerShare;
+                var stakeEndTime = CalculateStakeEndTime(stakeInfo);
+                if (poolData.LastRewardTime >= stakeEndTime)
+                {
+                    var multiplier = (poolData.LastRewardTime - stakeEndTime).Seconds;
+                    var rewards = new BigIntValue(multiplier.Mul(poolInfo.Config.RewardPerSecond));
+                    accTokenPerShare = poolData.TotalStakedAmount > 0
+                        ? accTokenPerShare.Sub(rewards.Mul(poolInfo.PrecisionFactor).Div(poolData.TotalStakedAmount))
+                        : accTokenPerShare;
+                }
+                
+                var pending = CalculatePending(stakeInfo.BoostedAmount, accTokenPerShare, stakeInfo.RewardDebt,
                     poolInfo.PrecisionFactor);
+
+                pending = pending >= 0 ? pending : 0;
                 var actualReward = ProcessCommissionFee(pending, poolInfo);
                 stakeInfo.RewardAmount = stakeInfo.RewardAmount.Add(actualReward);
 
