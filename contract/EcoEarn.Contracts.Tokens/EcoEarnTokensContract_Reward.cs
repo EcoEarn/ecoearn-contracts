@@ -21,7 +21,7 @@ public partial class EcoEarnTokensContract
         var stakeInfo = State.StakeInfoMap[input];
         Assert(stakeInfo != null, "Stake info not exists.");
         Assert(stakeInfo.Account == Context.Sender, "No permission.");
-        Assert(stakeInfo.UnlockTime == null, "Already withdrawn.");
+        Assert(stakeInfo.UnlockTime == null, "Already unlocked.");
 
         var poolInfo = GetPool(stakeInfo.PoolId);
 
