@@ -254,7 +254,7 @@ public partial class EcoEarnTokensContract
         if (accTokenPerShare == null) return 0;
         
         TryParse(accTokenPerShare.Mul(amount).Div(precisionFactor).Sub(debt).Value, out long result);
-        return result;
+        return result < 0 ? 0 : result;
     }
 
     private long CalculateDebt(long amount, BigIntValue accTokenPerShare, BigIntValue precisionFactor)
