@@ -200,7 +200,8 @@ public partial class EcoEarnTokensContract
     private long CalculateRewardAmount(PoolInfo poolInfo, PoolData poolData, StakeInfo stakeInfo)
     {
         var accTokenPerShare = poolData.AccTokenPerShare ?? new BigIntValue(0);
-        var multiplier = GetMultiplier(poolData.LastRewardTime, Context.CurrentBlockTime, poolInfo.Config.EndTime);
+        var multiplier = GetMultiplier(poolData.LastRewardTime.Seconds, Context.CurrentBlockTime.Seconds,
+            poolInfo.Config.EndTime.Seconds);
         var rewards = new BigIntValue(multiplier.Mul(poolInfo.Config.RewardPerSecond));
         var adjustedTokenPerShare = poolData.TotalStakedAmount > 0
             ? accTokenPerShare.Add(rewards.Mul(poolInfo.PrecisionFactor).Div(poolData.TotalStakedAmount))

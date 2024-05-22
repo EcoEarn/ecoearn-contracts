@@ -1,5 +1,4 @@
 using AElf.CSharp.Core;
-using AElf.CSharp.Core.Extension;
 using AElf.Types;
 using Google.Protobuf.WellKnownTypes;
 
@@ -76,8 +75,9 @@ public partial class EcoEarnTokensContract
         output.StakeInfo = stakeInfo;
         var poolInfo = State.PoolInfoMap[stakeInfo.PoolId];
 
-        output.IsInUnlockWindow = CheckPoolEnabled(poolInfo.Config.EndTime) && IsInUnlockWindow(stakeInfo, poolInfo.Config.UnlockWindowDuration);
-        
+        output.IsInUnlockWindow = CheckPoolEnabled(poolInfo.Config.EndTime) &&
+                                  IsInUnlockWindow(stakeInfo, poolInfo.Config.UnlockWindowDuration);
+
         return output;
     }
 

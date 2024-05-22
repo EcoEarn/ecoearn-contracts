@@ -3,6 +3,7 @@ using System.Linq;
 using AElf;
 using AElf.Contracts.MultiToken;
 using AElf.CSharp.Core;
+using AElf.CSharp.Core.Extension;
 using AElf.Sdk.CSharp;
 using AElf.Types;
 using Google.Protobuf.Collections;
@@ -55,15 +56,14 @@ public partial class EcoEarnTokensContract
         var existId = State.UserStakeIdMap[poolInfo.PoolId]?[Context.Sender];
         Assert(existId != null && State.StakeInfoMap[existId] != null, "Stake info not exists.");
         var stakeInfo = State.StakeInfoMap[existId];
-        Assert(stakeInfo.UnlockTime != null, "Already unlocked.");
+        Assert(stakeInfo.UnlockTime == null, "Already unlocked.");
         Assert(IsInUnlockWindow(stakeInfo, poolInfo.Config.UnlockWindowDuration), "Not in unlock window.");
 
-        var poolData = State.PoolDataMap[poolInfo.PoolId];
-        ProcessStakeInfo(stakeInfo, poolInfo, poolData, input.Period);
-        
+        ProcessStakeInfo(stakeInfo, poolInfo, input.Period);
+
         Context.Fire(new Renewed
         {
-            PoolData = poolData,
+            PoolData = State.PoolDataMap[poolInfo.PoolId],
             StakeInfo = stakeInfo
         });
 
@@ -85,8 +85,8 @@ public partial class EcoEarnTokensContract
         var poolInfo = GetPool(stakeInfo.PoolId);
         Assert(
             (!CheckPoolEnabled(poolInfo.Config.EndTime) &&
-             CalculateRemainTime(stakeInfo, poolInfo.Config.UnlockWindowDuration) <= 0) ||
-            IsInUnlockWindow(stakeInfo, poolInfo.Config.UnlockWindowDuration), "No in unlock window.");
+             Context.CurrentBlockTime > stakeInfo.StakedTime.AddSeconds(stakeInfo.Period)) ||
+            IsInUnlockWindow(stakeInfo, poolInfo.Config.UnlockWindowDuration), "Not in unlock window.");
 
         stakeInfo.UnlockTime = Context.CurrentBlockTime;
         stakeInfo.LastOperationTime = Context.CurrentBlockTime;
@@ -239,7 +239,8 @@ public partial class EcoEarnTokensContract
             return;
         }
 
-        var multiplier = GetMultiplier(poolData.LastRewardTime, blockTime, poolInfo.Config.EndTime);
+        var multiplier = GetMultiplier(poolData.LastRewardTime.Seconds, blockTime.Seconds,
+            poolInfo.Config.EndTime.Seconds);
         var rewards = new BigIntValue(multiplier.Mul(poolInfo.Config.RewardPerSecond));
         var accTokenPerShare = poolData.AccTokenPerShare ?? new BigIntValue(0);
         poolData.AccTokenPerShare =
@@ -247,11 +248,11 @@ public partial class EcoEarnTokensContract
         poolData.LastRewardTime = blockTime;
     }
 
-    private long GetMultiplier(Timestamp from, Timestamp to, Timestamp endTime)
+    private long GetMultiplier(long from, long to, long endTime)
     {
-        if (to <= endTime) return (to - from).Seconds;
+        if (to <= endTime) return to - from;
         if (from >= endTime) return 0;
-        return (endTime - from).Seconds;
+        return endTime - from;
     }
 
     private long CalculatePending(long amount, BigIntValue accTokenPerShare, long debt, BigIntValue precisionFactor)
@@ -317,13 +318,7 @@ public partial class EcoEarnTokensContract
         {
             Assert(period >= poolInfo.Config.MinimumStakeDuration, "Period too short.");
             Assert(period <= poolInfo.Config.MaximumStakeDuration, "Period too long.");
-
-            stakeInfo.Period = stakeInfo.Period.Add(period);
-            stakeInfo.LastOperationTime = Context.CurrentBlockTime;
         }
-
-        var poolData = State.PoolDataMap[poolInfo.PoolId];
-        UpdatePool(poolInfo, poolData);
 
         // create position
         if (existId == null || stakeInfo.UnlockTime != null)
@@ -340,11 +335,9 @@ public partial class EcoEarnTokensContract
                 Account = address,
                 StakedBlockNumber = Context.CurrentHeight,
                 StakedTime = Context.CurrentBlockTime,
-                Period = period,
                 StakedAmount = stakedAmount,
                 EarlyStakedAmount = earlyStakedAmount,
                 StakingToken = poolInfo.Config.StakingToken,
-                StakingPeriod = period,
                 LastOperationTime = Context.CurrentBlockTime
             };
 
@@ -355,25 +348,14 @@ public partial class EcoEarnTokensContract
         {
             Assert(!IsInUnlockWindow(stakeInfo, poolInfo.Config.UnlockWindowDuration),
                 "Cannot stake during unlock window.");
-            
-            ProcessStakeInfo(stakeInfo, poolInfo, poolData, period);
         }
 
-        var boostedAmount = CalculateBoostedAmount(poolInfo.Config,
-            stakeInfo.StakedAmount.Add(stakeInfo.EarlyStakedAmount), stakeInfo.Period);
-
-        if (boostedAmount != stakeInfo.BoostedAmount)
-        {
-            poolData.TotalStakedAmount = poolData.TotalStakedAmount.Add(boostedAmount).Sub(stakeInfo.BoostedAmount);
-            stakeInfo.BoostedAmount = boostedAmount;
-        }
-
-        stakeInfo.RewardDebt = CalculateDebt(boostedAmount, poolData.AccTokenPerShare, poolInfo.PrecisionFactor);
+        ProcessStakeInfo(stakeInfo, poolInfo, period);
 
         Context.Fire(new Staked
         {
             StakeInfo = stakeInfo,
-            PoolData = poolData
+            PoolData = State.PoolDataMap[poolInfo.PoolId]
         });
 
         return stakeInfo.StakeId;
@@ -441,6 +423,7 @@ public partial class EcoEarnTokensContract
 
     private long CalculateRemainTime(StakeInfo stakeInfo, long unlockWindowDuration)
     {
+        if (stakeInfo.StakingPeriod == 0) return 0;
         var fullCycleSeconds = stakeInfo.StakingPeriod.Add(unlockWindowDuration);
         var timeSpan = (Context.CurrentBlockTime - stakeInfo.LastOperationTime).Seconds;
 
@@ -449,18 +432,41 @@ public partial class EcoEarnTokensContract
         return stakeInfo.StakingPeriod.Sub(secondsInCurrentCycle);
     }
 
-    private void ProcessStakeInfo(StakeInfo stakeInfo, PoolInfo poolInfo, PoolData poolData, long period)
+    private void ProcessStakeInfo(StakeInfo stakeInfo, PoolInfo poolInfo, long period)
     {
-        var remainTime = CalculateRemainTime(stakeInfo, poolInfo.Config.UnlockWindowDuration);
+        var poolData = State.PoolDataMap[poolInfo.PoolId];
+        UpdatePool(poolInfo, poolData);
 
-        var stakingPeriod = remainTime.Add(period);
-        Assert(stakingPeriod <= poolInfo.Config.MaximumStakeDuration, "Period too long.");
-        stakeInfo.StakingPeriod = stakingPeriod;
+        if (period > 0)
+        {
+            var remainTime = CalculateRemainTime(stakeInfo, poolInfo.Config.UnlockWindowDuration);
+
+            var stakingPeriod = remainTime.Add(period);
+            Assert(stakingPeriod <= poolInfo.Config.MaximumStakeDuration, "Period too long.");
+            stakeInfo.StakingPeriod = stakingPeriod;
+            stakeInfo.Period = stakeInfo.Period.Add(period);
+        }
 
         var pending = CalculatePending(stakeInfo.BoostedAmount, poolData.AccTokenPerShare, stakeInfo.RewardDebt,
             poolInfo.PrecisionFactor);
         var actualReward = ProcessCommissionFee(pending, poolInfo);
         stakeInfo.RewardAmount = stakeInfo.RewardAmount.Add(actualReward);
+
+        var boostedAmount = CalculateBoostedAmount(poolInfo.Config,
+            stakeInfo.StakedAmount.Add(stakeInfo.EarlyStakedAmount), stakeInfo.Period);
+
+        if (boostedAmount != stakeInfo.BoostedAmount)
+        {
+            poolData.TotalStakedAmount = poolData.TotalStakedAmount.Add(boostedAmount).Sub(stakeInfo.BoostedAmount);
+            stakeInfo.BoostedAmount = boostedAmount;
+        }
+
+        if (period > 0)
+        {
+            stakeInfo.LastOperationTime = Context.CurrentBlockTime;
+        }
+
+        stakeInfo.RewardDebt = CalculateDebt(boostedAmount, poolData.AccTokenPerShare, poolInfo.PrecisionFactor);
     }
 
     #endregion

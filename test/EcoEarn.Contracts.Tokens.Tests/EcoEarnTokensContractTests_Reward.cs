@@ -205,11 +205,11 @@ public partial class EcoEarnTokensContractTests
 
         var address = await EcoEarnTokensContractStub.GetPoolAddressInfo.CallAsync(poolId);
         var balance = await GetTokenBalance(Symbol, address.RewardAddress);
-        balance.ShouldBe(100000_00000000);
+        balance.ShouldBe(10000000_00000000);
         balance = await GetTokenBalance(Symbol, UserAddress);
         balance.ShouldBe(0);
         
-        SetBlockTime(100);
+        SetBlockTime(86401);
 
         var result = await EcoEarnTokensContractStub.RecoverToken.SendAsync(new RecoverTokenInput
         {
@@ -220,7 +220,7 @@ public partial class EcoEarnTokensContractTests
         result.TransactionResult.Status.ShouldBe(TransactionResultStatus.Mined);
 
         var log = GetLogEvent<TokenRecovered>(result.TransactionResult);
-        log.Amount.ShouldBe(100000_00000000);
+        log.Amount.ShouldBe(10000000_00000000);
         log.PoolId.ShouldBe(poolId);
         log.Account.ShouldBe(UserAddress);
         log.Token.ShouldBe(Symbol);
@@ -228,7 +228,7 @@ public partial class EcoEarnTokensContractTests
         balance = await GetTokenBalance(Symbol, address.RewardAddress);
         balance.ShouldBe(0);
         balance = await GetTokenBalance(Symbol, UserAddress);
-        balance.ShouldBe(100000_00000000);
+        balance.ShouldBe(10000000_00000000);
     }
 
     [Fact]
@@ -265,7 +265,7 @@ public partial class EcoEarnTokensContractTests
         });
         result.TransactionResult.Error.ShouldContain("Pool not closed.");
         
-        SetBlockTime(100);
+        SetBlockTime(86401);
         
         result = await EcoEarnTokensContractStub.RecoverToken.SendWithExceptionAsync(new RecoverTokenInput
         {

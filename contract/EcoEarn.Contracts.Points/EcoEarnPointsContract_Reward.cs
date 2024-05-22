@@ -54,7 +54,7 @@ public partial class EcoEarnPointsContract
         Assert(Context.CurrentBlockTime.Seconds < input.ExpirationTime, "Signature expired.");
 
         Assert(RecoverAddressFromSignature(input) == poolInfo.Config.UpdateAddress, "Signature not valid.");
-        
+
         State.SignatureMap[HashHelper.ComputeFrom(input.Signature.ToByteArray())] = true;
 
         var claimId = GenerateClaimId(input);
@@ -138,7 +138,7 @@ public partial class EcoEarnPointsContract
 
         var poolInfo = GetPool(input.PoolId);
         CheckDAppAdminPermission(poolInfo.DappId);
-        
+
         Assert(!CheckPoolEnabled(poolInfo.Config.EndTime), "Pool not closed.");
 
         var output = State.TokenContract.GetBalance.Call(new GetBalanceInput
