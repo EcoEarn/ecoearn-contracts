@@ -34,6 +34,9 @@ public partial class EcoEarnPointsContractTests
         var output = await EcoEarnPointsContractStub.GetDappInfo.CallAsync(_appId);
         output.DappId.ShouldBe(_appId);
         output.Admin.ShouldBe(DefaultAddress);
+
+        output = await EcoEarnPointsContractStub.GetDappInfo.CallAsync(new Hash());
+        output.DappId.ShouldBeNull();
     }
 
     [Fact]
@@ -214,14 +217,18 @@ public partial class EcoEarnPointsContractTests
         log.Amount.ShouldBe(1000);
         log.PoolId.ShouldBe(HashHelper.ComputeFrom(input));
 
-        {
-            var output = await EcoEarnPointsContractStub.GetPoolInfo.CallAsync(log.PoolId);
-            output.Status.ShouldBe(true);
-            output.PoolInfo.PoolId.ShouldBe(log.PoolId);
-            output.PoolInfo.PointsName.ShouldBe(PointsName);
-            output.PoolInfo.DappId.ShouldBe(_appId);
-            output.PoolInfo.Config.ShouldBe(log.Config);
-        }
+        var output = await EcoEarnPointsContractStub.GetPoolInfo.CallAsync(log.PoolId);
+        output.Status.ShouldBe(true);
+        output.PoolInfo.PoolId.ShouldBe(log.PoolId);
+        output.PoolInfo.PointsName.ShouldBe(PointsName);
+        output.PoolInfo.DappId.ShouldBe(_appId);
+        output.PoolInfo.Config.ShouldBe(log.Config);
+
+        output = await EcoEarnPointsContractStub.GetPoolInfo.CallAsync(new Hash());
+        output.PoolInfo.ShouldBeNull();
+
+        var address = await EcoEarnPointsContractStub.GetPoolAddress.CallAsync(new Hash());
+        address.ShouldBe(new Address());
     }
 
     [Fact]
@@ -436,9 +443,9 @@ public partial class EcoEarnPointsContractTests
 
         await Register();
         var poolId = await CreatePointsPool();
-        
+
         SetBlockTime(100);
-        
+
         var output = await EcoEarnPointsContractStub.GetPoolInfo.CallAsync(poolId);
         output.Status.ShouldBeFalse();
 
@@ -534,7 +541,7 @@ public partial class EcoEarnPointsContractTests
                 PoolId = HashHelper.ComputeFrom(1)
             });
         result.TransactionResult.Error.ShouldContain("Pool not exists.");
-        
+
         SetBlockTime(100);
 
         result = await EcoEarnPointsContractUserStub.RestartPointsPool.SendWithExceptionAsync(

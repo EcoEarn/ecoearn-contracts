@@ -153,6 +153,9 @@ public partial class EcoEarnPointsContractTests
 
         var output = await EcoEarnPointsContractStub.GetClaimInfo.CallAsync(log.ClaimInfo.ClaimId);
         output.ShouldBe(log.ClaimInfo);
+        
+        output = await EcoEarnPointsContractStub.GetClaimInfo.CallAsync(new Hash());
+        output.PoolId.ShouldBeNull();
     }
 
     [Fact]

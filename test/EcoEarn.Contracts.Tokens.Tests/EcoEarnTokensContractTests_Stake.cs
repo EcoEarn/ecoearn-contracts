@@ -731,6 +731,43 @@ public partial class EcoEarnTokensContractTests
         });
         result.TransactionResult.Error.ShouldContain("Already withdrawn.");
     }
+    
+    [Fact]
+    public async Task ViewTests()
+    {
+        {
+            var output = await EcoEarnTokensContractStub.GetDappInfo.CallAsync(new Hash());
+            output.DappId.ShouldBeNull();
+        }
+        {
+            var output = await EcoEarnTokensContractStub.GetPoolInfo.CallAsync(new Hash());
+            output.PoolInfo.ShouldBeNull();
+        }
+        {
+            var output = await EcoEarnTokensContractStub.GetPoolAddressInfo.CallAsync(new Hash());
+            output.StakeAddress.ShouldBeNull();
+        }
+        {
+            var output = await EcoEarnTokensContractStub.GetPoolData.CallAsync(new Hash());
+            output.PoolId.ShouldBeNull();
+        }
+        {
+            var output = await EcoEarnTokensContractStub.GetPoolCount.CallAsync(new Hash());
+            output.Value.ShouldBe(0);
+        }
+        {
+            var output = await EcoEarnTokensContractStub.GetClaimInfo.CallAsync(new Hash());
+            output.PoolId.ShouldBeNull();
+        }
+        {
+            var output = await EcoEarnTokensContractStub.GetStakeInfo.CallAsync(HashHelper.ComputeFrom("test"));
+            output.StakeInfo.ShouldBeNull();
+        }
+        {
+            var output = await EcoEarnTokensContractStub.GetReward.CallAsync(new Hash());
+            output.StakeId.ShouldBeNull();
+        }
+    }
 
     private async Task<StakeInfo> Stake(Hash poolId, long tokenBalance)
     {
