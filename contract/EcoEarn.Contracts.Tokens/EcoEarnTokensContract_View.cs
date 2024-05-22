@@ -70,7 +70,7 @@ public partial class EcoEarnTokensContract
         if (!IsHashValid(input)) return output;
 
         var stakeInfo = State.StakeInfoMap[input];
-        if (stakeInfo.StakeId == null) return output;
+        if (stakeInfo == null) return output;
 
         output.StakeInfo = stakeInfo;
         var poolInfo = State.PoolInfoMap[stakeInfo.PoolId];
@@ -87,18 +87,18 @@ public partial class EcoEarnTokensContract
         if (!IsHashValid(input)) return output;
 
         var stakeInfo = State.StakeInfoMap[input];
-        if (stakeInfo.StakeId == null) return output;
+        if (stakeInfo == null) return output;
 
         output.Account = stakeInfo.Account;
         output.StakeId = input;
 
         var poolInfo = State.PoolInfoMap[stakeInfo.PoolId];
-        if (poolInfo.PoolId == null) return output;
+        if (poolInfo == null) return output;
 
         output.Symbol = poolInfo.Config.RewardToken;
 
         var poolData = State.PoolDataMap[stakeInfo.PoolId];
-        if (poolData.PoolId == null) return output;
+        if (poolData == null) return output;
 
         var blockTime = Context.CurrentBlockTime;
 
