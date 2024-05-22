@@ -24,7 +24,7 @@ public partial class EcoEarnPointsContract
         Assert(CheckPoolEnabled(poolInfo.Config.EndTime), "Pool disabled.");
 
         var currentHeight = Context.CurrentHeight;
-        Assert(State.SnapshotMap[input.PoolId]?[currentHeight] == null, "Duplicate Snapshot.");
+        Assert(State.SnapshotMap[input.PoolId][currentHeight] == null, "Duplicate Snapshot.");
 
         Assert(IsHashValid(input.MerkleTreeRoot), "Invalid merkle tree root.");
 
@@ -176,7 +176,7 @@ public partial class EcoEarnPointsContract
         Assert(input.Period >= 0, "Invalid period.");
 
         var poolInfo = State.EcoEarnTokensContract.GetPoolInfo.Call(input.PoolId).PoolInfo;
-        Assert(poolInfo?.PoolId == input.PoolId, "Pool not exists.");
+        Assert(poolInfo != null && poolInfo.PoolId == input.PoolId, "Pool not exists.");
 
         var stakeId = GetStakeId(input.PoolId);
 
@@ -267,8 +267,6 @@ public partial class EcoEarnPointsContract
         var result = new List<ClaimInfo>();
         rewards = new Dictionary<string, long>();
 
-        if (claimIds.Count == 0) return result;
-
         foreach (var id in claimIds)
         {
             Assert(IsHashValid(id), "Invalid claim id.");
@@ -295,8 +293,6 @@ public partial class EcoEarnPointsContract
     {
         var list = new List<ClaimInfo>();
         amount = 0L;
-
-        if (claimIds.Count == 0) return list;
 
         foreach (var id in claimIds)
         {
@@ -351,7 +347,7 @@ public partial class EcoEarnPointsContract
 
         var output = State.EcoEarnTokensContract.GetStakeInfo.Call(stakeId);
 
-        if (IsHashValid(stakeId) && output?.StakeInfo.UnlockTime == null) return stakeId;
+        if (IsHashValid(stakeId) && output.StakeInfo.UnlockTime == null) return stakeId;
 
         var count = State.EcoEarnTokensContract.GetUserStakeCount.Call(new GetUserStakeCountInput
         {
@@ -368,7 +364,7 @@ public partial class EcoEarnPointsContract
     {
         if (!IsHashValid(stakeId)) return;
         var output = State.EcoEarnTokensContract.GetStakeInfo.Call(stakeId);
-        Assert(output?.StakeInfo.UnlockTime != null, "Not unlocked.");
+        Assert(output.StakeInfo.UnlockTime != null, "Not unlocked.");
     }
 
     #endregion

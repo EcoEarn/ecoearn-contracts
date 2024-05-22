@@ -154,8 +154,6 @@ public partial class EcoEarnTokensContract
     {
         var result = new List<ClaimInfo>();
 
-        if (claimIds.Count == 0) return result;
-
         foreach (var id in claimIds)
         {
             Assert(IsHashValid(id), "Invalid claim id.");

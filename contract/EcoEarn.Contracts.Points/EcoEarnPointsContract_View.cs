@@ -7,12 +7,12 @@ public partial class EcoEarnPointsContract
 {
     public override Address GetAdmin(Empty input)
     {
-        return State.Admin?.Value;
+        return State.Admin.Value;
     }
 
     public override Config GetConfig(Empty input)
     {
-        return State.Config?.Value;
+        return State.Config.Value;
     }
 
     public override DappInfo GetDappInfo(Hash input)
@@ -47,7 +47,7 @@ public partial class EcoEarnPointsContract
     public override Snapshot GetSnapshot(GetSnapshotInput input)
     {
         return input.BlockNumber > 0 && IsHashValid(input.PoolId)
-            ? State.SnapshotMap[input.PoolId]?[input.BlockNumber] ?? new Snapshot()
+            ? State.SnapshotMap[input.PoolId][input.BlockNumber] ?? new Snapshot()
             : new Snapshot();
     }
 }

@@ -8,12 +8,12 @@ public partial class EcoEarnTokensContract
 {
     public override Address GetAdmin(Empty input)
     {
-        return State.Admin?.Value;
+        return State.Admin.Value;
     }
 
     public override Config GetConfig(Empty input)
     {
-        return State.Config?.Value;
+        return State.Config.Value;
     }
 
     public override DappInfo GetDappInfo(Hash input)
@@ -131,6 +131,6 @@ public partial class EcoEarnTokensContract
 
     public override Hash GetUserStakeId(GetUserStakeIdInput input)
     {
-        return State.UserStakeIdMap[input.PoolId]?[input.Account];
+        return State.UserStakeIdMap[input.PoolId][input.Account];
     }
 }
