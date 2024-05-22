@@ -26,9 +26,6 @@ public partial class EcoEarnTokensContractState : ContractState
     // <StakeId, StakeInfo>
     public MappedState<Hash, StakeInfo> StakeInfoMap { get; set; }
 
-    // <StakeId, Timestamp>
-    public MappedState<Hash, Timestamp> StakeInfoUpdateTimeMap { get; set; }
-
     // <PoolId, UserAddress, StakeId>
     public MappedState<Hash, Address, Hash> UserStakeIdMap { get; set; }
 

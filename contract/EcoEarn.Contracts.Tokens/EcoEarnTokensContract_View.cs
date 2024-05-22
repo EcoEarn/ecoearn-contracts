@@ -65,9 +65,20 @@ public partial class EcoEarnTokensContract
         return IsHashValid(input) ? State.ClaimInfoMap[input] ?? new ClaimInfo() : new ClaimInfo();
     }
 
-    public override StakeInfo GetStakeInfo(Hash input)
+    public override GetStakeInfoOutput GetStakeInfo(Hash input)
     {
-        return IsHashValid(input) ? State.StakeInfoMap[input] ?? new StakeInfo() : new StakeInfo();
+        var output = new GetStakeInfoOutput();
+        if (!IsHashValid(input)) return output;
+
+        var stakeInfo = State.StakeInfoMap[input];
+        if (stakeInfo == null) return output;
+
+        output.StakeInfo = stakeInfo;
+        var poolInfo = State.PoolInfoMap[stakeInfo.PoolId];
+
+        output.IsInUnlockWindow = CheckPoolEnabled(poolInfo.Config.EndTime) && IsInUnlockWindow(stakeInfo, poolInfo.Config.UnlockWindowDuration);
+        
+        return output;
     }
 
     public override GetRewardOutput GetReward(Hash input)
@@ -121,10 +132,5 @@ public partial class EcoEarnTokensContract
     public override Hash GetUserStakeId(GetUserStakeIdInput input)
     {
         return State.UserStakeIdMap[input.PoolId]?[input.Account];
-    }
-
-    private Timestamp CalculateUnlockTime(StakeInfo stakeInfo)
-    {
-        return stakeInfo.StakedTime.AddSeconds(stakeInfo.Period);
     }
 }

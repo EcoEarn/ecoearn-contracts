@@ -349,9 +349,9 @@ public partial class EcoEarnPointsContract
             Account = Context.Sender
         });
 
-        var stakeInfo = State.EcoEarnTokensContract.GetStakeInfo.Call(stakeId);
+        var output = State.EcoEarnTokensContract.GetStakeInfo.Call(stakeId);
 
-        if (IsHashValid(stakeId) && stakeInfo.UnlockTime == null) return stakeId;
+        if (IsHashValid(stakeId) && output?.StakeInfo.UnlockTime == null) return stakeId;
 
         var count = State.EcoEarnTokensContract.GetUserStakeCount.Call(new GetUserStakeCountInput
         {
@@ -367,8 +367,8 @@ public partial class EcoEarnPointsContract
     private void CheckStakeIdUnlocked(Hash stakeId)
     {
         if (!IsHashValid(stakeId)) return;
-        var stakeInfo = State.EcoEarnTokensContract.GetStakeInfo.Call(stakeId);
-        Assert(stakeInfo != null && stakeInfo.UnlockTime != null, "Not unlocked.");
+        var output = State.EcoEarnTokensContract.GetStakeInfo.Call(stakeId);
+        Assert(output?.StakeInfo.UnlockTime != null, "Not unlocked.");
     }
 
     #endregion

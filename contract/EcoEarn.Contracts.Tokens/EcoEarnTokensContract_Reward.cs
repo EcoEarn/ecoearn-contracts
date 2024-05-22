@@ -102,8 +102,10 @@ public partial class EcoEarnTokensContract
     private long ProcessClaim(PoolInfo poolInfo, StakeInfo stakeInfo)
     {
         var poolData = State.PoolDataMap[poolInfo.PoolId];
+        UpdatePool(poolInfo, poolData);
 
-        var pending = CalculateRewardAmount(poolInfo, poolData, stakeInfo);
+        var pending = CalculatePending(stakeInfo.BoostedAmount, poolData.AccTokenPerShare, stakeInfo.RewardDebt,
+            poolInfo.PrecisionFactor);
         var actualReward = ProcessCommissionFee(pending, poolInfo).Add(stakeInfo.RewardAmount);
 
         if (actualReward == 0) return 0;
@@ -197,31 +199,12 @@ public partial class EcoEarnTokensContract
 
     private long CalculateRewardAmount(PoolInfo poolInfo, PoolData poolData, StakeInfo stakeInfo)
     {
-        if (State.StakeInfoUpdateTimeMap[stakeInfo.StakeId] != null) return 0;
-
-        var stakeEndTime = CalculateStakeEndTime(stakeInfo);
-
         var accTokenPerShare = poolData.AccTokenPerShare ?? new BigIntValue(0);
-        BigIntValue adjustedTokenPerShare;
-
-        if (poolData.LastRewardTime < stakeEndTime)
-        {
-            var multiplier = GetMultiplier(poolData.LastRewardTime,
-                Context.CurrentBlockTime > stakeEndTime ? stakeEndTime : Context.CurrentBlockTime,
-                poolInfo.Config.EndTime);
-            var rewards = new BigIntValue(multiplier.Mul(poolInfo.Config.RewardPerSecond));
-            adjustedTokenPerShare = poolData.TotalStakedAmount > 0
-                ? accTokenPerShare.Add(rewards.Mul(poolInfo.PrecisionFactor).Div(poolData.TotalStakedAmount))
-                : accTokenPerShare;
-        }
-        else
-        {
-            var multiplier = (poolData.LastRewardTime - stakeEndTime).Seconds;
-            var rewards = new BigIntValue(multiplier.Mul(poolInfo.Config.RewardPerSecond));
-            adjustedTokenPerShare = poolData.TotalStakedAmount > 0
-                ? accTokenPerShare.Sub(rewards.Mul(poolInfo.PrecisionFactor).Div(poolData.TotalStakedAmount))
-                : accTokenPerShare;
-        }
+        var multiplier = GetMultiplier(poolData.LastRewardTime, Context.CurrentBlockTime, poolInfo.Config.EndTime);
+        var rewards = new BigIntValue(multiplier.Mul(poolInfo.Config.RewardPerSecond));
+        var adjustedTokenPerShare = poolData.TotalStakedAmount > 0
+            ? accTokenPerShare.Add(rewards.Mul(poolInfo.PrecisionFactor).Div(poolData.TotalStakedAmount))
+            : accTokenPerShare;
 
         return CalculatePending(stakeInfo.BoostedAmount, adjustedTokenPerShare, stakeInfo.RewardDebt,
             poolInfo.PrecisionFactor);

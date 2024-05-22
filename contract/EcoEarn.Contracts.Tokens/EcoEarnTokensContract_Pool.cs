@@ -99,7 +99,8 @@ public partial class EcoEarnTokensContract
                 Seconds = input.EndTime
             },
             RewardPerSecond = input.RewardPerSecond,
-            UpdateAddress = input.UpdateAddress
+            UpdateAddress = input.UpdateAddress,
+            UnlockWindowDuration = input.UnlockWindowDuration
         };
 
         var poolInfo = new PoolInfo
@@ -293,6 +294,28 @@ public partial class EcoEarnTokensContract
         return new Empty();
     }
 
+    public override Empty SetTokensPoolUnlockWindowDuration(SetTokensPoolUnlockWindowDurationInput input)
+    {
+        Assert(input != null, "Invalid input.");
+        Assert(input.UnlockWindowDuration > 0, "Invalid unlock window duration.");
+
+        var poolInfo = GetPool(input.PoolId);
+
+        CheckDAppAdminPermission(poolInfo.DappId);
+
+        if (poolInfo.Config.UnlockWindowDuration == input.UnlockWindowDuration) return new Empty();
+
+        poolInfo.Config.UnlockWindowDuration = input.UnlockWindowDuration;
+
+        Context.Fire(new TokensPoolUnlockWindowDurationSet
+        {
+            PoolId = input.PoolId,
+            UnlockWindowDuration = input.UnlockWindowDuration
+        });
+
+        return new Empty();
+    }
+
     #endregion
 
     #region private
@@ -315,6 +338,7 @@ public partial class EcoEarnTokensContract
         Assert(input.MaximumStakeDuration > 0, "Invalid maximum stake duration.");
         Assert(input.MinimumClaimAmount >= 0, "Invalid minimum claim amount.");
         Assert(input.MinimumStakeDuration > 0, "Invalid minimum stake duration.");
+        Assert(input.UnlockWindowDuration > 0, "Invalid unlock window duration.");
     }
 
     private void CheckTokenExists(string symbol, Address tokenContract, out int decimals)

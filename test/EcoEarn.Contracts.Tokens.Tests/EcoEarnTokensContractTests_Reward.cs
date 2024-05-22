@@ -46,13 +46,13 @@ public partial class EcoEarnTokensContractTests
         var output = await EcoEarnTokensContractStub.GetClaimInfo.CallAsync(log.ClaimInfo.ClaimId);
         output.ShouldBe(log.ClaimInfo);
 
-        stakeInfo = await EcoEarnTokensContractStub.GetStakeInfo.CallAsync(stakeInfo.StakeId);
-        stakeInfo.RewardAmount.ShouldBe(0);
-        stakeInfo.LockedRewardAmount.ShouldBe(reward.Amount);
+        var stakeOutput = await EcoEarnTokensContractStub.GetStakeInfo.CallAsync(stakeInfo.StakeId);
+        stakeOutput.StakeInfo.RewardAmount.ShouldBe(0);
+        stakeOutput.StakeInfo.LockedRewardAmount.ShouldBe(reward.Amount);
 
         SetBlockTime(1);
         
-        var newReward = await EcoEarnTokensContractStub.GetReward.CallAsync(stakeInfo.StakeId);
+        var newReward = await EcoEarnTokensContractStub.GetReward.CallAsync(stakeOutput.StakeInfo.StakeId);
         newReward.ShouldBe(reward);
 
         var balance2 = await GetTokenBalance(Symbol, addressInfo.RewardAddress);
@@ -324,7 +324,8 @@ public partial class EcoEarnTokensContractTests
             RewardTokenContract = TokenContractAddress,
             StakeTokenContract = TokenContractAddress,
             UpdateAddress = DefaultAddress,
-            MinimumStakeDuration = 86400
+            MinimumStakeDuration = 86400,
+            UnlockWindowDuration = 100
         };
         var result = await EcoEarnTokensContractStub.CreateTokensPool.SendAsync(input);
         return GetLogEvent<TokensPoolCreated>(result.TransactionResult).PoolId;
@@ -357,7 +358,8 @@ public partial class EcoEarnTokensContractTests
             RewardTokenContract = TokenContractAddress,
             StakeTokenContract = TokenContractAddress,
             UpdateAddress = DefaultAddress,
-            MinimumStakeDuration = 86400
+            MinimumStakeDuration = 86400,
+            UnlockWindowDuration = 100
         };
         var result = await EcoEarnTokensContractStub.CreateTokensPool.SendAsync(input);
         return GetLogEvent<TokensPoolCreated>(result.TransactionResult).PoolId;
