@@ -18,7 +18,6 @@ service EcoEarnTokensContract {
   rpc GetDappInfo (aelf.Hash) returns (DappInfo) {option (aelf.is_view) = true;}
   rpc CreateTokensPool (CreateTokensPoolInput) returns (google.protobuf.Empty) {}
   rpc SetTokensPoolEndTime (SetTokensPoolEndTimeInput) returns (google.protobuf.Empty) {}
-  rpc SetTokensPoolUpdateAddress (SetTokensPoolUpdateAddressInput) returns (google.protobuf.Empty) {}
   rpc SetTokensPoolRewardReleasePeriod (SetTokensPoolRewardReleasePeriodInput) returns (google.protobuf.Empty) {}
   rpc SetTokensPoolStakeConfig (SetTokensPoolStakeConfigInput) returns (google.protobuf.Empty) {}
   rpc GetPoolInfo (aelf.Hash) returns (GetPoolInfoOutput) {option (aelf.is_view) = true;}
@@ -67,25 +66,6 @@ message CreateTokensPoolInput {
   int64 start_time = 3;
   int64 end_time = 4;
   int64 reward_per_second = 5;
-  aelf.Address update_address = 6;
-  string staking_token = 7;
-  int64 fixed_boost_factor = 8;
-  int64 minimum_amount = 9;
-  int64 release_period = 10;
-  int64 maximum_stake_duration = 11;
-  aelf.Address reward_token_contract = 12;
-  aelf.Address stake_token_contract = 13;
-  int64 minimum_claim_amount = 14;
-  int64 minimum_stake_duration = 15;
-  int64 unlock_window_duration = 16;
-}
-
-message TokensPoolConfig {
-  string reward_token = 1;
-  google.protobuf.Timestamp start_time = 2;
-  google.protobuf.Timestamp end_time = 3;
-  int64 reward_per_second = 4;
-  aelf.Address update_address = 5;
   string staking_token = 6;
   int64 fixed_boost_factor = 7;
   int64 minimum_amount = 8;
@@ -98,14 +78,26 @@ message TokensPoolConfig {
   int64 unlock_window_duration = 15;
 }
 
+message TokensPoolConfig {
+  string reward_token = 1;
+  google.protobuf.Timestamp start_time = 2;
+  google.protobuf.Timestamp end_time = 3;
+  int64 reward_per_second = 4;
+  string staking_token = 5;
+  int64 fixed_boost_factor = 6;
+  int64 minimum_amount = 7;
+  int64 release_period = 8;
+  int64 maximum_stake_duration = 9;
+  aelf.Address reward_token_contract = 10;
+  aelf.Address stake_token_contract = 11;
+  int64 minimum_claim_amount = 12;
+  int64 minimum_stake_duration = 13;
+  int64 unlock_window_duration = 14;
+}
+
 message SetTokensPoolEndTimeInput {
   aelf.Hash pool_id = 1;
   int64 end_time = 2;
-}
-
-message SetTokensPoolUpdateAddressInput {
-  aelf.Hash pool_id = 1;
-  aelf.Address update_address = 2;
 }
 
 message SetTokensPoolRewardReleasePeriodInput {
@@ -303,12 +295,6 @@ message TokensPoolEndTimeSet {
   aelf.Hash pool_id = 1;
   google.protobuf.Timestamp end_time = 2;
   int64 amount = 3;
-}
-
-message TokensPoolUpdateAddressSet {
-  option (aelf.is_event) = true;
-  aelf.Hash pool_id = 1;
-  aelf.Address update_address = 2;
 }
 
 message TokensPoolRewardReleasePeriodSet {

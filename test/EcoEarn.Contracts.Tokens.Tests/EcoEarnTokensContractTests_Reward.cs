@@ -323,7 +323,6 @@ public partial class EcoEarnTokensContractTests
             ReleasePeriod = 10,
             RewardTokenContract = TokenContractAddress,
             StakeTokenContract = TokenContractAddress,
-            UpdateAddress = DefaultAddress,
             MinimumStakeDuration = 86400,
             UnlockWindowDuration = 100
         };
@@ -357,7 +356,6 @@ public partial class EcoEarnTokensContractTests
             ReleasePeriod = 10,
             RewardTokenContract = TokenContractAddress,
             StakeTokenContract = TokenContractAddress,
-            UpdateAddress = DefaultAddress,
             MinimumStakeDuration = 86400,
             UnlockWindowDuration = 100
         };

@@ -99,7 +99,6 @@ public partial class EcoEarnTokensContract
                 Seconds = input.EndTime
             },
             RewardPerSecond = input.RewardPerSecond,
-            UpdateAddress = input.UpdateAddress,
             UnlockWindowDuration = input.UnlockWindowDuration
         };
 
@@ -160,28 +159,6 @@ public partial class EcoEarnTokensContract
             PoolId = input.PoolId,
             EndTime = poolInfo.Config.EndTime,
             Amount = addedAmount
-        });
-
-        return new Empty();
-    }
-
-    public override Empty SetTokensPoolUpdateAddress(SetTokensPoolUpdateAddressInput input)
-    {
-        Assert(input != null, "Invalid input.");
-        Assert(IsAddressValid(input.UpdateAddress), "Invalid update address.");
-
-        var poolInfo = GetPool(input.PoolId);
-
-        CheckDAppAdminPermission(poolInfo.DappId);
-
-        if (poolInfo.Config.UpdateAddress == input.UpdateAddress) return new Empty();
-
-        poolInfo.Config.UpdateAddress = input.UpdateAddress;
-
-        Context.Fire(new TokensPoolUpdateAddressSet
-        {
-            PoolId = input.PoolId,
-            UpdateAddress = input.UpdateAddress
         });
 
         return new Empty();
@@ -322,7 +299,6 @@ public partial class EcoEarnTokensContract
 
     private void ValidateTokensPoolConfig(CreateTokensPoolInput input)
     {
-        Assert(IsAddressValid(input.UpdateAddress), "Invalid update address.");
         Assert(input.RewardTokenContract == null || !input.RewardTokenContract.Value.IsNullOrEmpty(),
             "Invalid reward token contract.");
         Assert(input.StakeTokenContract == null || !input.StakeTokenContract.Value.IsNullOrEmpty(),
