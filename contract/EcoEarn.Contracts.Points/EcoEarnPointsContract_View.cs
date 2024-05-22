@@ -17,12 +17,12 @@ public partial class EcoEarnPointsContract
 
     public override DappInfo GetDappInfo(Hash input)
     {
-        return IsHashValid(input) ? State.DappInfoMap[input] ?? new DappInfo() : new DappInfo();
+        return IsHashValid(input) ? State.DappInfoMap[input] : new DappInfo();
     }
 
     public override GetPoolInfoOutput GetPoolInfo(Hash input)
     {
-        if (!IsHashValid(input) || State.PoolInfoMap[input] == null) return new GetPoolInfoOutput();
+        if (!IsHashValid(input) || State.PoolInfoMap[input]?.PoolId == null) return new GetPoolInfoOutput();
 
         var info = State.PoolInfoMap[input];
         var output = new GetPoolInfoOutput
@@ -36,18 +36,17 @@ public partial class EcoEarnPointsContract
 
     public override Address GetPoolAddress(Hash input)
     {
-        return IsHashValid(input) ? CalculateVirtualAddress(input) ?? new Address() : new Address();
+        return IsHashValid(input) ? CalculateVirtualAddress(input) : new Address();
     }
 
     public override ClaimInfo GetClaimInfo(Hash input)
     {
-        return IsHashValid(input) ? State.ClaimInfoMap[input] ?? new ClaimInfo() : new ClaimInfo();
+        return IsHashValid(input) ? State.ClaimInfoMap[input] : new ClaimInfo();
     }
 
     public override Snapshot GetSnapshot(GetSnapshotInput input)
     {
         return input.BlockNumber > 0 && IsHashValid(input.PoolId)
-            ? State.SnapshotMap[input.PoolId][input.BlockNumber] ?? new Snapshot()
-            : new Snapshot();
+            ? State.SnapshotMap[input.PoolId][input.BlockNumber] : new Snapshot();
     }
 }

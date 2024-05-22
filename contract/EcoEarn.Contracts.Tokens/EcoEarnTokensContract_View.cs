@@ -18,12 +18,12 @@ public partial class EcoEarnTokensContract
 
     public override DappInfo GetDappInfo(Hash input)
     {
-        return IsHashValid(input) ? State.DappInfoMap[input] ?? new DappInfo() : new DappInfo();
+        return IsHashValid(input) ? State.DappInfoMap[input] : new DappInfo();
     }
 
     public override GetPoolInfoOutput GetPoolInfo(Hash input)
     {
-        if (!IsHashValid(input) || State.PoolInfoMap[input] == null) return new GetPoolInfoOutput();
+        if (!IsHashValid(input) || State.PoolInfoMap[input]?.PoolId == null) return new GetPoolInfoOutput();
 
         var info = State.PoolInfoMap[input];
         var output = new GetPoolInfoOutput
@@ -48,7 +48,7 @@ public partial class EcoEarnTokensContract
 
     public override PoolData GetPoolData(Hash input)
     {
-        return IsHashValid(input) ? State.PoolDataMap[input] ?? new PoolData() : new PoolData();
+        return IsHashValid(input) ? State.PoolDataMap[input] : new PoolData();
     }
 
     public override Int64Value GetPoolCount(Hash input)
@@ -61,7 +61,7 @@ public partial class EcoEarnTokensContract
 
     public override ClaimInfo GetClaimInfo(Hash input)
     {
-        return IsHashValid(input) ? State.ClaimInfoMap[input] ?? new ClaimInfo() : new ClaimInfo();
+        return IsHashValid(input) ? State.ClaimInfoMap[input] : new ClaimInfo();
     }
 
     public override GetStakeInfoOutput GetStakeInfo(Hash input)

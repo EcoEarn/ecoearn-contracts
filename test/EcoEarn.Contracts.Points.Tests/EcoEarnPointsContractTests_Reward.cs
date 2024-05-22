@@ -45,6 +45,13 @@ public partial class EcoEarnPointsContractTests
         output.PoolId.ShouldBe(poolId);
         output.BlockNumber.ShouldBe(log.UpdateBlockNumber);
         output.MerkleTreeRoot.ShouldBe(root);
+
+        output = await EcoEarnPointsContractStub.GetSnapshot.CallAsync(new GetSnapshotInput
+        {
+            PoolId = poolId,
+            BlockNumber = -1
+        });
+        output.PoolId.ShouldBeNull();
     }
 
     [Fact]
