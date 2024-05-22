@@ -314,8 +314,6 @@ public partial class EcoEarnTokensContract
         {
             Assert(period >= poolInfo.Config.MinimumStakeDuration, "Period too short.");
             Assert(period <= poolInfo.Config.MaximumStakeDuration, "Period too long.");
-            
-            stakeInfo.Period = stakeInfo.Period.Add(period);
         }
 
         // create position
@@ -344,10 +342,15 @@ public partial class EcoEarnTokensContract
             State.UserStakeIdMap[poolInfo.PoolId][address] = stakeId;
         }
         else
-        {  
-            var remainTime = (stakeInfo.StakedTime.AddSeconds(stakeInfo.Period) - Context.CurrentBlockTime).Seconds;
+        {
+            if (period > 0)
+            {
+                var remainTime = (stakeInfo.StakedTime.AddSeconds(stakeInfo.Period) - Context.CurrentBlockTime).Seconds;
             
-            Assert(remainTime.Add(period) <= poolInfo.Config.MaximumStakeDuration, "Period too long.");
+                Assert(remainTime.Add(period) <= poolInfo.Config.MaximumStakeDuration, "Period too long.");
+            
+                stakeInfo.Period = stakeInfo.Period.Add(period);
+            }
         }
 
         Assert(Context.CurrentBlockTime < CalculateUnlockTime(stakeInfo), "Staking expires. Unlock first.");
