@@ -444,6 +444,8 @@ public partial class EcoEarnTokensContract
             Assert(stakingPeriod <= poolInfo.Config.MaximumStakeDuration, "Period too long.");
             stakeInfo.StakingPeriod = stakingPeriod;
             stakeInfo.Period = stakeInfo.Period.Add(period);
+            
+            stakeInfo.LastOperationTime = Context.CurrentBlockTime;
         }
 
         var pending = CalculatePending(stakeInfo.BoostedAmount, poolData.AccTokenPerShare, stakeInfo.RewardDebt,
@@ -458,11 +460,6 @@ public partial class EcoEarnTokensContract
         {
             poolData.TotalStakedAmount = poolData.TotalStakedAmount.Add(boostedAmount).Sub(stakeInfo.BoostedAmount);
             stakeInfo.BoostedAmount = boostedAmount;
-        }
-
-        if (period > 0)
-        {
-            stakeInfo.LastOperationTime = Context.CurrentBlockTime;
         }
 
         stakeInfo.RewardDebt = CalculateDebt(boostedAmount, poolData.AccTokenPerShare, poolInfo.PrecisionFactor);
