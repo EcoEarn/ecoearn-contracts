@@ -334,7 +334,8 @@ public partial class EcoEarnTokensContract
                 StakedAmount = stakedAmount,
                 EarlyStakedAmount = earlyStakedAmount,
                 StakingToken = poolInfo.Config.StakingToken,
-                LastOperationTime = Context.CurrentBlockTime
+                LastOperationTime = Context.CurrentBlockTime,
+                Period = period
             };
 
             State.StakeInfoMap[stakeId] = stakeInfo;
@@ -437,11 +438,18 @@ public partial class EcoEarnTokensContract
         {
             var remainTime = CalculateRemainTime(stakeInfo, poolInfo.Config.UnlockWindowDuration);
 
-            var stakingPeriod = remainTime < 0 ? period : remainTime.Add(period);
-
-            Assert(stakingPeriod <= poolInfo.Config.MaximumStakeDuration, "Period too long.");
-            stakeInfo.StakingPeriod = stakingPeriod;
-            stakeInfo.Period = stakeInfo.Period.Add(period);
+            if (remainTime > 0)
+            {
+                var stakingPeriod = remainTime.Add(period);
+                Assert(stakingPeriod <= poolInfo.Config.MaximumStakeDuration, "Period too long.");
+                
+                stakeInfo.StakingPeriod = stakingPeriod;
+                stakeInfo.Period = stakeInfo.Period.Add(period);
+            }
+            else
+            {
+                stakeInfo.StakingPeriod = period;
+            }
 
             stakeInfo.LastOperationTime = Context.CurrentBlockTime;
         }

@@ -438,16 +438,16 @@ public partial class EcoEarnTokensContractTests
         result.TransactionResult.Status.ShouldBe(TransactionResultStatus.Mined);
 
         var log = GetLogEvent<Renewed>(result.TransactionResult);
-        log.PoolData.TotalStakedAmount.ShouldBe(tokenBalance * 2 + tokenBalance);
+        log.PoolData.TotalStakedAmount.ShouldBe(tokenBalance * 2);
 
         stakeInfo = EcoEarnTokensContractStub.GetStakeInfo.CallAsync(stakeInfo.StakeId).Result.StakeInfo;
         log.StakeInfo.ShouldBe(stakeInfo);
 
         stakeInfo.StakedTime.ShouldBe(BlockTimeProvider.GetBlockTime().AddSeconds(-86400));
-        stakeInfo.Period.ShouldBe(86400 + 100000);
+        stakeInfo.Period.ShouldBe(86400);
         stakeInfo.StakingPeriod.ShouldBe(100000);
         stakeInfo.RewardAmount.ShouldBe(100_00000000 * 86400 - 100_00000000 * 86400 / 100);
-        stakeInfo.BoostedAmount.ShouldBe(tokenBalance * 2 + tokenBalance);
+        stakeInfo.BoostedAmount.ShouldBe(tokenBalance * 2);
 
         reward = await EcoEarnTokensContractStub.GetReward.CallAsync(stakeId);
         reward.Amount.ShouldBe(100_00000000 * 86400 - 100_00000000 * 86400 / 100);
