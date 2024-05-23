@@ -777,7 +777,7 @@ public partial class EcoEarnTokensContractTests
             DappId = _appId
         });
     }
-    
+
     [Fact]
     public async Task SetTokensPoolUnlockWindowDurationTests()
     {

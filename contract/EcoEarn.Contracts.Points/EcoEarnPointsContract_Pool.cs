@@ -17,7 +17,7 @@ public partial class EcoEarnPointsContract
         CheckInitialized();
 
         Assert(input != null, "Invalid input.");
-        Assert(IsHashValid(input.DappId), "Invalid dapp id.");
+        Assert(IsHashValid(input!.DappId), "Invalid dapp id.");
         Assert(input.Admin == null || !input.Admin.Value.IsNullOrEmpty(), "Invalid admin.");
         Assert(State.DappInfoMap[input.DappId] == null, "Dapp registered.");
 
@@ -26,7 +26,7 @@ public partial class EcoEarnPointsContract
             DappId = input.DappId
         });
         Assert(dappInformationOutput.DappInfo != null, "Dapp not exists.");
-        Assert(dappInformationOutput.DappInfo.DappAdmin == Context.Sender, "No permission to register.");
+        Assert(dappInformationOutput.DappInfo!.DappAdmin == Context.Sender, "No permission to register.");
 
         var dappInfo = new DappInfo
         {
@@ -48,12 +48,12 @@ public partial class EcoEarnPointsContract
     public override Empty SetDappAdmin(SetDappAdminInput input)
     {
         Assert(input != null, "Invalid input.");
-        Assert(IsHashValid(input.DappId), "Invalid dapp id.");
+        Assert(IsHashValid(input!.DappId), "Invalid dapp id.");
         Assert(IsAddressValid(input.Admin), "Invalid admin.");
 
         var dappInfo = State.DappInfoMap[input.DappId];
         Assert(dappInfo != null, "Dapp not exists.");
-        Assert(dappInfo.Admin == Context.Sender, "No permission.");
+        Assert(dappInfo!.Admin == Context.Sender, "No permission.");
 
         if (input.Admin == dappInfo.Admin) return new Empty();
 
@@ -71,7 +71,7 @@ public partial class EcoEarnPointsContract
     public override Empty CreatePointsPool(CreatePointsPoolInput input)
     {
         Assert(input != null, "Invalid input.");
-        Assert(IsHashValid(input.DappId), "Invalid dapp id.");
+        Assert(IsHashValid(input!.DappId), "Invalid dapp id.");
         CheckDAppAdminPermission(input.DappId);
         ValidatePointsPoolConfig(input);
         CheckPointExists(input.DappId, input.PointsName);
@@ -125,7 +125,7 @@ public partial class EcoEarnPointsContract
     {
         Assert(input != null, "Invalid input.");
 
-        var poolInfo = GetPool(input.PoolId);
+        var poolInfo = GetPool(input!.PoolId);
 
         CheckDAppAdminPermission(poolInfo.DappId);
 
@@ -154,7 +154,7 @@ public partial class EcoEarnPointsContract
         Assert(input != null, "Invalid input.");
         ValidatePointsPoolConfig(input);
 
-        var poolInfo = GetPool(input.PoolId);
+        var poolInfo = GetPool(input!.PoolId);
         Assert(!CheckPoolEnabled(poolInfo.Config.EndTime), "Can not restart yet.");
         CheckDAppAdminPermission(poolInfo.DappId);
 
@@ -189,7 +189,7 @@ public partial class EcoEarnPointsContract
     public override Empty SetPointsPoolUpdateAddress(SetPointsPoolUpdateAddressInput input)
     {
         Assert(input != null, "Invalid input.");
-        Assert(IsAddressValid(input.UpdateAddress), "Invalid update address.");
+        Assert(IsAddressValid(input!.UpdateAddress), "Invalid update address.");
 
         var poolInfo = GetPool(input.PoolId);
 
@@ -211,7 +211,7 @@ public partial class EcoEarnPointsContract
     public override Empty SetPointsPoolRewardReleasePeriod(SetPointsPoolRewardReleasePeriodInput input)
     {
         Assert(input != null, "Invalid input.");
-        Assert(input.ReleasePeriod >= 0, "Invalid release period.");
+        Assert(input!.ReleasePeriod >= 0, "Invalid release period.");
 
         var poolInfo = GetPool(input.PoolId);
 
@@ -247,7 +247,7 @@ public partial class EcoEarnPointsContract
     private void ValidatePointsPoolConfig(RestartPointsPoolInput input)
     {
         Assert(input != null, "Invalid config.");
-        Assert(IsAddressValid(input.UpdateAddress), "Invalid update address.");
+        Assert(IsAddressValid(input!.UpdateAddress), "Invalid update address.");
         CheckTokenExists(input.RewardToken);
         Assert(input.StartTime >= Context.CurrentBlockTime.Seconds, "Invalid start time.");
         Assert(input.EndTime > input.StartTime, "Invalid end time.");

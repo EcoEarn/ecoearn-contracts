@@ -19,7 +19,7 @@ public partial class EcoEarnPointsContract
     public override Empty UpdateSnapshot(UpdateSnapshotInput input)
     {
         Assert(input != null, "Invalid input.");
-        var poolInfo = GetPool(input.PoolId);
+        var poolInfo = GetPool(input!.PoolId);
         Assert(poolInfo.Config.UpdateAddress == Context.Sender, "No permission.");
         Assert(CheckPoolEnabled(poolInfo.Config.EndTime), "Pool disabled.");
 
@@ -112,9 +112,9 @@ public partial class EcoEarnPointsContract
     public override Empty Withdraw(WithdrawInput input)
     {
         Assert(input != null, "Invalid input.");
-        Assert(input.ClaimIds != null && input.ClaimIds.Count > 0, "Invalid claim ids.");
+        Assert(input!.ClaimIds != null && input.ClaimIds.Count > 0, "Invalid claim ids.");
 
-        var claimInfos = ProcessClaimInfos(input.ClaimIds.Distinct().ToList(), out var rewards);
+        var claimInfos = ProcessClaimInfos(input.ClaimIds!.Distinct().ToList(), out var rewards);
 
         ProcessTransfer(rewards);
 
@@ -132,7 +132,7 @@ public partial class EcoEarnPointsContract
     public override Empty RecoverToken(RecoverTokenInput input)
     {
         Assert(input != null, "Invalid input.");
-        Assert(IsHashValid(input.PoolId), "Invalid pool id.");
+        Assert(IsHashValid(input!.PoolId), "Invalid pool id.");
         Assert(IsStringValid(input.Token), "Invalid token.");
         Assert(input.Recipient == null || !input.Recipient.Value.IsNullOrEmpty(), "Invalid recipient.");
 
@@ -171,7 +171,7 @@ public partial class EcoEarnPointsContract
     public override Empty EarlyStake(EarlyStakeInput input)
     {
         Assert(input != null, "Invalid input.");
-        Assert(IsHashValid(input.PoolId), "Invalid pool id.");
+        Assert(IsHashValid(input!.PoolId), "Invalid pool id.");
         Assert(input.ClaimIds != null && input.ClaimIds.Count > 0, "Invalid claim ids.");
         Assert(input.Period >= 0, "Invalid period.");
 
@@ -180,7 +180,7 @@ public partial class EcoEarnPointsContract
 
         var stakeId = GetStakeId(input.PoolId);
 
-        var list = ProcessEarlyStake(input.ClaimIds.Distinct().ToList(), poolInfo.Config.StakingToken, stakeId,
+        var list = ProcessEarlyStake(input.ClaimIds!.Distinct().ToList(), poolInfo!.Config.StakingToken, stakeId,
             out var amount);
 
         // approve staked amount to EcoEarnTokensContract
@@ -242,7 +242,7 @@ public partial class EcoEarnPointsContract
     private void ValidateClaimInput(ClaimInput input)
     {
         Assert(input != null, "Invalid input.");
-        Assert(IsAddressValid(input.Account) && input.Account == Context.Sender, "Invalid account.");
+        Assert(IsAddressValid(input!.Account) && input.Account == Context.Sender, "Invalid account.");
         Assert(input.Amount > 0, "Invalid amount.");
         Assert(IsHashValid(input.Seed), "Invalid seed.");
         Assert(input.ExpirationTime > 0, "Invalid expiration time.");
@@ -273,7 +273,7 @@ public partial class EcoEarnPointsContract
 
             var claimInfo = State.ClaimInfoMap[id];
             Assert(claimInfo != null, "Claim id not exists.");
-            Assert(claimInfo.Account == Context.Sender, "No permission.");
+            Assert(claimInfo!.Account == Context.Sender, "No permission.");
             Assert(claimInfo.WithdrawTime == null, "Already withdrawn.");
             Assert(Context.CurrentBlockTime >= claimInfo.UnlockTime, "Not unlock yet.");
 
@@ -300,7 +300,7 @@ public partial class EcoEarnPointsContract
 
             var claimInfo = State.ClaimInfoMap[id];
             Assert(claimInfo != null, "Claim info not exists.");
-            Assert(claimInfo.Account == Context.Sender, "No permission.");
+            Assert(claimInfo!.Account == Context.Sender, "No permission.");
             Assert(claimInfo.WithdrawTime == null, "Already withdrawn.");
             Assert(claimInfo.ClaimedSymbol == token, "Token not matched.");
 

@@ -1,6 +1,5 @@
 using System.Threading.Tasks;
 using AElf;
-using AElf.Contracts.MultiToken;
 using AElf.CSharp.Core.Extension;
 using AElf.Types;
 using Google.Protobuf.WellKnownTypes;
@@ -22,7 +21,7 @@ public partial class EcoEarnTokensContractTests
         stakeInfo.LockedRewardAmount.ShouldBe(0);
 
         SetBlockTime(1);
-        
+
         var reward = await EcoEarnTokensContractStub.GetReward.CallAsync(stakeInfo.StakeId);
 
         var addressInfo = await EcoEarnTokensContractStub.GetPoolAddressInfo.CallAsync(poolId);
@@ -51,7 +50,7 @@ public partial class EcoEarnTokensContractTests
         stakeOutput.StakeInfo.LockedRewardAmount.ShouldBe(reward.Amount);
 
         SetBlockTime(1);
-        
+
         var newReward = await EcoEarnTokensContractStub.GetReward.CallAsync(stakeOutput.StakeInfo.StakeId);
         newReward.ShouldBe(reward);
 
@@ -208,7 +207,7 @@ public partial class EcoEarnTokensContractTests
         balance.ShouldBe(10000000_00000000);
         balance = await GetTokenBalance(Symbol, UserAddress);
         balance.ShouldBe(0);
-        
+
         SetBlockTime(86401);
 
         var result = await EcoEarnTokensContractStub.RecoverToken.SendAsync(new RecoverTokenInput
@@ -264,9 +263,9 @@ public partial class EcoEarnTokensContractTests
             Token = "TEST"
         });
         result.TransactionResult.Error.ShouldContain("Pool not closed.");
-        
+
         SetBlockTime(86401);
-        
+
         result = await EcoEarnTokensContractStub.RecoverToken.SendWithExceptionAsync(new RecoverTokenInput
         {
             PoolId = poolId,

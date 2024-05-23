@@ -47,6 +47,7 @@ public partial class EcoEarnPointsContract
     public override Snapshot GetSnapshot(GetSnapshotInput input)
     {
         return input.BlockNumber > 0 && IsHashValid(input.PoolId)
-            ? State.SnapshotMap[input.PoolId][input.BlockNumber] : new Snapshot();
+            ? State.SnapshotMap[input.PoolId][input.BlockNumber]
+            : new Snapshot();
     }
 }

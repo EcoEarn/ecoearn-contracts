@@ -37,12 +37,10 @@ public class EcoEarnPointsContractTestBase : DAppContractTestBase<EcoEarnPointsC
     protected Address User2Address => Accounts[2].Address;
 
     protected readonly IBlockTimeProvider BlockTimeProvider;
-    protected readonly IContractTestService ContractTestService;
 
     protected EcoEarnPointsContractTestBase()
     {
         BlockTimeProvider = GetRequiredService<IBlockTimeProvider>();
-        ContractTestService = GetRequiredService<IContractTestService>();
 
         ZeroContractStub = GetContractStub<ACS0Container.ACS0Stub>(BasicContractZeroAddress, DefaultKeyPair);
         TokenContractStub =

@@ -20,7 +20,7 @@ public partial class EcoEarnTokensContract
 
         var stakeInfo = State.StakeInfoMap[input];
         Assert(stakeInfo != null, "Stake info not exists.");
-        Assert(stakeInfo.Account == Context.Sender, "No permission.");
+        Assert(stakeInfo!.Account == Context.Sender, "No permission.");
         Assert(stakeInfo.UnlockTime == null, "Already unlocked.");
 
         var poolInfo = GetPool(stakeInfo.PoolId);
@@ -34,9 +34,9 @@ public partial class EcoEarnTokensContract
     public override Empty Withdraw(WithdrawInput input)
     {
         Assert(input != null, "Invalid input.");
-        Assert(input.ClaimIds != null && input.ClaimIds.Count > 0, "Invalid claim ids.");
+        Assert(input!.ClaimIds != null && input.ClaimIds.Count > 0, "Invalid claim ids.");
 
-        var claimInfos = ProcessClaimInfos(input.ClaimIds.Distinct().ToList());
+        var claimInfos = ProcessClaimInfos(input.ClaimIds!.Distinct().ToList());
 
         Context.Fire(new Withdrawn
         {
@@ -52,7 +52,7 @@ public partial class EcoEarnTokensContract
     public override Empty RecoverToken(RecoverTokenInput input)
     {
         Assert(input != null, "Invalid input.");
-        Assert(IsHashValid(input.PoolId), "Invalid pool id.");
+        Assert(IsHashValid(input!.PoolId), "Invalid pool id.");
         Assert(IsStringValid(input.Token), "Invalid token.");
         Assert(input.Recipient == null || !input.Recipient.Value.IsNullOrEmpty(), "Invalid recipient.");
 
@@ -160,7 +160,7 @@ public partial class EcoEarnTokensContract
 
             var claimInfo = State.ClaimInfoMap[id];
             Assert(claimInfo != null, "Claim id not exists.");
-            Assert(claimInfo.WithdrawTime == null, "Already withdrawn.");
+            Assert(claimInfo!.WithdrawTime == null, "Already withdrawn.");
             Assert(claimInfo.Account == Context.Sender, "No permission.");
             Assert(Context.CurrentBlockTime >= claimInfo.UnlockTime, "Not unlock yet.");
 
@@ -170,7 +170,7 @@ public partial class EcoEarnTokensContract
             {
                 var stakeInfo = State.StakeInfoMap[claimInfo.StakeId];
                 Assert(stakeInfo != null && stakeInfo.UnlockTime != null, "Not unlocked.");
-                stakeInfo.LockedRewardAmount.Sub(claimInfo.ClaimedAmount);
+                stakeInfo!.LockedRewardAmount.Sub(claimInfo.ClaimedAmount);
             }
 
             var poolInfo = GetPool(claimInfo.PoolId);

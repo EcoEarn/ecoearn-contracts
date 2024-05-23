@@ -19,7 +19,7 @@ public partial class EcoEarnTokensContract
     public override Empty Stake(StakeInput input)
     {
         Assert(input != null, "Invalid input.");
-        Assert(input.Amount >= 0, "Invalid amount.");
+        Assert(input!.Amount >= 0, "Invalid amount.");
         Assert(input.Period >= 0, "Invalid period.");
 
         var poolInfo = GetPool(input.PoolId);
@@ -47,7 +47,7 @@ public partial class EcoEarnTokensContract
     public override Empty Renew(RenewInput input)
     {
         Assert(input != null, "Invalid input.");
-        Assert(input.Period > 0, "Invalid period.");
+        Assert(input!.Period > 0, "Invalid period.");
 
         var poolInfo = GetPool(input.PoolId);
 
@@ -79,7 +79,7 @@ public partial class EcoEarnTokensContract
 
         var stakeInfo = State.StakeInfoMap[existId];
         Assert(stakeInfo != null, "Stake info not exists.");
-        Assert(stakeInfo.Account == Context.Sender, "No permission.");
+        Assert(stakeInfo!.Account == Context.Sender, "No permission.");
         Assert(stakeInfo.UnlockTime == null, "Already unlocked.");
 
         var poolInfo = GetPool(stakeInfo.PoolId);
@@ -92,7 +92,7 @@ public partial class EcoEarnTokensContract
         stakeInfo.LastOperationTime = Context.CurrentBlockTime;
 
         ProcessClaim(poolInfo, stakeInfo);
-        UpdateTotalStakedAmount(stakeInfo, poolInfo);
+        UpdateTotalStakedAmount(stakeInfo);
 
         if (stakeInfo.StakedAmount > 0)
         {
@@ -139,14 +139,14 @@ public partial class EcoEarnTokensContract
     public override Empty EarlyStake(EarlyStakeInput input)
     {
         Assert(input != null, "Invalid input.");
-        Assert(input.ClaimIds != null && input.ClaimIds.Count > 0, "Invalid claim ids.");
+        Assert(input!.ClaimIds != null && input.ClaimIds.Count > 0, "Invalid claim ids.");
 
         var poolInfo = GetPool(input.PoolId);
         Assert(input.Period >= 0 && input.Period <= poolInfo.Config.MaximumStakeDuration, "Invalid period.");
         Assert(CheckPoolEnabled(poolInfo.Config.EndTime), "Pool closed.");
 
         var stakeId = GetStakeId(input.PoolId);
-        var list = ProcessEarlyStake(input.ClaimIds.ToList(), poolInfo, stakeId, out var stakedAmount);
+        var list = ProcessEarlyStake(input.ClaimIds!.ToList(), poolInfo, stakeId, out var stakedAmount);
         Assert(stakedAmount >= poolInfo.Config.MinimumAmount, "Amount not enough.");
 
         ProcessStake(poolInfo, 0, stakedAmount, input.Period, Context.Sender);
@@ -179,7 +179,7 @@ public partial class EcoEarnTokensContract
     {
         Assert(input != null, "Invalid input.");
         CheckEcoEarnPointsPermission();
-        Assert(IsHashValid(input.PoolId), "Invalid pool id.");
+        Assert(IsHashValid(input!.PoolId), "Invalid pool id.");
         Assert(IsAddressValid(input.Address), "Invalid address.");
         Assert(IsAddressValid(input.FromAddress), "Invalid from address.");
 
@@ -280,7 +280,7 @@ public partial class EcoEarnTokensContract
 
             var claimInfo = State.ClaimInfoMap[id];
             Assert(claimInfo != null, "Claim info not exists.");
-            Assert(claimInfo.WithdrawTime == null, "Already withdrawn.");
+            Assert(claimInfo!.WithdrawTime == null, "Already withdrawn.");
             Assert(claimInfo.Account == Context.Sender, "No permission.");
             Assert(claimInfo.ClaimedSymbol == poolInfo.Config.StakingToken, "Token not matched.");
 
@@ -406,7 +406,7 @@ public partial class EcoEarnTokensContract
         return stakeId;
     }
 
-    private void UpdateTotalStakedAmount(StakeInfo stakeInfo, PoolInfo poolInfo)
+    private void UpdateTotalStakedAmount(StakeInfo stakeInfo)
     {
         var poolData = State.PoolDataMap[stakeInfo.PoolId];
         poolData.TotalStakedAmount = poolData.TotalStakedAmount.Sub(stakeInfo.BoostedAmount);

@@ -16,7 +16,7 @@ public partial class EcoEarnTokensContract
         CheckInitialized();
 
         Assert(input != null, "Invalid input.");
-        Assert(IsHashValid(input.DappId), "Invalid dapp id.");
+        Assert(IsHashValid(input!.DappId), "Invalid dapp id.");
         Assert(input.Admin == null || !input.Admin.Value.IsNullOrEmpty(), "Invalid admin.");
         Assert(State.DappInfoMap[input.DappId] == null, "Dapp registered.");
 
@@ -44,11 +44,11 @@ public partial class EcoEarnTokensContract
     public override Empty SetDappAdmin(SetDappAdminInput input)
     {
         Assert(input != null, "Invalid input.");
-        Assert(IsHashValid(input.DappId), "Invalid dapp id.");
+        Assert(IsHashValid(input!.DappId), "Invalid dapp id.");
 
         var dappInfo = State.DappInfoMap[input.DappId];
         Assert(dappInfo != null, "Dapp not exists.");
-        Assert(dappInfo.Admin == Context.Sender, "No permission.");
+        Assert(dappInfo!.Admin == Context.Sender, "No permission.");
 
         Assert(IsAddressValid(input.Admin), "Invalid admin.");
 
@@ -68,7 +68,7 @@ public partial class EcoEarnTokensContract
     public override Empty CreateTokensPool(CreateTokensPoolInput input)
     {
         Assert(input != null, "Invalid input.");
-        Assert(IsHashValid(input.DappId), "Invalid dapp id.");
+        Assert(IsHashValid(input!.DappId), "Invalid dapp id.");
         CheckDAppAdminPermission(input.DappId);
         ValidateTokensPoolConfig(input);
         Assert(IsStringValid(input.StakingToken), "Invalid staking token.");
@@ -140,7 +140,7 @@ public partial class EcoEarnTokensContract
     {
         Assert(input != null, "Invalid input.");
 
-        var poolInfo = GetPool(input.PoolId);
+        var poolInfo = GetPool(input!.PoolId);
 
         CheckDAppAdminPermission(poolInfo.DappId);
 
@@ -167,7 +167,7 @@ public partial class EcoEarnTokensContract
     public override Empty SetTokensPoolRewardReleasePeriod(SetTokensPoolRewardReleasePeriodInput input)
     {
         Assert(input != null, "Invalid input.");
-        Assert(input.ReleasePeriod >= 0, "Invalid release period.");
+        Assert(input!.ReleasePeriod >= 0, "Invalid release period.");
 
         var poolInfo = GetPool(input.PoolId);
 
@@ -190,7 +190,7 @@ public partial class EcoEarnTokensContract
     {
         Assert(input != null, "Invalid input.");
 
-        var poolInfo = GetPool(input.PoolId);
+        var poolInfo = GetPool(input!.PoolId);
 
         CheckDAppAdminPermission(poolInfo.DappId);
 
@@ -227,7 +227,7 @@ public partial class EcoEarnTokensContract
     public override Empty SetTokensPoolFixedBoostFactor(SetTokensPoolFixedBoostFactorInput input)
     {
         Assert(input != null, "Invalid input.");
-        Assert(input.FixedBoostFactor > 0, "Invalid fixed boost factor.");
+        Assert(input!.FixedBoostFactor > 0, "Invalid fixed boost factor.");
 
         var poolInfo = GetPool(input.PoolId);
 
@@ -249,7 +249,7 @@ public partial class EcoEarnTokensContract
     public override Empty SetTokensPoolRewardPerSecond(SetTokensPoolRewardPerSecondInput input)
     {
         Assert(input != null, "Invalid input.");
-        Assert(input.RewardPerSecond > 0, "Invalid reward per second.");
+        Assert(input!.RewardPerSecond > 0, "Invalid reward per second.");
 
         var poolInfo = GetPool(input.PoolId);
         var poolData = State.PoolDataMap[poolInfo.PoolId];
@@ -274,7 +274,7 @@ public partial class EcoEarnTokensContract
     public override Empty SetTokensPoolUnlockWindowDuration(SetTokensPoolUnlockWindowDurationInput input)
     {
         Assert(input != null, "Invalid input.");
-        Assert(input.UnlockWindowDuration > 0, "Invalid unlock window duration.");
+        Assert(input!.UnlockWindowDuration > 0, "Invalid unlock window duration.");
 
         var poolInfo = GetPool(input.PoolId);
 

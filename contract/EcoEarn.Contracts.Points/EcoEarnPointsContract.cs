@@ -57,7 +57,7 @@ public partial class EcoEarnPointsContract : EcoEarnPointsContractContainer.EcoE
         CheckAdminPermission();
 
         Assert(input != null, "Invalid input.");
-        Assert(input.CommissionRate >= 0, "Invalid commission rate.");
+        Assert(input!.CommissionRate >= 0, "Invalid commission rate.");
         Assert(IsAddressValid(input.Recipient), "Invalid recipient.");
 
         if (input.Equals(State.Config.Value)) return new Empty();

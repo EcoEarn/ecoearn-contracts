@@ -369,7 +369,17 @@ public partial class EcoEarnTokensContractTests
             Period = 86400
         });
 
-        SetBlockTime(86400);
+        SetBlockTime(80000);
+
+        result = await EcoEarnTokensContractStub.Stake.SendWithExceptionAsync(new StakeInput
+        {
+            PoolId = poolId,
+            Amount = 1_00000000,
+            Period = 500000 - 6400 + 1
+        });
+        result.TransactionResult.Error.ShouldContain("Period too long.");
+
+        SetBlockTime(6400);
 
         result = await EcoEarnTokensContractStub.Stake.SendWithExceptionAsync(new StakeInput
         {
@@ -731,7 +741,7 @@ public partial class EcoEarnTokensContractTests
         });
         result.TransactionResult.Error.ShouldContain("Already withdrawn.");
     }
-    
+
     [Fact]
     public async Task ViewTests()
     {
