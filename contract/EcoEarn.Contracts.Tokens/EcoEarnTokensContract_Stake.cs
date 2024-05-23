@@ -3,7 +3,6 @@ using System.Linq;
 using AElf;
 using AElf.Contracts.MultiToken;
 using AElf.CSharp.Core;
-using AElf.CSharp.Core.Extension;
 using AElf.Sdk.CSharp;
 using AElf.Types;
 using Google.Protobuf.Collections;
@@ -84,8 +83,7 @@ public partial class EcoEarnTokensContract
 
         var poolInfo = GetPool(stakeInfo.PoolId);
         Assert(
-            (!CheckPoolEnabled(poolInfo.Config.EndTime) &&
-             Context.CurrentBlockTime > stakeInfo.StakedTime.AddSeconds(stakeInfo.Period)) ||
+            !CheckPoolEnabled(poolInfo.Config.EndTime) ||
             IsInUnlockWindow(stakeInfo, poolInfo.Config.UnlockWindowDuration), "Not in unlock window.");
 
         stakeInfo.UnlockTime = Context.CurrentBlockTime;
@@ -250,9 +248,9 @@ public partial class EcoEarnTokensContract
 
     private long GetMultiplier(long from, long to, long endTime)
     {
-        if (to <= endTime) return to - from;
+        if (to <= endTime) return to.Sub(from);
         if (from >= endTime) return 0;
-        return endTime - from;
+        return endTime.Sub(from);
     }
 
     private long CalculatePending(long amount, BigIntValue accTokenPerShare, long debt, BigIntValue precisionFactor)
@@ -440,11 +438,11 @@ public partial class EcoEarnTokensContract
             var remainTime = CalculateRemainTime(stakeInfo, poolInfo.Config.UnlockWindowDuration);
 
             var stakingPeriod = remainTime < 0 ? period : remainTime.Add(period);
-            
+
             Assert(stakingPeriod <= poolInfo.Config.MaximumStakeDuration, "Period too long.");
             stakeInfo.StakingPeriod = stakingPeriod;
             stakeInfo.Period = stakeInfo.Period.Add(period);
-            
+
             stakeInfo.LastOperationTime = Context.CurrentBlockTime;
         }
 

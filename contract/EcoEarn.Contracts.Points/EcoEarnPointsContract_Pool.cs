@@ -230,6 +230,28 @@ public partial class EcoEarnPointsContract
         return new Empty();
     }
 
+    public override Empty SetPointsPoolRewardPerSecond(SetPointsPoolRewardPerSecondInput input)
+    {
+        Assert(input != null, "Invalid input.");
+        Assert(input!.RewardPerSecond >= 0, "Invalid reward per second.");
+
+        var poolInfo = GetPool(input.PoolId);
+
+        CheckDAppAdminPermission(poolInfo.DappId);
+
+        if (poolInfo.Config.RewardPerSecond == input.RewardPerSecond) return new Empty();
+
+        poolInfo.Config.RewardPerSecond = input.RewardPerSecond;
+
+        Context.Fire(new PointsPoolRewardPerSecondSet
+        {
+            PoolId = input.PoolId,
+            RewardPerSecond = input.RewardPerSecond
+        });
+
+        return new Empty();
+    }
+
     #endregion
 
     #region private
