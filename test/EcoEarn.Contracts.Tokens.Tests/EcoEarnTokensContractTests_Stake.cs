@@ -469,6 +469,47 @@ public partial class EcoEarnTokensContractTests
     }
 
     [Fact]
+    public async Task RenewTests_LongPeriod()
+    {
+        var poolId = await CreateTokensPoolForRenew();
+        
+        await TokenContractStub.Transfer.SendAsync(new TransferInput
+        {
+            To = UserAddress,
+            Symbol = Symbol,
+            Amount = 100_00000000
+        });
+        await TokenContractUserStub.Approve.SendAsync(new ApproveInput
+        {
+            Spender = EcoEarnTokensContractAddress,
+            Symbol = Symbol,
+            Amount = 100_00000000
+        });
+
+        var result = await EcoEarnTokensContractUserStub.Stake.SendAsync(new StakeInput
+        {
+            PoolId = poolId,
+            Amount = 1_00000000,
+            Period = 10
+        });
+        var stakeId = GetLogEvent<Staked>(result.TransactionResult).StakeInfo.StakeId;
+
+        var output = await EcoEarnTokensContractStub.GetStakeInfo.CallAsync(stakeId);
+        output.StakeInfo.StakingPeriod.ShouldBe(10);
+        
+        SetBlockTime(50000);
+        
+        await EcoEarnTokensContractUserStub.Renew.SendAsync(new RenewInput
+        {
+            PoolId = poolId,
+            Period = 10
+        });
+        
+        output = await EcoEarnTokensContractStub.GetStakeInfo.CallAsync(stakeId);
+        output.StakeInfo.StakingPeriod.ShouldBe(10);
+    }
+
+    [Fact]
     public async Task RenewTests_Fail()
     {
         const long tokenBalance = 5_00000000;
@@ -828,7 +869,7 @@ public partial class EcoEarnTokensContractTests
         {
             DappId = _appId,
             StartTime = blockTime,
-            EndTime = blockTime + 100000,
+            EndTime = blockTime + 100000000,
             RewardToken = Symbol,
             StakingToken = Symbol,
             FixedBoostFactor = 1,
@@ -841,6 +882,48 @@ public partial class EcoEarnTokensContractTests
             StakeTokenContract = TokenContractAddress,
             MinimumStakeDuration = 86400,
             UnlockWindowDuration = 100
+        };
+        var result = await EcoEarnTokensContractStub.CreateTokensPool.SendAsync(input);
+        var log = GetLogEvent<TokensPoolCreated>(result.TransactionResult);
+
+        await TokenContractStub.Transfer.SendAsync(new TransferInput
+        {
+            Amount = 10000000_00000000,
+            To = log.AddressInfo.RewardAddress,
+            Symbol = Symbol
+        });
+
+        return log.PoolId;
+    }
+    
+    private async Task<Hash> CreateTokensPoolForRenew()
+    {
+        var admin = await EcoEarnTokensContractStub.GetAdmin.CallAsync(new Empty());
+        if (admin == new Address())
+        {
+            await Register();
+            await CreateToken();
+        }
+
+        var blockTime = BlockTimeProvider.GetBlockTime().Seconds;
+
+        var input = new CreateTokensPoolInput
+        {
+            DappId = _appId,
+            StartTime = blockTime,
+            EndTime = blockTime + 100000000,
+            RewardToken = Symbol,
+            StakingToken = Symbol,
+            FixedBoostFactor = 1,
+            MaximumStakeDuration = 500000,
+            MinimumAmount = 1_00000000,
+            MinimumClaimAmount = 1_00000000,
+            RewardPerSecond = 100_00000000,
+            ReleasePeriod = 10,
+            RewardTokenContract = TokenContractAddress,
+            StakeTokenContract = TokenContractAddress,
+            MinimumStakeDuration = 1,
+            UnlockWindowDuration = 300
         };
         var result = await EcoEarnTokensContractStub.CreateTokensPool.SendAsync(input);
         var log = GetLogEvent<TokensPoolCreated>(result.TransactionResult);

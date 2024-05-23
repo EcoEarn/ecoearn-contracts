@@ -439,7 +439,8 @@ public partial class EcoEarnTokensContract
         {
             var remainTime = CalculateRemainTime(stakeInfo, poolInfo.Config.UnlockWindowDuration);
 
-            var stakingPeriod = remainTime.Add(period);
+            var stakingPeriod = remainTime < 0 ? period : remainTime.Add(period);
+            
             Assert(stakingPeriod <= poolInfo.Config.MaximumStakeDuration, "Period too long.");
             stakeInfo.StakingPeriod = stakingPeriod;
             stakeInfo.Period = stakeInfo.Period.Add(period);
