@@ -140,6 +140,7 @@ message ClaimInfo {
   aelf.Address account = 9;
   google.protobuf.Timestamp early_stake_time = 10;
   aelf.Hash stake_id = 11;
+  aelf.Hash seed = 12;
 }
 
 message EarlyStakeInput {
@@ -234,7 +235,6 @@ message SnapshotUpdated {
 message Claimed {
   option (aelf.is_event) = true;
   ClaimInfo claim_info = 1;
-  aelf.Hash seed = 2;
 }
 
 message Withdrawn {

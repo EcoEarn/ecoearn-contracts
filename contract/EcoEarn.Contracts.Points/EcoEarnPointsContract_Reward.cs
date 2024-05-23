@@ -86,7 +86,8 @@ public partial class EcoEarnPointsContract
             ClaimedTime = Context.CurrentBlockTime,
             UnlockTime = Context.CurrentBlockTime.AddSeconds(poolInfo.Config.ReleasePeriod),
             PoolId = poolInfo.PoolId,
-            Account = input.Account
+            Account = input.Account,
+            Seed = input.Seed
         };
 
         State.ClaimInfoMap[claimId] = claimInfo;
@@ -102,8 +103,7 @@ public partial class EcoEarnPointsContract
 
         Context.Fire(new Claimed
         {
-            ClaimInfo = claimInfo,
-            Seed = input.Seed
+            ClaimInfo = claimInfo
         });
 
         return new Empty();
