@@ -781,6 +781,20 @@ public partial class EcoEarnTokensContractTests
             ClaimIds = { claimInfo.ClaimId },
         });
         result.TransactionResult.Error.ShouldContain("Already withdrawn.");
+        
+        await EcoEarnTokensContractStub.SetConfig.SendAsync(new Config
+        {
+            CommissionRate = 1000,
+            Recipient = DefaultAddress,
+            BatchLimitation = 1
+        });
+        
+        result = await EcoEarnTokensContractUserStub.EarlyStake.SendWithExceptionAsync(new EarlyStakeInput
+        {
+            PoolId = poolId,
+            ClaimIds = { Hash.Empty, Hash.Empty }
+        });
+        result.TransactionResult.Error.ShouldContain("Exceed batch limitation.");
     }
 
     [Fact]

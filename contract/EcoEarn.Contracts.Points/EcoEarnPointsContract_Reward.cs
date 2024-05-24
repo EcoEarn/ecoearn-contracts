@@ -113,6 +113,9 @@ public partial class EcoEarnPointsContract
     {
         Assert(input != null, "Invalid input.");
         Assert(input!.ClaimIds != null && input.ClaimIds.Count > 0, "Invalid claim ids.");
+        
+        var batchLimitation = State.Config.Value.BatchLimitation;
+        Assert(batchLimitation == 0 || input.ClaimIds.Count < batchLimitation, "Exceed batch limitation.");
 
         var claimInfos = ProcessClaimInfos(input.ClaimIds!.Distinct().ToList(), out var rewards);
 
@@ -173,6 +176,10 @@ public partial class EcoEarnPointsContract
         Assert(input != null, "Invalid input.");
         Assert(IsHashValid(input!.PoolId), "Invalid pool id.");
         Assert(input.ClaimIds != null && input.ClaimIds.Count > 0, "Invalid claim ids.");
+        
+        var batchLimitation = State.Config.Value.BatchLimitation;
+        Assert(batchLimitation == 0 || input.ClaimIds.Count < batchLimitation, "Exceed batch limitation.");
+        
         Assert(input.Period >= 0, "Invalid period.");
 
         var poolInfo = State.EcoEarnTokensContract.GetPoolInfo.Call(input.PoolId).PoolInfo;

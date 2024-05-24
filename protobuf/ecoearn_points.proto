@@ -49,11 +49,13 @@ message InitializeInput {
   aelf.Address ecoearn_tokens_contract = 3;
   int64 commission_rate = 4;
   aelf.Address recipient = 5;
+  int64 batch_limitation = 6;
 }
 
 message Config {
   int64 commission_rate = 1;
   aelf.Address recipient = 2;
+  int64 batch_limitation = 3;
 }
 
 message RegisterInput {

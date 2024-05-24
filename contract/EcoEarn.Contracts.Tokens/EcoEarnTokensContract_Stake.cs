@@ -138,6 +138,9 @@ public partial class EcoEarnTokensContract
     {
         Assert(input != null, "Invalid input.");
         Assert(input!.ClaimIds != null && input.ClaimIds.Count > 0, "Invalid claim ids.");
+        
+        var batchLimitation = State.Config.Value.BatchLimitation;
+        Assert(batchLimitation == 0 || input.ClaimIds.Count < batchLimitation, "Exceed batch limitation.");
 
         var poolInfo = GetPool(input.PoolId);
         Assert(input.Period >= 0 && input.Period <= poolInfo.Config.MaximumStakeDuration, "Invalid period.");

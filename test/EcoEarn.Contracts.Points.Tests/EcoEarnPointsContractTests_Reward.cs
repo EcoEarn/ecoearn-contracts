@@ -427,6 +427,19 @@ public partial class EcoEarnPointsContractTests
             ClaimIds = { claimId1, claimId2 }
         });
         result.TransactionResult.Error.ShouldContain("Already Withdrawn.");
+
+        await EcoEarnPointsContractStub.SetConfig.SendAsync(new Config
+        {
+            CommissionRate = 1000,
+            Recipient = DefaultAddress,
+            BatchLimitation = 1
+        });
+        
+        result = await EcoEarnPointsContractUserStub.Withdraw.SendWithExceptionAsync(new WithdrawInput
+        {
+            ClaimIds = { claimId1, claimId2 }
+        });
+        result.TransactionResult.Error.ShouldContain("Exceed batch limitation.");
     }
 
     [Fact]
@@ -759,6 +772,21 @@ public partial class EcoEarnPointsContractTests
             Period = 1
         });
         result.TransactionResult.Error.ShouldContain("Already withdrawn.");
+        
+        await EcoEarnPointsContractStub.SetConfig.SendAsync(new Config
+        {
+            CommissionRate = 1000,
+            Recipient = DefaultAddress,
+            BatchLimitation = 1
+        });
+        
+        result = await EcoEarnPointsContractUserStub.EarlyStake.SendWithExceptionAsync(new EarlyStakeInput
+        {
+            PoolId = newTokensPoolId,
+            ClaimIds = { Hash.Empty, Hash.Empty },
+            Period = 1
+        });
+        result.TransactionResult.Error.ShouldContain("Exceed batch limitation.");
     }
 
     private ByteString GenerateSignature(byte[] privateKey, Hash poolId, long amount, Address account, Hash seed,
