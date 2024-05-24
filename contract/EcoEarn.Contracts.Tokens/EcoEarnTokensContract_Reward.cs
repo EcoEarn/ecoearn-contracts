@@ -37,7 +37,7 @@ public partial class EcoEarnTokensContract
         Assert(input!.ClaimIds != null && input.ClaimIds.Count > 0, "Invalid claim ids.");
         
         var batchLimitation = State.Config.Value.BatchLimitation;
-        Assert(batchLimitation == 0 || input.ClaimIds.Count < batchLimitation, "Exceed batch limitation.");
+        Assert(batchLimitation == 0 || input.ClaimIds.Count <= batchLimitation, "Exceed batch limitation.");
 
         var claimInfos = ProcessClaimInfos(input.ClaimIds!.Distinct().ToList());
 
