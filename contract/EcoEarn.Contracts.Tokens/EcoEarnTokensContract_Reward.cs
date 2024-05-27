@@ -20,7 +20,7 @@ public partial class EcoEarnTokensContract
 
         var stakeInfo = State.StakeInfoMap[input];
         Assert(stakeInfo != null, "Stake info not exists.");
-        Assert(stakeInfo.Account == Context.Sender, "No permission.");
+        Assert(stakeInfo!.Account == Context.Sender, "No permission.");
         Assert(stakeInfo.UnlockTime == null, "Already unlocked.");
 
         var poolInfo = GetPool(stakeInfo.PoolId);
@@ -34,9 +34,12 @@ public partial class EcoEarnTokensContract
     public override Empty Withdraw(WithdrawInput input)
     {
         Assert(input != null, "Invalid input.");
-        Assert(input.ClaimIds != null && input.ClaimIds.Count > 0, "Invalid claim ids.");
+        Assert(input!.ClaimIds != null && input.ClaimIds.Count > 0, "Invalid claim ids.");
+        
+        var batchLimitation = State.Config.Value.BatchLimitation;
+        Assert(batchLimitation == 0 || input.ClaimIds.Count <= batchLimitation, "Exceed batch limitation.");
 
-        var claimInfos = ProcessClaimInfos(input.ClaimIds.Distinct().ToList());
+        var claimInfos = ProcessClaimInfos(input.ClaimIds!.Distinct().ToList());
 
         Context.Fire(new Withdrawn
         {
@@ -52,7 +55,7 @@ public partial class EcoEarnTokensContract
     public override Empty RecoverToken(RecoverTokenInput input)
     {
         Assert(input != null, "Invalid input.");
-        Assert(IsHashValid(input.PoolId), "Invalid pool id.");
+        Assert(IsHashValid(input!.PoolId), "Invalid pool id.");
         Assert(IsStringValid(input.Token), "Invalid token.");
         Assert(input.Recipient == null || !input.Recipient.Value.IsNullOrEmpty(), "Invalid recipient.");
 
@@ -102,8 +105,10 @@ public partial class EcoEarnTokensContract
     private long ProcessClaim(PoolInfo poolInfo, StakeInfo stakeInfo)
     {
         var poolData = State.PoolDataMap[poolInfo.PoolId];
+        UpdatePool(poolInfo, poolData);
 
-        var pending = CalculateRewardAmount(poolInfo, poolData, stakeInfo);
+        var pending = CalculatePending(stakeInfo.BoostedAmount, poolData.AccTokenPerShare, stakeInfo.RewardDebt,
+            poolInfo.PrecisionFactor);
         var actualReward = ProcessCommissionFee(pending, poolInfo).Add(stakeInfo.RewardAmount);
 
         if (actualReward == 0) return 0;
@@ -152,15 +157,13 @@ public partial class EcoEarnTokensContract
     {
         var result = new List<ClaimInfo>();
 
-        if (claimIds.Count == 0) return result;
-
         foreach (var id in claimIds)
         {
             Assert(IsHashValid(id), "Invalid claim id.");
 
             var claimInfo = State.ClaimInfoMap[id];
             Assert(claimInfo != null, "Claim id not exists.");
-            Assert(claimInfo.WithdrawTime == null, "Already withdrawn.");
+            Assert(claimInfo!.WithdrawTime == null, "Already withdrawn.");
             Assert(claimInfo.Account == Context.Sender, "No permission.");
             Assert(Context.CurrentBlockTime >= claimInfo.UnlockTime, "Not unlock yet.");
 
@@ -170,7 +173,7 @@ public partial class EcoEarnTokensContract
             {
                 var stakeInfo = State.StakeInfoMap[claimInfo.StakeId];
                 Assert(stakeInfo != null && stakeInfo.UnlockTime != null, "Not unlocked.");
-                stakeInfo.LockedRewardAmount.Sub(claimInfo.ClaimedAmount);
+                stakeInfo!.LockedRewardAmount.Sub(claimInfo.ClaimedAmount);
             }
 
             var poolInfo = GetPool(claimInfo.PoolId);
@@ -197,31 +200,13 @@ public partial class EcoEarnTokensContract
 
     private long CalculateRewardAmount(PoolInfo poolInfo, PoolData poolData, StakeInfo stakeInfo)
     {
-        if (State.StakeInfoUpdateTimeMap[stakeInfo.StakeId] != null) return 0;
-
-        var stakeEndTime = CalculateStakeEndTime(stakeInfo);
-
         var accTokenPerShare = poolData.AccTokenPerShare ?? new BigIntValue(0);
-        BigIntValue adjustedTokenPerShare;
-
-        if (poolData.LastRewardTime < stakeEndTime)
-        {
-            var multiplier = GetMultiplier(poolData.LastRewardTime,
-                Context.CurrentBlockTime > stakeEndTime ? stakeEndTime : Context.CurrentBlockTime,
-                poolInfo.Config.EndTime);
-            var rewards = new BigIntValue(multiplier.Mul(poolInfo.Config.RewardPerSecond));
-            adjustedTokenPerShare = poolData.TotalStakedAmount > 0
-                ? accTokenPerShare.Add(rewards.Mul(poolInfo.PrecisionFactor).Div(poolData.TotalStakedAmount))
-                : accTokenPerShare;
-        }
-        else
-        {
-            var multiplier = (poolData.LastRewardTime - stakeEndTime).Seconds;
-            var rewards = new BigIntValue(multiplier.Mul(poolInfo.Config.RewardPerSecond));
-            adjustedTokenPerShare = poolData.TotalStakedAmount > 0
-                ? accTokenPerShare.Sub(rewards.Mul(poolInfo.PrecisionFactor).Div(poolData.TotalStakedAmount))
-                : accTokenPerShare;
-        }
+        var multiplier = GetMultiplier(poolData.LastRewardTime.Seconds, Context.CurrentBlockTime.Seconds,
+            poolInfo.Config.EndTime.Seconds);
+        var rewards = new BigIntValue(multiplier.Mul(poolInfo.Config.RewardPerSecond));
+        var adjustedTokenPerShare = poolData.TotalStakedAmount > 0
+            ? accTokenPerShare.Add(rewards.Mul(poolInfo.PrecisionFactor).Div(poolData.TotalStakedAmount))
+            : accTokenPerShare;
 
         return CalculatePending(stakeInfo.BoostedAmount, adjustedTokenPerShare, stakeInfo.RewardDebt,
             poolInfo.PrecisionFactor);

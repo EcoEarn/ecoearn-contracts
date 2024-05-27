@@ -1,10 +1,8 @@
-using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 using AElf.Contracts.MultiToken;
 using AElf.CSharp.Core;
 using AElf.CSharp.Core.Extension;
-using AElf.Kernel.Blockchain;
 using AElf.Types;
 using Google.Protobuf;
 using Shouldly;
@@ -34,7 +32,7 @@ public partial class EcoEarnTokensContractTests
 
         return output.Balance;
     }
-    
+
     private void SetBlockTime(long seconds)
     {
         BlockTimeProvider.SetBlockTime(BlockTimeProvider.GetBlockTime().AddSeconds(seconds));

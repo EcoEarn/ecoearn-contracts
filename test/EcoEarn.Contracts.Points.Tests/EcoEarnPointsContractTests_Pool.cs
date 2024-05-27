@@ -34,6 +34,9 @@ public partial class EcoEarnPointsContractTests
         var output = await EcoEarnPointsContractStub.GetDappInfo.CallAsync(_appId);
         output.DappId.ShouldBe(_appId);
         output.Admin.ShouldBe(DefaultAddress);
+
+        output = await EcoEarnPointsContractStub.GetDappInfo.CallAsync(new Hash());
+        output.DappId.ShouldBeNull();
     }
 
     [Fact]
@@ -214,14 +217,18 @@ public partial class EcoEarnPointsContractTests
         log.Amount.ShouldBe(1000);
         log.PoolId.ShouldBe(HashHelper.ComputeFrom(input));
 
-        {
-            var output = await EcoEarnPointsContractStub.GetPoolInfo.CallAsync(log.PoolId);
-            output.Status.ShouldBe(true);
-            output.PoolInfo.PoolId.ShouldBe(log.PoolId);
-            output.PoolInfo.PointsName.ShouldBe(PointsName);
-            output.PoolInfo.DappId.ShouldBe(_appId);
-            output.PoolInfo.Config.ShouldBe(log.Config);
-        }
+        var output = await EcoEarnPointsContractStub.GetPoolInfo.CallAsync(log.PoolId);
+        output.Status.ShouldBe(true);
+        output.PoolInfo.PoolId.ShouldBe(log.PoolId);
+        output.PoolInfo.PointsName.ShouldBe(PointsName);
+        output.PoolInfo.DappId.ShouldBe(_appId);
+        output.PoolInfo.Config.ShouldBe(log.Config);
+
+        output = await EcoEarnPointsContractStub.GetPoolInfo.CallAsync(new Hash());
+        output.PoolInfo.ShouldBeNull();
+
+        var address = await EcoEarnPointsContractStub.GetPoolAddress.CallAsync(new Hash());
+        address.ShouldBe(new Address());
     }
 
     [Fact]
@@ -436,9 +443,9 @@ public partial class EcoEarnPointsContractTests
 
         await Register();
         var poolId = await CreatePointsPool();
-        
+
         SetBlockTime(100);
-        
+
         var output = await EcoEarnPointsContractStub.GetPoolInfo.CallAsync(poolId);
         output.Status.ShouldBeFalse();
 
@@ -534,7 +541,7 @@ public partial class EcoEarnPointsContractTests
                 PoolId = HashHelper.ComputeFrom(1)
             });
         result.TransactionResult.Error.ShouldContain("Pool not exists.");
-        
+
         SetBlockTime(100);
 
         result = await EcoEarnPointsContractUserStub.RestartPointsPool.SendWithExceptionAsync(
@@ -667,6 +674,85 @@ public partial class EcoEarnPointsContractTests
         result.TransactionResult.Error.ShouldContain("No permission.");
     }
 
+    [Fact]
+    public async Task SetPointsPoolRewardPerSecondTests()
+    {
+        await Initialize();
+
+        await Register();
+        var poolId = await CreatePointsPool();
+
+        var output = await EcoEarnPointsContractStub.GetPoolInfo.CallAsync(poolId);
+        output.PoolInfo.Config.RewardPerSecond.ShouldBe(10);
+
+        var result = await EcoEarnPointsContractStub.SetPointsPoolRewardPerSecond.SendAsync(
+            new SetPointsPoolRewardPerSecondInput
+            {
+                PoolId = poolId,
+                RewardPerSecond = 100
+            });
+        result.TransactionResult.Status.ShouldBe(TransactionResultStatus.Mined);
+
+        var log = GetLogEvent<PointsPoolRewardPerSecondSet>(result.TransactionResult);
+        log.PoolId.ShouldBe(poolId);
+        log.RewardPerSecond.ShouldBe(100);
+
+        output = await EcoEarnPointsContractStub.GetPoolInfo.CallAsync(poolId);
+        output.PoolInfo.Config.RewardPerSecond.ShouldBe(100);
+
+        result = await EcoEarnPointsContractStub.SetPointsPoolRewardPerSecond.SendAsync(
+            new SetPointsPoolRewardPerSecondInput
+            {
+                PoolId = poolId,
+                RewardPerSecond = 100
+            });
+        result.TransactionResult.Logs.FirstOrDefault(l => l.Name.Contains(nameof(PointsPoolRewardPerSecondSet)))
+            .ShouldBeNull();
+    }
+
+    [Fact]
+    public async Task SetPointsPoolRewardPerSecondTests_Fail()
+    {
+        await Initialize();
+
+        await Register();
+        var poolId = await CreatePointsPool();
+
+        var result = await EcoEarnPointsContractStub.SetPointsPoolRewardPerSecond.SendWithExceptionAsync(
+            new SetPointsPoolRewardPerSecondInput());
+        result.TransactionResult.Error.ShouldContain("Invalid pool id.");
+
+        result = await EcoEarnPointsContractStub.SetPointsPoolRewardPerSecond.SendWithExceptionAsync(
+            new SetPointsPoolRewardPerSecondInput
+            {
+                PoolId = new Hash()
+            });
+        result.TransactionResult.Error.ShouldContain("Invalid pool id.");
+
+        result = await EcoEarnPointsContractStub.SetPointsPoolRewardPerSecond.SendWithExceptionAsync(
+            new SetPointsPoolRewardPerSecondInput
+            {
+                PoolId = HashHelper.ComputeFrom(1)
+            });
+        result.TransactionResult.Error.ShouldContain("Pool not exists.");
+
+        result = await EcoEarnPointsContractStub.SetPointsPoolRewardPerSecond.SendWithExceptionAsync(
+            new SetPointsPoolRewardPerSecondInput
+            {
+                PoolId = poolId,
+                RewardPerSecond = -1
+            });
+        result.TransactionResult.Error.ShouldContain("Invalid reward per second.");
+
+        result = await EcoEarnPointsContractUserStub.SetPointsPoolRewardPerSecond.SendWithExceptionAsync(
+            new SetPointsPoolRewardPerSecondInput
+            {
+                PoolId = poolId,
+                RewardPerSecond = 0
+            });
+        result.TransactionResult.Error.ShouldContain("No permission.");
+    }
+    
     [Fact]
     public async Task SetPointsPoolRewardReleasePeriodTests()
     {

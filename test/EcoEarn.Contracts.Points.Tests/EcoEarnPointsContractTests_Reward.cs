@@ -45,6 +45,13 @@ public partial class EcoEarnPointsContractTests
         output.PoolId.ShouldBe(poolId);
         output.BlockNumber.ShouldBe(log.UpdateBlockNumber);
         output.MerkleTreeRoot.ShouldBe(root);
+
+        output = await EcoEarnPointsContractStub.GetSnapshot.CallAsync(new GetSnapshotInput
+        {
+            PoolId = poolId,
+            BlockNumber = -1
+        });
+        output.PoolId.ShouldBeNull();
     }
 
     [Fact]
@@ -95,7 +102,7 @@ public partial class EcoEarnPointsContractTests
                 MerkleTreeRoot = HashHelper.ComputeFrom(1)
             });
         result.TransactionResult.Error.ShouldContain("No permission.");
-        
+
         SetBlockTime(100);
 
         result = await EcoEarnPointsContractStub.UpdateSnapshot.SendWithExceptionAsync(
@@ -146,6 +153,9 @@ public partial class EcoEarnPointsContractTests
 
         var output = await EcoEarnPointsContractStub.GetClaimInfo.CallAsync(log.ClaimInfo.ClaimId);
         output.ShouldBe(log.ClaimInfo);
+
+        output = await EcoEarnPointsContractStub.GetClaimInfo.CallAsync(new Hash());
+        output.PoolId.ShouldBeNull();
     }
 
     [Fact]
@@ -417,6 +427,19 @@ public partial class EcoEarnPointsContractTests
             ClaimIds = { claimId1, claimId2 }
         });
         result.TransactionResult.Error.ShouldContain("Already Withdrawn.");
+
+        await EcoEarnPointsContractStub.SetConfig.SendAsync(new Config
+        {
+            CommissionRate = 1000,
+            Recipient = DefaultAddress,
+            BatchLimitation = 1
+        });
+        
+        result = await EcoEarnPointsContractUserStub.Withdraw.SendWithExceptionAsync(new WithdrawInput
+        {
+            ClaimIds = { claimId1, claimId2 }
+        });
+        result.TransactionResult.Error.ShouldContain("Exceed batch limitation.");
     }
 
     [Fact]
@@ -432,7 +455,7 @@ public partial class EcoEarnPointsContractTests
         balance.ShouldBe(1000);
         balance = await GetTokenBalance(Symbol, UserAddress);
         balance.ShouldBe(0);
-        
+
         SetBlockTime(100);
 
         var result = await EcoEarnPointsContractStub.RecoverToken.SendAsync(new RecoverTokenInput
@@ -491,9 +514,9 @@ public partial class EcoEarnPointsContractTests
             Token = "TEST"
         });
         result.TransactionResult.Error.ShouldContain("Pool not closed.");
-        
+
         SetBlockTime(100);
-        
+
         result = await EcoEarnPointsContractStub.RecoverToken.SendWithExceptionAsync(new RecoverTokenInput
         {
             PoolId = poolId,
@@ -522,6 +545,19 @@ public partial class EcoEarnPointsContractTests
             Token = Symbol,
         });
         result.TransactionResult.Error.ShouldContain("No permission.");
+
+        await EcoEarnPointsContractStub.RecoverToken.SendAsync(new RecoverTokenInput
+        {
+            PoolId = poolId,
+            Token = Symbol
+        });
+
+        result = await EcoEarnPointsContractStub.RecoverToken.SendWithExceptionAsync(new RecoverTokenInput
+        {
+            PoolId = poolId,
+            Token = Symbol
+        });
+        result.TransactionResult.Error.ShouldContain("Invalid token.");
     }
 
     [Fact]
@@ -549,12 +585,15 @@ public partial class EcoEarnPointsContractTests
         var claimInfo = GetLogEvent<Claimed>(result.TransactionResult).ClaimInfo;
         claimInfo.EarlyStakeTime.ShouldBeNull();
         claimInfo.StakeId.ShouldBeNull();
+        claimInfo.ClaimedAmount.ShouldBe(99);
 
-        var userAddress = await EcoEarnPointsContractStub.GetPoolAddress.CallAsync(HashHelper.ComputeFrom(UserAddress));
-        var balance = await GetTokenBalance(Symbol, userAddress);
-        balance.ShouldBe(100 - 100 * 100 / 10000);
+        var userVirtualAddress =
+            await EcoEarnPointsContractStub.GetPoolAddress.CallAsync(HashHelper.ComputeFrom(UserAddress));
+        var balance = await GetTokenBalance(Symbol, userVirtualAddress);
+        balance.ShouldBe(99);
 
         var tokensPoolId = await CreateTokensPool(Symbol);
+        var addressInfo = await EcoEarnTokensContractStub.GetPoolAddressInfo.CallAsync(tokensPoolId);
 
         var input = new EarlyStakeInput
         {
@@ -567,7 +606,7 @@ public partial class EcoEarnPointsContractTests
         result.TransactionResult.Status.ShouldBe(TransactionResultStatus.Mined);
 
         var log = GetLogEvent<EarlyStaked>(result.TransactionResult);
-        log.Amount.ShouldBe(100 - 100 * 100 / 10000);
+        log.Amount.ShouldBe(99);
         log.PoolId.ShouldBe(tokensPoolId);
         log.Period.ShouldBe(1);
         var info = log.ClaimInfos.Data.First();
@@ -575,18 +614,27 @@ public partial class EcoEarnPointsContractTests
         var stakeInfo = GetLogEvent<Staked>(result.TransactionResult).StakeInfo;
         info.StakeId.ShouldBe(stakeInfo.StakeId);
 
-        balance = await GetTokenBalance(Symbol, userAddress);
+        balance = await GetTokenBalance(Symbol, userVirtualAddress);
         balance.ShouldBe(0);
+        balance = await GetTokenBalance(Symbol, addressInfo.StakeAddress);
+        balance.ShouldBe(99);
 
         SetBlockTime(10);
 
         await EcoEarnTokensContractUserStub.Unlock.SendAsync(tokensPoolId);
 
-        balance = await GetTokenBalance(Symbol, userAddress);
-        balance.ShouldBe(100 - 100 * 100 / 10000);
+        balance = await GetTokenBalance(Symbol, userVirtualAddress);
+        balance.ShouldBe(99);
+        balance = await GetTokenBalance(Symbol, addressInfo.StakeAddress);
+        balance.ShouldBe(0);
 
         await EcoEarnPointsContractUserStub.EarlyStake.SendAsync(input);
         result.TransactionResult.Status.ShouldBe(TransactionResultStatus.Mined);
+
+        balance = await GetTokenBalance(Symbol, userVirtualAddress);
+        balance.ShouldBe(0);
+        balance = await GetTokenBalance(Symbol, addressInfo.StakeAddress);
+        balance.ShouldBe(99);
 
         SetBlockTime(10);
         await EcoEarnTokensContractUserStub.Unlock.SendAsync(tokensPoolId);
@@ -597,7 +645,7 @@ public partial class EcoEarnPointsContractTests
         {
             ClaimIds = { claimInfo.ClaimId }
         });
-        balance = await GetTokenBalance(Symbol, userAddress);
+        balance = await GetTokenBalance(Symbol, userVirtualAddress);
         balance.ShouldBe(0);
 
         balance = await GetTokenBalance(Symbol, UserAddress);
@@ -724,6 +772,21 @@ public partial class EcoEarnPointsContractTests
             Period = 1
         });
         result.TransactionResult.Error.ShouldContain("Already withdrawn.");
+        
+        await EcoEarnPointsContractStub.SetConfig.SendAsync(new Config
+        {
+            CommissionRate = 1000,
+            Recipient = DefaultAddress,
+            BatchLimitation = 1
+        });
+        
+        result = await EcoEarnPointsContractUserStub.EarlyStake.SendWithExceptionAsync(new EarlyStakeInput
+        {
+            PoolId = newTokensPoolId,
+            ClaimIds = { Hash.Empty, Hash.Empty },
+            Period = 1
+        });
+        result.TransactionResult.Error.ShouldContain("Exceed batch limitation.");
     }
 
     private ByteString GenerateSignature(byte[] privateKey, Hash poolId, long amount, Address account, Hash seed,
@@ -770,12 +833,12 @@ public partial class EcoEarnPointsContractTests
             MaximumStakeDuration = 10,
             MinimumAmount = 1,
             MinimumClaimAmount = 1,
-            RewardPerSecond = 100,
+            RewardPerSecond = 1,
             ReleasePeriod = 10,
             RewardTokenContract = TokenContractAddress,
             StakeTokenContract = TokenContractAddress,
-            UpdateAddress = DefaultAddress,
-            MinimumStakeDuration = 1
+            MinimumStakeDuration = 1,
+            UnlockWindowDuration = 100
         });
         var log = GetLogEvent<TokensPoolCreated>(result.TransactionResult);
 

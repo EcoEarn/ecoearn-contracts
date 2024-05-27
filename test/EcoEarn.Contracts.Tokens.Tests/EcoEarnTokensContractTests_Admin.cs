@@ -17,7 +17,8 @@ public partial class EcoEarnTokensContractTests : EcoEarnTokensContractTestBase
             CommissionRate = 100,
             Recipient = User2Address,
             Admin = UserAddress,
-            EcoearnPointsContract = DefaultAddress
+            EcoearnPointsContract = DefaultAddress,
+            BatchLimitation = 10
         };
 
         var result = await EcoEarnTokensContractStub.Initialize.SendAsync(input);
@@ -29,6 +30,7 @@ public partial class EcoEarnTokensContractTests : EcoEarnTokensContractTestBase
         var config = await EcoEarnTokensContractStub.GetConfig.CallAsync(new Empty());
         config.CommissionRate.ShouldBe(100);
         config.Recipient.ShouldBe(User2Address);
+        config.BatchLimitation.ShouldBe(10);
 
         // initialize twice
         result = await EcoEarnTokensContractStub.Initialize
@@ -53,6 +55,57 @@ public partial class EcoEarnTokensContractTests : EcoEarnTokensContractTestBase
 
         var config = await EcoEarnTokensContractStub.GetConfig.CallAsync(new Empty());
         config.Recipient.ShouldBe(DefaultAddress);
+    }
+    
+    [Fact]
+    public async Task InitializeTests_Fail()
+    {
+        // empty address
+        var result = await EcoEarnTokensContractStub.Initialize.SendWithExceptionAsync(new InitializeInput
+        {
+            Admin = new Address(),
+        });
+        result.TransactionResult.Error.ShouldContain("Invalid admin.");
+
+        result = await EcoEarnTokensContractStub.Initialize.SendWithExceptionAsync(new InitializeInput());
+        result.TransactionResult.Error.ShouldContain("Invalid ecoearn points contract.");
+
+        result = await EcoEarnTokensContractStub.Initialize.SendWithExceptionAsync(new InitializeInput
+        {
+            EcoearnPointsContract = new Address()
+        });
+        result.TransactionResult.Error.ShouldContain("Invalid ecoearn points contract.");
+
+        result = await EcoEarnTokensContractStub.Initialize.SendWithExceptionAsync(new InitializeInput
+        {
+            EcoearnPointsContract = DefaultAddress,
+            CommissionRate = -1
+        });
+        result.TransactionResult.Error.ShouldContain("Invalid commission rate.");
+
+        result = await EcoEarnTokensContractStub.Initialize.SendWithExceptionAsync(new InitializeInput
+        {
+            EcoearnPointsContract = DefaultAddress,
+            CommissionRate = 0,
+            Recipient = new Address()
+        });
+        result.TransactionResult.Error.ShouldContain("Invalid recipient.");
+        
+        result = await EcoEarnTokensContractStub.Initialize.SendWithExceptionAsync(new InitializeInput
+        {
+            EcoearnPointsContract = DefaultAddress,
+            CommissionRate = 0,
+            Recipient = DefaultAddress,
+            BatchLimitation = -1
+        });
+        result.TransactionResult.Error.ShouldContain("Invalid batch limitation.");
+
+        // sender != author
+        result = await EcoEarnTokensContractUserStub.Initialize.SendWithExceptionAsync(new InitializeInput
+        {
+            Admin = UserAddress,
+        });
+        result.TransactionResult.Error.ShouldContain("No permission.");
     }
 
     [Fact]
@@ -100,7 +153,9 @@ public partial class EcoEarnTokensContractTests : EcoEarnTokensContractTestBase
         var input = new Config
         {
             CommissionRate = 50,
-            Recipient = DefaultAddress
+            Recipient = DefaultAddress,
+            IsRegisterRestricted = false,
+            BatchLimitation = 10
         };
         var result = await EcoEarnTokensContractStub.SetConfig.SendAsync(input);
         result.TransactionResult.Status.ShouldBe(TransactionResultStatus.Mined);
@@ -121,6 +176,8 @@ public partial class EcoEarnTokensContractTests : EcoEarnTokensContractTestBase
         log = GetLogEvent<ConfigSet>(result.TransactionResult);
         log.Config.CommissionRate.ShouldBe(500);
         log.Config.Recipient.ShouldBe(DefaultAddress);
+        log.Config.IsRegisterRestricted.ShouldBeFalse();
+        log.Config.BatchLimitation.ShouldBe(10);
     }
 
     [Fact]
@@ -158,6 +215,17 @@ public partial class EcoEarnTokensContractTests : EcoEarnTokensContractTestBase
                     });
             result.TransactionResult.Error.ShouldContain("Invalid recipient.");
         }
+        {
+            var result =
+                await EcoEarnTokensContractStub.SetConfig.SendWithExceptionAsync(
+                    new Config
+                    {
+                        CommissionRate = 50,
+                        Recipient = DefaultAddress,
+                        BatchLimitation = -1
+                    });
+            result.TransactionResult.Error.ShouldContain("Invalid batch limitation.");
+        }
     }
 
     private async Task Initialize()
@@ -167,7 +235,8 @@ public partial class EcoEarnTokensContractTests : EcoEarnTokensContractTestBase
             CommissionRate = 100,
             Recipient = User2Address,
             EcoearnPointsContract = EcoEarnPointsContractAddress,
-            IsRegisterRestricted = true
+            IsRegisterRestricted = true,
+            BatchLimitation = 0
         });
     }
 }

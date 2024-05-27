@@ -1,6 +1,5 @@
 using System.Threading.Tasks;
 using AElf;
-using AElf.Contracts.MultiToken;
 using AElf.CSharp.Core.Extension;
 using AElf.Types;
 using Google.Protobuf.WellKnownTypes;
@@ -22,7 +21,7 @@ public partial class EcoEarnTokensContractTests
         stakeInfo.LockedRewardAmount.ShouldBe(0);
 
         SetBlockTime(1);
-        
+
         var reward = await EcoEarnTokensContractStub.GetReward.CallAsync(stakeInfo.StakeId);
 
         var addressInfo = await EcoEarnTokensContractStub.GetPoolAddressInfo.CallAsync(poolId);
@@ -46,13 +45,13 @@ public partial class EcoEarnTokensContractTests
         var output = await EcoEarnTokensContractStub.GetClaimInfo.CallAsync(log.ClaimInfo.ClaimId);
         output.ShouldBe(log.ClaimInfo);
 
-        stakeInfo = await EcoEarnTokensContractStub.GetStakeInfo.CallAsync(stakeInfo.StakeId);
-        stakeInfo.RewardAmount.ShouldBe(0);
-        stakeInfo.LockedRewardAmount.ShouldBe(reward.Amount);
+        var stakeOutput = await EcoEarnTokensContractStub.GetStakeInfo.CallAsync(stakeInfo.StakeId);
+        stakeOutput.StakeInfo.RewardAmount.ShouldBe(0);
+        stakeOutput.StakeInfo.LockedRewardAmount.ShouldBe(reward.Amount);
 
         SetBlockTime(1);
-        
-        var newReward = await EcoEarnTokensContractStub.GetReward.CallAsync(stakeInfo.StakeId);
+
+        var newReward = await EcoEarnTokensContractStub.GetReward.CallAsync(stakeOutput.StakeInfo.StakeId);
         newReward.ShouldBe(reward);
 
         var balance2 = await GetTokenBalance(Symbol, addressInfo.RewardAddress);
@@ -196,6 +195,19 @@ public partial class EcoEarnTokensContractTests
             ClaimIds = { claimInfo.ClaimId }
         });
         result.TransactionResult.Error.ShouldContain("Already withdrawn.");
+        
+        await EcoEarnTokensContractStub.SetConfig.SendAsync(new Config
+        {
+            CommissionRate = 1000,
+            Recipient = DefaultAddress,
+            BatchLimitation = 1
+        });
+        
+        result = await EcoEarnTokensContractUserStub.Withdraw.SendWithExceptionAsync(new WithdrawInput
+        {
+            ClaimIds = { Hash.Empty, Hash.Empty }
+        });
+        result.TransactionResult.Error.ShouldContain("Exceed batch limitation.");
     }
 
     [Fact]
@@ -205,11 +217,11 @@ public partial class EcoEarnTokensContractTests
 
         var address = await EcoEarnTokensContractStub.GetPoolAddressInfo.CallAsync(poolId);
         var balance = await GetTokenBalance(Symbol, address.RewardAddress);
-        balance.ShouldBe(100000_00000000);
+        balance.ShouldBe(10000000_00000000);
         balance = await GetTokenBalance(Symbol, UserAddress);
         balance.ShouldBe(0);
-        
-        SetBlockTime(100);
+
+        SetBlockTime(86401);
 
         var result = await EcoEarnTokensContractStub.RecoverToken.SendAsync(new RecoverTokenInput
         {
@@ -220,7 +232,7 @@ public partial class EcoEarnTokensContractTests
         result.TransactionResult.Status.ShouldBe(TransactionResultStatus.Mined);
 
         var log = GetLogEvent<TokenRecovered>(result.TransactionResult);
-        log.Amount.ShouldBe(100000_00000000);
+        log.Amount.ShouldBe(10000000_00000000);
         log.PoolId.ShouldBe(poolId);
         log.Account.ShouldBe(UserAddress);
         log.Token.ShouldBe(Symbol);
@@ -228,7 +240,7 @@ public partial class EcoEarnTokensContractTests
         balance = await GetTokenBalance(Symbol, address.RewardAddress);
         balance.ShouldBe(0);
         balance = await GetTokenBalance(Symbol, UserAddress);
-        balance.ShouldBe(100000_00000000);
+        balance.ShouldBe(10000000_00000000);
     }
 
     [Fact]
@@ -264,9 +276,9 @@ public partial class EcoEarnTokensContractTests
             Token = "TEST"
         });
         result.TransactionResult.Error.ShouldContain("Pool not closed.");
-        
-        SetBlockTime(100);
-        
+
+        SetBlockTime(86401);
+
         result = await EcoEarnTokensContractStub.RecoverToken.SendWithExceptionAsync(new RecoverTokenInput
         {
             PoolId = poolId,
@@ -323,8 +335,8 @@ public partial class EcoEarnTokensContractTests
             ReleasePeriod = 10,
             RewardTokenContract = TokenContractAddress,
             StakeTokenContract = TokenContractAddress,
-            UpdateAddress = DefaultAddress,
-            MinimumStakeDuration = 86400
+            MinimumStakeDuration = 86400,
+            UnlockWindowDuration = 100
         };
         var result = await EcoEarnTokensContractStub.CreateTokensPool.SendAsync(input);
         return GetLogEvent<TokensPoolCreated>(result.TransactionResult).PoolId;
@@ -356,8 +368,8 @@ public partial class EcoEarnTokensContractTests
             ReleasePeriod = 10,
             RewardTokenContract = TokenContractAddress,
             StakeTokenContract = TokenContractAddress,
-            UpdateAddress = DefaultAddress,
-            MinimumStakeDuration = 86400
+            MinimumStakeDuration = 86400,
+            UnlockWindowDuration = 100
         };
         var result = await EcoEarnTokensContractStub.CreateTokensPool.SendAsync(input);
         return GetLogEvent<TokensPoolCreated>(result.TransactionResult).PoolId;

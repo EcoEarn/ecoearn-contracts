@@ -9,7 +9,6 @@ public static class EcoEarnTokensContractConstants
     public const string RewardAddress = "RewardAddress";
 
     public const long SecondsPerDay = 60 * 60 * 24;
-    public const long AdvancedSeconds = 20;
 
     public const int MaxDecimals = 18;
 }

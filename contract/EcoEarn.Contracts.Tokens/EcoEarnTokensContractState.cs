@@ -1,6 +1,5 @@
 using AElf.Sdk.CSharp.State;
 using AElf.Types;
-using Google.Protobuf.WellKnownTypes;
 
 namespace EcoEarn.Contracts.Tokens;
 
@@ -25,9 +24,6 @@ public partial class EcoEarnTokensContractState : ContractState
 
     // <StakeId, StakeInfo>
     public MappedState<Hash, StakeInfo> StakeInfoMap { get; set; }
-
-    // <StakeId, Timestamp>
-    public MappedState<Hash, Timestamp> StakeInfoUpdateTimeMap { get; set; }
 
     // <PoolId, UserAddress, StakeId>
     public MappedState<Hash, Address, Hash> UserStakeIdMap { get; set; }

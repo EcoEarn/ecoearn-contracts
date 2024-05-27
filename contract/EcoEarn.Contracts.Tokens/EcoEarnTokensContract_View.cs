@@ -1,5 +1,4 @@
 using AElf.CSharp.Core;
-using AElf.CSharp.Core.Extension;
 using AElf.Types;
 using Google.Protobuf.WellKnownTypes;
 
@@ -9,22 +8,22 @@ public partial class EcoEarnTokensContract
 {
     public override Address GetAdmin(Empty input)
     {
-        return State.Admin?.Value;
+        return State.Admin.Value;
     }
 
     public override Config GetConfig(Empty input)
     {
-        return State.Config?.Value;
+        return State.Config.Value;
     }
 
     public override DappInfo GetDappInfo(Hash input)
     {
-        return IsHashValid(input) ? State.DappInfoMap[input] ?? new DappInfo() : new DappInfo();
+        return IsHashValid(input) ? State.DappInfoMap[input] : new DappInfo();
     }
 
     public override GetPoolInfoOutput GetPoolInfo(Hash input)
     {
-        if (!IsHashValid(input) || State.PoolInfoMap[input] == null) return new GetPoolInfoOutput();
+        if (!IsHashValid(input) || State.PoolInfoMap[input]?.PoolId == null) return new GetPoolInfoOutput();
 
         var info = State.PoolInfoMap[input];
         var output = new GetPoolInfoOutput
@@ -49,7 +48,7 @@ public partial class EcoEarnTokensContract
 
     public override PoolData GetPoolData(Hash input)
     {
-        return IsHashValid(input) ? State.PoolDataMap[input] ?? new PoolData() : new PoolData();
+        return IsHashValid(input) ? State.PoolDataMap[input] : new PoolData();
     }
 
     public override Int64Value GetPoolCount(Hash input)
@@ -62,12 +61,24 @@ public partial class EcoEarnTokensContract
 
     public override ClaimInfo GetClaimInfo(Hash input)
     {
-        return IsHashValid(input) ? State.ClaimInfoMap[input] ?? new ClaimInfo() : new ClaimInfo();
+        return IsHashValid(input) ? State.ClaimInfoMap[input] : new ClaimInfo();
     }
 
-    public override StakeInfo GetStakeInfo(Hash input)
+    public override GetStakeInfoOutput GetStakeInfo(Hash input)
     {
-        return IsHashValid(input) ? State.StakeInfoMap[input] ?? new StakeInfo() : new StakeInfo();
+        var output = new GetStakeInfoOutput();
+        if (!IsHashValid(input)) return output;
+
+        var stakeInfo = State.StakeInfoMap[input];
+        if (stakeInfo == null) return output;
+
+        output.StakeInfo = stakeInfo;
+        var poolInfo = State.PoolInfoMap[stakeInfo.PoolId];
+
+        output.IsInUnlockWindow = CheckPoolEnabled(poolInfo.Config.EndTime) &&
+                                  IsInUnlockWindow(stakeInfo, poolInfo.Config.UnlockWindowDuration);
+
+        return output;
     }
 
     public override GetRewardOutput GetReward(Hash input)
@@ -120,11 +131,6 @@ public partial class EcoEarnTokensContract
 
     public override Hash GetUserStakeId(GetUserStakeIdInput input)
     {
-        return State.UserStakeIdMap[input.PoolId]?[input.Account];
-    }
-
-    private Timestamp CalculateUnlockTime(StakeInfo stakeInfo)
-    {
-        return stakeInfo.StakedTime.AddSeconds(stakeInfo.Period);
+        return State.UserStakeIdMap[input.PoolId][input.Account];
     }
 }
