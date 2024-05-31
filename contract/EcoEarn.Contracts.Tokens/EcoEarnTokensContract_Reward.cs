@@ -30,28 +30,7 @@ public partial class EcoEarnTokensContract
 
         return new Empty();
     }
-
-    public override Empty Withdraw(WithdrawInput input)
-    {
-        Assert(input != null, "Invalid input.");
-        Assert(input!.ClaimIds != null && input.ClaimIds.Count > 0, "Invalid claim ids.");
-        
-        var batchLimitation = State.Config.Value.BatchLimitation;
-        Assert(batchLimitation == 0 || input.ClaimIds.Count <= batchLimitation, "Exceed batch limitation.");
-
-        var claimInfos = ProcessClaimInfos(input.ClaimIds!.Distinct().ToList());
-
-        Context.Fire(new Withdrawn
-        {
-            ClaimInfos = new ClaimInfos
-            {
-                Data = { claimInfos }
-            }
-        });
-
-        return new Empty();
-    }
-
+    
     public override Empty RecoverToken(RecoverTokenInput input)
     {
         Assert(input != null, "Invalid input.");

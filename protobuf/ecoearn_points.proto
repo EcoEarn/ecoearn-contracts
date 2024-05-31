@@ -38,8 +38,6 @@ service EcoEarnPointsContract {
   rpc GetSnapshot (GetSnapshotInput) returns (Snapshot) {option (aelf.is_view) = true;}
   rpc Claim (ClaimInput) returns (google.protobuf.Empty) {}
   rpc GetClaimInfo (aelf.Hash) returns (ClaimInfo) {option (aelf.is_view) = true;}
-  rpc Withdraw (WithdrawInput) returns (google.protobuf.Empty) {}
-  rpc EarlyStake (EarlyStakeInput) returns (google.protobuf.Empty) {}
   rpc RecoverToken (RecoverTokenInput) returns (google.protobuf.Empty) {}
 }
 
@@ -49,13 +47,11 @@ message InitializeInput {
   aelf.Address ecoearn_tokens_contract = 3;
   int64 commission_rate = 4;
   aelf.Address recipient = 5;
-  int64 batch_limitation = 6;
 }
 
 message Config {
   int64 commission_rate = 1;
   aelf.Address recipient = 2;
-  int64 batch_limitation = 3;
 }
 
 message RegisterInput {
@@ -151,10 +147,6 @@ message EarlyStakeInput {
   repeated aelf.Hash claim_ids = 3;
 }
 
-message ClaimInfos {
-  repeated ClaimInfo data = 1;
-}
-
 message RecoverTokenInput {
   aelf.Hash pool_id = 1;
   string token = 2;
@@ -237,19 +229,6 @@ message SnapshotUpdated {
 message Claimed {
   option (aelf.is_event) = true;
   ClaimInfo claim_info = 1;
-}
-
-message Withdrawn {
-  option (aelf.is_event) = true;
-  ClaimInfos claim_infos = 1;
-}
-
-message EarlyStaked {
-  option (aelf.is_event) = true;
-  aelf.Hash pool_id = 1;
-  int64 amount = 2;
-  int64 period = 3;
-  ClaimInfos claim_infos = 4;
 }
 
 message TokenRecovered {

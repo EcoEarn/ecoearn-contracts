@@ -12,7 +12,6 @@ namespace EcoEarn.Contracts.Points;
 public partial class EcoEarnPointsContractTests
 {
     private const string PointsName = "point";
-    private const string DefaultSymbol = "ELF";
     private const string Symbol = "SGR-1";
     private readonly Hash _appId = HashHelper.ComputeFrom("dapp");
 
@@ -752,7 +751,7 @@ public partial class EcoEarnPointsContractTests
             });
         result.TransactionResult.Error.ShouldContain("No permission.");
     }
-    
+
     [Fact]
     public async Task SetPointsPoolRewardReleasePeriodTests()
     {

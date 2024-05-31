@@ -18,8 +18,7 @@ public partial class EcoEarnPointsContractTests : EcoEarnPointsContractTestBase
             CommissionRate = 100,
             Recipient = User2Address,
             Admin = UserAddress,
-            EcoearnTokensContract = DefaultAddress,
-            BatchLimitation = 10
+            EcoearnTokensContract = DefaultAddress
         };
 
         var result = await EcoEarnPointsContractStub.Initialize.SendAsync(input);
@@ -31,7 +30,6 @@ public partial class EcoEarnPointsContractTests : EcoEarnPointsContractTestBase
         var config = await EcoEarnPointsContractStub.GetConfig.CallAsync(new Empty());
         config.CommissionRate.ShouldBe(100);
         config.Recipient.ShouldBe(User2Address);
-        config.BatchLimitation.ShouldBe(10);
 
         // initialize twice
         result = await EcoEarnPointsContractStub.Initialize.SendWithExceptionAsync(input);
@@ -106,16 +104,6 @@ public partial class EcoEarnPointsContractTests : EcoEarnPointsContractTestBase
             Recipient = new Address()
         });
         result.TransactionResult.Error.ShouldContain("Invalid recipient.");
-        
-        result = await EcoEarnPointsContractStub.Initialize.SendWithExceptionAsync(new InitializeInput
-        {
-            PointsContract = DefaultAddress,
-            EcoearnTokensContract = DefaultAddress,
-            CommissionRate = 0,
-            Recipient = DefaultAddress,
-            BatchLimitation = -1
-        });
-        result.TransactionResult.Error.ShouldContain("Invalid batch limitation.");
 
         // sender != author
         result = await EcoEarnPointsContractUserStub.Initialize.SendWithExceptionAsync(new InitializeInput
@@ -162,14 +150,13 @@ public partial class EcoEarnPointsContractTests : EcoEarnPointsContractTestBase
         await Initialize();
 
         var config = await EcoEarnPointsContractStub.GetConfig.CallAsync(new Empty());
-        config.CommissionRate.ShouldBe(100);
+        config.CommissionRate.ShouldBe(1000);
         config.Recipient.ShouldBe(User2Address);
 
         var input = new Config
         {
             CommissionRate = 50,
-            Recipient = DefaultAddress,
-            BatchLimitation = 10
+            Recipient = DefaultAddress
         };
         var result = await EcoEarnPointsContractStub.SetConfig.SendAsync(input);
         result.TransactionResult.Status.ShouldBe(TransactionResultStatus.Mined);
@@ -190,7 +177,6 @@ public partial class EcoEarnPointsContractTests : EcoEarnPointsContractTestBase
         log = GetLogEvent<ConfigSet>(result.TransactionResult);
         log.Config.CommissionRate.ShouldBe(500);
         log.Config.Recipient.ShouldBe(DefaultAddress);
-        log.Config.BatchLimitation.ShouldBe(10);
     }
 
     [Fact]
@@ -222,15 +208,6 @@ public partial class EcoEarnPointsContractTests : EcoEarnPointsContractTestBase
             });
             result.TransactionResult.Error.ShouldContain("Invalid recipient.");
         }
-        {
-            var result = await EcoEarnPointsContractStub.SetConfig.SendWithExceptionAsync(new Config
-            {
-                CommissionRate = 50,
-                Recipient = DefaultAddress,
-                BatchLimitation = -1
-            });
-            result.TransactionResult.Error.ShouldContain("Invalid batch limitation.");
-        }
     }
 
     private async Task Initialize()
@@ -238,10 +215,9 @@ public partial class EcoEarnPointsContractTests : EcoEarnPointsContractTestBase
         await EcoEarnPointsContractStub.Initialize.SendAsync(new InitializeInput
         {
             PointsContract = PointsContractAddress,
-            CommissionRate = 100,
+            CommissionRate = 1000,
             Recipient = User2Address,
-            EcoearnTokensContract = EcoEarnTokensContractAddress,
-            BatchLimitation = 0
+            EcoearnTokensContract = EcoEarnTokensContractAddress
         });
         await PointsContractStub.Initialize.SendAsync(new TestPointsContract.InitializeInput
         {

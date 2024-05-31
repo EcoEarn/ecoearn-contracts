@@ -196,10 +196,7 @@ message ClaimInfo {
   aelf.Address account = 9;
   google.protobuf.Timestamp early_stake_time = 10;
   aelf.Hash stake_id = 11;
-}
-
-message ClaimInfos {
-  repeated ClaimInfo data = 1;
+  aelf.Hash seed = 12;
 }
 
 message StakeForInput {
@@ -242,14 +239,12 @@ message InitializeInput {
   int64 commission_rate = 3;
   aelf.Address recipient = 4;
   bool is_register_restricted = 5;
-  int64 batch_limitation = 6;
 }
 
 message Config {
   int64 commission_rate = 1;
   aelf.Address recipient = 2;
   bool is_register_restricted = 3;
-  int64 batch_limitation = 4;
 }
 
 message SetDappAdminInput {
@@ -320,14 +315,6 @@ message Staked {
   PoolData pool_data = 2;
 }
 
-message EarlyStaked {
-  option (aelf.is_event) = true;
-  aelf.Hash pool_id = 1;
-  StakeInfo stake_info = 2;
-  PoolData pool_data = 3;
-  ClaimInfos claim_infos = 4;
-}
-
 message Unlocked {
   option (aelf.is_event) = true;
   aelf.Hash stake_id = 1;
@@ -340,11 +327,6 @@ message Claimed {
   option (aelf.is_event) = true;
   aelf.Hash stake_id = 1;
   ClaimInfo claim_info = 2;
-}
-
-message Withdrawn {
-  option (aelf.is_event) = true;
-  ClaimInfos claim_infos = 1;
 }
 
 message TokenRecovered {
