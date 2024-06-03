@@ -13,7 +13,6 @@ namespace EcoEarn.Contracts.Tokens;
 public partial class EcoEarnTokensContractTests
 {
     private readonly Hash _appId = HashHelper.ComputeFrom("dapp");
-    private const string DefaultSymbol = "ELF";
     private const string Symbol = "SGR-1";
     private const string PointsName = "point";
 
@@ -212,7 +211,8 @@ public partial class EcoEarnTokensContractTests
             RewardTokenContract = TokenContractAddress,
             StakeTokenContract = TokenContractAddress,
             MinimumStakeDuration = 1,
-            UnlockWindowDuration = 100
+            UnlockWindowDuration = 100,
+            UpdateAddress = DefaultAddress
         };
 
         var result = await EcoEarnTokensContractStub.CreateTokensPool.SendAsync(input);
@@ -323,7 +323,8 @@ public partial class EcoEarnTokensContractTests
                 MinimumClaimAmount = minimumClaimAmount,
                 MinimumStakeDuration = minimumStakeDuration,
                 StakingToken = stakingSymbol,
-                UnlockWindowDuration = unlockWindowDuration
+                UnlockWindowDuration = unlockWindowDuration,
+                UpdateAddress = DefaultAddress
             });
         result.TransactionResult.Error.ShouldContain(error);
     }
@@ -685,8 +686,11 @@ public partial class EcoEarnTokensContractTests
 
         SetBlockTime(1);
 
-        var reward = await EcoEarnTokensContractStub.GetReward.CallAsync(stakeInfo.StakeId);
-        reward.Amount.ShouldBe(99_00000000);
+        var reward = await EcoEarnTokensContractStub.GetReward.CallAsync(new GetRewardInput
+        {
+            StakeIds = { stakeInfo.StakeId }
+        });
+        reward.RewardInfos.First().Amount.ShouldBe(99_00000000);
 
         await EcoEarnTokensContractStub.SetTokensPoolRewardPerSecond.SendAsync(new SetTokensPoolRewardPerSecondInput
         {
@@ -696,8 +700,11 @@ public partial class EcoEarnTokensContractTests
 
         SetBlockTime(1);
 
-        var reward2 = await EcoEarnTokensContractStub.GetReward.CallAsync(stakeInfo.StakeId);
-        reward2.Amount.ShouldBe(99_00000000 + 99_0000000);
+        var reward2 = await EcoEarnTokensContractStub.GetReward.CallAsync(new GetRewardInput
+        {
+            StakeIds = { stakeInfo.StakeId }
+        });
+        reward2.RewardInfos.First().Amount.ShouldBe(99_00000000 + 99_0000000);
 
         await EcoEarnTokensContractStub.SetTokensPoolRewardPerSecond.SendAsync(new SetTokensPoolRewardPerSecondInput
         {
@@ -707,8 +714,11 @@ public partial class EcoEarnTokensContractTests
 
         SetBlockTime(1);
 
-        var reward3 = await EcoEarnTokensContractStub.GetReward.CallAsync(stakeInfo.StakeId);
-        reward3.Amount.ShouldBe(99_00000000 + 99_0000000 + 99_00000000);
+        var reward3 = await EcoEarnTokensContractStub.GetReward.CallAsync(new GetRewardInput
+        {
+            StakeIds = { stakeInfo.StakeId }
+        });
+        reward3.RewardInfos.First().Amount.ShouldBe(99_00000000 + 99_0000000 + 99_00000000);
     }
 
     [Fact]
@@ -875,7 +885,8 @@ public partial class EcoEarnTokensContractTests
             RewardTokenContract = TokenContractAddress,
             StakeTokenContract = TokenContractAddress,
             MinimumStakeDuration = 86400,
-            UnlockWindowDuration = 100
+            UnlockWindowDuration = 100,
+            UpdateAddress = DefaultAddress
         };
         var result = await EcoEarnTokensContractStub.CreateTokensPool.SendAsync(input);
         var log = GetLogEvent<TokensPoolCreated>(result.TransactionResult);
@@ -883,78 +894,6 @@ public partial class EcoEarnTokensContractTests
         await TokenContractStub.Transfer.SendAsync(new TransferInput
         {
             Amount = 10000000_00000000,
-            To = log.AddressInfo.RewardAddress,
-            Symbol = Symbol
-        });
-
-        return log.PoolId;
-    }
-
-    private async Task<Hash> CreateTokensPool(string symbol)
-    {
-        var blockTime = BlockTimeProvider.GetBlockTime().Seconds;
-
-        var input = new CreateTokensPoolInput
-        {
-            DappId = _appId,
-            StartTime = blockTime,
-            EndTime = blockTime + 86401,
-            RewardToken = Symbol,
-            StakingToken = symbol,
-            FixedBoostFactor = 10000,
-            MaximumStakeDuration = 500000,
-            MinimumAmount = 1_00000000,
-            MinimumClaimAmount = 1_00000000,
-            RewardPerSecond = 100_00000000,
-            ReleasePeriod = 10,
-            RewardTokenContract = TokenContractAddress,
-            StakeTokenContract = TokenContractAddress,
-            MinimumStakeDuration = 86400,
-            UnlockWindowDuration = 100
-        };
-        var result = await EcoEarnTokensContractStub.CreateTokensPool.SendAsync(input);
-
-        var log = GetLogEvent<TokensPoolCreated>(result.TransactionResult);
-
-        await TokenContractStub.Transfer.SendAsync(new TransferInput
-        {
-            Amount = 1000_00000000,
-            To = log.AddressInfo.RewardAddress,
-            Symbol = Symbol
-        });
-
-        return log.PoolId;
-    }
-
-    private async Task<Hash> CreateTokensPoolWithLowRewardPerSecond()
-    {
-        var blockTime = BlockTimeProvider.GetBlockTime().Seconds;
-
-        var input = new CreateTokensPoolInput
-        {
-            DappId = _appId,
-            StartTime = blockTime,
-            EndTime = blockTime + 10,
-            RewardToken = Symbol,
-            StakingToken = Symbol,
-            FixedBoostFactor = 10000,
-            MaximumStakeDuration = 500000,
-            MinimumAmount = 2_00000000,
-            MinimumClaimAmount = 1,
-            RewardPerSecond = 1_00000000,
-            ReleasePeriod = 10,
-            RewardTokenContract = TokenContractAddress,
-            StakeTokenContract = TokenContractAddress,
-            MinimumStakeDuration = 86400,
-            UnlockWindowDuration = 100
-        };
-        var result = await EcoEarnTokensContractStub.CreateTokensPool.SendAsync(input);
-
-        var log = GetLogEvent<TokensPoolCreated>(result.TransactionResult);
-
-        await TokenContractStub.Transfer.SendAsync(new TransferInput
-        {
-            Amount = 1000_00000000,
             To = log.AddressInfo.RewardAddress,
             Symbol = Symbol
         });

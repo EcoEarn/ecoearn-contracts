@@ -1,11 +1,8 @@
-using System.Collections.Generic;
-using System.Linq;
 using AElf;
 using AElf.Contracts.MultiToken;
 using AElf.CSharp.Core;
 using AElf.Sdk.CSharp;
 using AElf.Types;
-using Google.Protobuf.Collections;
 using Google.Protobuf.WellKnownTypes;
 using static System.Int64;
 
@@ -25,7 +22,7 @@ public partial class EcoEarnTokensContract
 
         Assert(CheckPoolEnabled(poolInfo.Config.EndTime), "Pool closed.");
 
-        ProcessStake(poolInfo, input.Amount, 0, input.Period, Context.Sender);
+        ProcessStake(poolInfo, input.Amount, input.Period, Context.Sender);
 
         if (input.Amount > 0)
         {
@@ -89,7 +86,7 @@ public partial class EcoEarnTokensContract
         stakeInfo.UnlockTime = Context.CurrentBlockTime;
         stakeInfo.LastOperationTime = Context.CurrentBlockTime;
 
-        ProcessClaim(poolInfo, stakeInfo);
+        UpdateReward(poolInfo, stakeInfo);
         UpdateTotalStakedAmount(stakeInfo);
 
         if (stakeInfo.StakedAmount > 0)
@@ -104,31 +101,13 @@ public partial class EcoEarnTokensContract
                 });
         }
 
-        if (stakeInfo.EarlyStakedAmount > 0)
-        {
-            var dict = State.EarlyStakeInfoMap[stakeInfo.StakeId];
-            foreach (var info in dict.Data)
-            {
-                Context.SendVirtualInline(GetStakeVirtualAddress(input), poolInfo.Config.StakeTokenContract,
-                    nameof(State.TokenContract.Transfer), new TransferInput
-                    {
-                        Amount = info.Value,
-                        Memo = "early",
-                        Symbol = poolInfo.Config.StakingToken,
-                        To = Address.FromBase58(info.Key)
-                    });
-            }
-        }
-
         stakeInfo.StakedAmount = 0;
-        stakeInfo.EarlyStakedAmount = 0;
 
         Context.Fire(new Unlocked
         {
             StakeId = existId,
             PoolData = State.PoolDataMap[stakeInfo.PoolId],
-            StakedAmount = stakeInfo.StakedAmount,
-            EarlyStakedAmount = stakeInfo.EarlyStakedAmount
+            StakedAmount = stakeInfo.StakedAmount
         });
 
         return new Empty();
@@ -199,47 +178,15 @@ public partial class EcoEarnTokensContract
         return result;
     }
 
-    private List<ClaimInfo> ProcessEarlyStake(List<Hash> claimIds, PoolInfo poolInfo, Hash stakeId, out long amount)
-    {
-        amount = 0L;
-        var list = new List<ClaimInfo>();
-
-        foreach (var id in claimIds)
-        {
-            Assert(IsHashValid(id), "Invalid claim id.");
-
-            var claimInfo = State.ClaimInfoMap[id];
-            Assert(claimInfo != null, "Claim info not exists.");
-            Assert(claimInfo!.WithdrawTime == null, "Already withdrawn.");
-            Assert(claimInfo.Account == Context.Sender, "No permission.");
-            Assert(claimInfo.ClaimedSymbol == poolInfo.Config.StakingToken, "Token not matched.");
-
-            if (claimInfo.StakeId != null)
-            {
-                var stakeInfo = State.StakeInfoMap[claimInfo.StakeId];
-                Assert(stakeInfo != null && stakeInfo.UnlockTime != null, "Not unlocked.");
-            }
-
-            amount = amount.Add(claimInfo.ClaimedAmount);
-            claimInfo.EarlyStakeTime = Context.CurrentBlockTime;
-            claimInfo.StakeId = stakeId;
-            list.Add(claimInfo);
-        }
-
-        return list;
-    }
-
-    private Hash ProcessStake(PoolInfo poolInfo, long stakedAmount, long earlyStakedAmount, long period,
+    private void ProcessStake(PoolInfo poolInfo, long amount, long period,
         Address address)
     {
         var existId = State.UserStakeIdMap[poolInfo.PoolId][address];
         var stakeInfo = existId == null ? new StakeInfo() : State.StakeInfoMap[existId];
 
-        var amount = stakedAmount.Add(earlyStakedAmount);
         if (amount > 0)
         {
-            stakeInfo.StakedAmount = stakeInfo.StakedAmount.Add(stakedAmount);
-            stakeInfo.EarlyStakedAmount = stakeInfo.EarlyStakedAmount.Add(earlyStakedAmount);
+            stakeInfo.StakedAmount = stakeInfo.StakedAmount.Add(amount);
         }
 
         if (period > 0)
@@ -263,8 +210,7 @@ public partial class EcoEarnTokensContract
                 Account = address,
                 StakedBlockNumber = Context.CurrentHeight,
                 StakedTime = Context.CurrentBlockTime,
-                StakedAmount = stakedAmount,
-                EarlyStakedAmount = earlyStakedAmount,
+                StakedAmount = amount,
                 StakingToken = poolInfo.Config.StakingToken,
                 LastOperationTime = Context.CurrentBlockTime,
                 Period = period
@@ -286,8 +232,6 @@ public partial class EcoEarnTokensContract
             StakeInfo = stakeInfo,
             PoolData = State.PoolDataMap[poolInfo.PoolId]
         });
-
-        return stakeInfo.StakeId;
     }
 
     private long ProcessCommissionFee(long pending, PoolInfo poolInfo)
@@ -310,31 +254,6 @@ public partial class EcoEarnTokensContract
         }
 
         return pending.Sub(commissionFee);
-    }
-
-    private void RecordEarlyStakeInfo(Hash stakeId, long stakedAmount, string address)
-    {
-        var earlyStakeInfo = State.EarlyStakeInfoMap[stakeId] ?? new EarlyStakeInfo();
-        var dict = earlyStakeInfo.Data ?? new MapField<string, long>();
-        dict.TryGetValue(address, out var amount);
-        dict[address] = amount.Add(stakedAmount);
-        State.EarlyStakeInfoMap[stakeId] = new EarlyStakeInfo
-        {
-            Data = { dict }
-        };
-    }
-
-    private Hash GetStakeId(Hash poolId)
-    {
-        var stakeId = State.UserStakeIdMap[poolId][Context.Sender];
-
-        if (IsHashValid(stakeId) && State.StakeInfoMap[stakeId].UnlockTime == null) return stakeId;
-
-        var count = State.UserStakeCountMap[poolId][Context.Sender];
-        stakeId = HashHelper.ConcatAndCompute(
-            HashHelper.ConcatAndCompute(HashHelper.ComputeFrom(count), HashHelper.ComputeFrom(Context.Sender)), poolId);
-
-        return stakeId;
     }
 
     private void UpdateTotalStakedAmount(StakeInfo stakeInfo)
@@ -374,7 +293,7 @@ public partial class EcoEarnTokensContract
             {
                 var stakingPeriod = remainTime.Add(period);
                 Assert(stakingPeriod <= poolInfo.Config.MaximumStakeDuration, "Period too long.");
-                
+
                 stakeInfo.StakingPeriod = stakingPeriod;
                 stakeInfo.Period = stakeInfo.Period.Add(period);
             }
@@ -391,8 +310,7 @@ public partial class EcoEarnTokensContract
         var actualReward = ProcessCommissionFee(pending, poolInfo);
         stakeInfo.RewardAmount = stakeInfo.RewardAmount.Add(actualReward);
 
-        var boostedAmount = CalculateBoostedAmount(poolInfo.Config,
-            stakeInfo.StakedAmount.Add(stakeInfo.EarlyStakedAmount), stakeInfo.Period);
+        var boostedAmount = CalculateBoostedAmount(poolInfo.Config, stakeInfo.StakedAmount, stakeInfo.Period);
 
         if (boostedAmount != stakeInfo.BoostedAmount)
         {

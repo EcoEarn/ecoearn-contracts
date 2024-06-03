@@ -33,7 +33,5 @@ public partial class EcoEarnTokensContractState : ContractState
 
     // <ClaimId, ClaimInfo>
     public MappedState<Hash, ClaimInfo> ClaimInfoMap { get; set; }
-
-    // <StakeId, EarlyStakeInfo>
-    public MappedState<Hash, EarlyStakeInfo> EarlyStakeInfoMap { get; set; }
+    public MappedState<Hash, bool> SignatureMap { get; set; }
 }

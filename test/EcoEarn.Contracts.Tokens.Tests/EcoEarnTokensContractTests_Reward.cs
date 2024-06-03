@@ -1,7 +1,10 @@
+using System.Linq;
 using System.Threading.Tasks;
 using AElf;
+using AElf.Cryptography;
 using AElf.CSharp.Core.Extension;
 using AElf.Types;
+using Google.Protobuf;
 using Google.Protobuf.WellKnownTypes;
 using Shouldly;
 using Xunit;
@@ -14,88 +17,214 @@ public partial class EcoEarnTokensContractTests
     public async Task ClaimTests()
     {
         const long tokenBalance = 5_00000000;
+        var seed = HashHelper.ComputeFrom(1);
 
         var poolId = await CreateTokensPool();
         var stakeInfo = await Stake(poolId, tokenBalance);
         stakeInfo.RewardAmount.ShouldBe(0);
-        stakeInfo.LockedRewardAmount.ShouldBe(0);
 
         SetBlockTime(1);
 
-        var reward = await EcoEarnTokensContractStub.GetReward.CallAsync(stakeInfo.StakeId);
+        var reward = await EcoEarnTokensContractStub.GetReward.CallAsync(new GetRewardInput
+        {
+            StakeIds = { stakeInfo.StakeId }
+        });
 
         var addressInfo = await EcoEarnTokensContractStub.GetPoolAddressInfo.CallAsync(poolId);
         var balance = await GetTokenBalance(Symbol, addressInfo.RewardAddress);
 
-        var result = await EcoEarnTokensContractUserStub.Claim.SendAsync(stakeInfo.StakeId);
+        var expirationTime = BlockTimeProvider.GetBlockTime().AddDays(1).Seconds;
+
+        var input = new ClaimInput
+        {
+            StakeId = stakeInfo.StakeId,
+            Account = UserAddress,
+            Amount = 10,
+            Seed = seed,
+            ExpirationTime = expirationTime,
+            Signature = GenerateSignature(DefaultAccount.KeyPair.PrivateKey, stakeInfo.StakeId, 10, UserAddress, seed,
+                expirationTime)
+        };
+
+        var result = await EcoEarnTokensContractUserStub.Claim.SendAsync(input);
         result.TransactionResult.Status.ShouldBe(TransactionResultStatus.Mined);
 
         var log = GetLogEvent<Claimed>(result.TransactionResult);
         log.StakeId.ShouldBe(stakeInfo.StakeId);
         log.ClaimInfo.ClaimedSymbol.ShouldBe(Symbol);
-        log.ClaimInfo.ClaimedAmount.ShouldBe(reward.Amount);
+        log.ClaimInfo.ClaimedAmount.ShouldBe(input.Amount);
         log.ClaimInfo.ClaimedTime.ShouldBe(BlockTimeProvider.GetBlockTime());
         log.ClaimInfo.PoolId.ShouldBe(poolId);
         log.ClaimInfo.Account.ShouldBe(UserAddress);
-        log.ClaimInfo.UnlockTime.ShouldBe(BlockTimeProvider.GetBlockTime().AddSeconds(10));
-        log.ClaimInfo.WithdrawTime.ShouldBeNull();
         log.ClaimInfo.ClaimedBlockNumber.ShouldBe(result.TransactionResult.BlockNumber);
-        log.ClaimInfo.EarlyStakeTime.ShouldBeNull();
 
         var output = await EcoEarnTokensContractStub.GetClaimInfo.CallAsync(log.ClaimInfo.ClaimId);
         output.ShouldBe(log.ClaimInfo);
 
         var stakeOutput = await EcoEarnTokensContractStub.GetStakeInfo.CallAsync(stakeInfo.StakeId);
-        stakeOutput.StakeInfo.RewardAmount.ShouldBe(0);
-        stakeOutput.StakeInfo.LockedRewardAmount.ShouldBe(reward.Amount);
+        stakeOutput.StakeInfo.RewardAmount.ShouldBe(reward.RewardInfos.First().Amount);
 
         SetBlockTime(1);
 
-        var newReward = await EcoEarnTokensContractStub.GetReward.CallAsync(stakeOutput.StakeInfo.StakeId);
-        newReward.ShouldBe(reward);
+        var newReward = await EcoEarnTokensContractStub.GetReward.CallAsync(new GetRewardInput
+        {
+            StakeIds = { stakeOutput.StakeInfo.StakeId }
+        });
+        newReward.RewardInfos.First().Amount.ShouldBe(reward.RewardInfos.First().Amount * 2);
 
         var balance2 = await GetTokenBalance(Symbol, addressInfo.RewardAddress);
-        balance2.ShouldBe(balance - reward.Amount - 1_00000000);
+        balance2.ShouldBe(balance - 1_00000000 - 10);
     }
 
     [Fact]
     public async Task ClaimTests_Fail()
     {
         const long tokenBalance = 5_00000000;
-
+    
         var poolId = await CreateTokensPool();
         var stakeInfo = await Stake(poolId, tokenBalance);
+    
+        var result = await EcoEarnTokensContractStub.Claim.SendWithExceptionAsync(new ClaimInput());
+        result.TransactionResult.Error.ShouldContain("Invalid stake id.");
 
-        var result = await EcoEarnTokensContractStub.Claim.SendWithExceptionAsync(new Hash());
-        result.TransactionResult.Error.ShouldContain("Invalid input.");
-
-        result = await EcoEarnTokensContractStub.Claim.SendWithExceptionAsync(HashHelper.ComputeFrom("test"));
+        result = await EcoEarnTokensContractStub.Claim.SendWithExceptionAsync(new ClaimInput
+        {
+            StakeId = new Hash()
+        });
+        result.TransactionResult.Error.ShouldContain("Invalid stake id.");
+        
+        result = await EcoEarnTokensContractStub.Claim.SendWithExceptionAsync(new ClaimInput
+        {
+            StakeId = HashHelper.ComputeFrom("test")
+        });
+        result.TransactionResult.Error.ShouldContain("Invalid account.");
+        
+        result = await EcoEarnTokensContractStub.Claim.SendWithExceptionAsync(new ClaimInput
+        {
+            StakeId = HashHelper.ComputeFrom("test"),
+            Account = new Address()
+        });
+        result.TransactionResult.Error.ShouldContain("Invalid account.");
+        
+        result = await EcoEarnTokensContractStub.Claim.SendWithExceptionAsync(new ClaimInput
+        {
+            StakeId = HashHelper.ComputeFrom("test"),
+            Account = UserAddress
+        });
+        result.TransactionResult.Error.ShouldContain("Invalid account.");
+        
+        result = await EcoEarnTokensContractStub.Claim.SendWithExceptionAsync(new ClaimInput
+        {
+            StakeId = HashHelper.ComputeFrom("test"),
+            Account = DefaultAddress
+        });
+        result.TransactionResult.Error.ShouldContain("Invalid amount.");
+        
+        result = await EcoEarnTokensContractStub.Claim.SendWithExceptionAsync(new ClaimInput
+        {
+            StakeId = HashHelper.ComputeFrom("test"),
+            Account = DefaultAddress,
+            Amount = 100_00000000
+        });
+        result.TransactionResult.Error.ShouldContain("Invalid seed.");
+        
+        result = await EcoEarnTokensContractStub.Claim.SendWithExceptionAsync(new ClaimInput
+        {
+            StakeId = HashHelper.ComputeFrom("test"),
+            Account = DefaultAddress,
+            Amount = 100_00000000,
+            Seed = new Hash()
+        });
+        result.TransactionResult.Error.ShouldContain("Invalid seed.");
+        
+        result = await EcoEarnTokensContractStub.Claim.SendWithExceptionAsync(new ClaimInput
+        {
+            StakeId = HashHelper.ComputeFrom("test"),
+            Account = DefaultAddress,
+            Amount = 100_00000000,
+            Seed = HashHelper.ComputeFrom("seed")
+        });
+        result.TransactionResult.Error.ShouldContain("Invalid expiration time.");
+        
+        result = await EcoEarnTokensContractStub.Claim.SendWithExceptionAsync(new ClaimInput
+        {
+            StakeId = HashHelper.ComputeFrom("test"),
+            Account = DefaultAddress,
+            Amount = 100_00000000,
+            Seed = HashHelper.ComputeFrom("seed"),
+            ExpirationTime = BlockTimeProvider.GetBlockTime().AddDays(-1).Seconds
+        });
+        result.TransactionResult.Error.ShouldContain("Invalid signature.");
+        
+        result = await EcoEarnTokensContractStub.Claim.SendWithExceptionAsync(new ClaimInput
+        {
+            StakeId = HashHelper.ComputeFrom("test"),
+            Account = DefaultAddress,
+            Amount = 100_00000000,
+            Seed = HashHelper.ComputeFrom("seed"),
+            ExpirationTime = BlockTimeProvider.GetBlockTime().AddDays(-1).Seconds,
+            Signature = Hash.Empty.ToByteString()
+        });
         result.TransactionResult.Error.ShouldContain("Stake info not exists.");
-
-        result = await EcoEarnTokensContractStub.Claim.SendWithExceptionAsync(stakeInfo.StakeId);
+        
+        result = await EcoEarnTokensContractStub.Claim.SendWithExceptionAsync(new ClaimInput
+        {
+            StakeId = stakeInfo.StakeId,
+            Account = DefaultAddress,
+            Amount = 100_00000000,
+            Seed = HashHelper.ComputeFrom("seed"),
+            ExpirationTime = BlockTimeProvider.GetBlockTime().AddDays(-1).Seconds,
+            Signature = Hash.Empty.ToByteString()
+        });
         result.TransactionResult.Error.ShouldContain("No permission.");
-
-        SetBlockTime(86400);
-
-        await EcoEarnTokensContractUserStub.Unlock.SendAsync(poolId);
-
-        result = await EcoEarnTokensContractUserStub.Claim.SendWithExceptionAsync(stakeInfo.StakeId);
-        result.TransactionResult.Error.ShouldContain("Already unlocked.");
-
-        poolId = await CreateTokensPoolWithHighLimitation();
-        stakeInfo = await Stake(poolId, tokenBalance);
-
-        result = await EcoEarnTokensContractUserStub.Claim.SendWithExceptionAsync(stakeInfo.StakeId);
-        result.TransactionResult.Error.ShouldContain("Reward not enough.");
-
-        poolId = await CreateTokensPoolAwayFromStart();
-        stakeInfo = await Stake(poolId, tokenBalance);
-
-        var reward = await EcoEarnTokensContractStub.GetReward.CallAsync(stakeInfo.StakeId);
-        reward.Amount.ShouldBe(0);
-
-        result = await EcoEarnTokensContractUserStub.Claim.SendWithExceptionAsync(stakeInfo.StakeId);
-        result.TransactionResult.Error.ShouldContain("Reward not enough.");
+        
+        SetBlockTime(-1);
+        
+        result = await EcoEarnTokensContractUserStub.Claim.SendWithExceptionAsync(new ClaimInput
+        {
+            StakeId = stakeInfo.StakeId,
+            Account = UserAddress,
+            Amount = 100_00000000,
+            Seed = HashHelper.ComputeFrom("seed"),
+            ExpirationTime = BlockTimeProvider.GetBlockTime().AddDays(-1).Seconds,
+            Signature = Hash.Empty.ToByteString()
+        });
+        result.TransactionResult.Error.ShouldContain("Pool not start.");
+        
+        SetBlockTime(2);
+        
+        result = await EcoEarnTokensContractUserStub.Claim.SendWithExceptionAsync(new ClaimInput
+        {
+            StakeId = stakeInfo.StakeId,
+            Account = UserAddress,
+            Amount = 100_00000000,
+            Seed = HashHelper.ComputeFrom("seed"),
+            ExpirationTime = BlockTimeProvider.GetBlockTime().AddDays(-1).Seconds,
+            Signature = Hash.Empty.ToByteString()
+        });
+        result.TransactionResult.Error.ShouldContain("Signature expired.");
+        
+        result = await EcoEarnTokensContractUserStub.Claim.SendWithExceptionAsync(new ClaimInput
+        {
+            StakeId = stakeInfo.StakeId,
+            Account = UserAddress,
+            Amount = 100_00000000,
+            Seed = HashHelper.ComputeFrom("seed"),
+            ExpirationTime = BlockTimeProvider.GetBlockTime().AddDays(1).Seconds,
+            Signature = Hash.Empty.ToByteString()
+        });
+        result.TransactionResult.Error.ShouldContain("Amount too much.");
+        
+        result = await EcoEarnTokensContractUserStub.Claim.SendWithExceptionAsync(new ClaimInput
+        {
+            StakeId = stakeInfo.StakeId,
+            Account = UserAddress,
+            Amount = 100,
+            Seed = HashHelper.ComputeFrom("seed"),
+            ExpirationTime = BlockTimeProvider.GetBlockTime().AddDays(1).Seconds,
+            Signature = Hash.Empty.ToByteString()
+        });
+        result.TransactionResult.Error.ShouldContain("Invalid signature.");
     }
 
     [Fact]
@@ -261,5 +390,21 @@ public partial class EcoEarnTokensContractTests
         };
         var result = await EcoEarnTokensContractStub.CreateTokensPool.SendAsync(input);
         return GetLogEvent<TokensPoolCreated>(result.TransactionResult).PoolId;
+    }
+
+    private ByteString GenerateSignature(byte[] privateKey, Hash stakeId, long amount, Address account, Hash seed,
+        long expirationTime)
+    {
+        var data = new ClaimInput
+        {
+            StakeId = stakeId,
+            Account = account,
+            Amount = amount,
+            Seed = seed,
+            ExpirationTime = expirationTime
+        };
+        var dataHash = HashHelper.ComputeFrom(data);
+        var signature = CryptoHelper.SignWithPrivateKey(privateKey, dataHash.ToByteArray());
+        return ByteStringHelper.FromHexString(signature.ToHex());
     }
 }

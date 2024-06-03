@@ -147,8 +147,6 @@ public partial class EcoEarnPointsContractTests
         log.ClaimInfo.ClaimedSymbol.ShouldBe(Symbol);
         log.ClaimInfo.ClaimedBlockNumber.ShouldBe(result.TransactionResult.BlockNumber);
         log.ClaimInfo.ClaimedTime.ShouldNotBeNull();
-        log.ClaimInfo.UnlockTime.ShouldBe(log.ClaimInfo.ClaimedTime.AddSeconds(10));
-        log.ClaimInfo.WithdrawTime.ShouldBeNull();
         log.ClaimInfo.Account.ShouldBe(UserAddress);
 
         var output = await EcoEarnPointsContractStub.GetClaimInfo.CallAsync(log.ClaimInfo.ClaimId);

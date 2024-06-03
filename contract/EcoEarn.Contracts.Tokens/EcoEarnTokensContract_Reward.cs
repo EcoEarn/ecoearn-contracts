@@ -1,11 +1,9 @@
-using System.Collections.Generic;
-using System.Linq;
 using AElf;
 using AElf.Contracts.MultiToken;
 using AElf.CSharp.Core;
-using AElf.CSharp.Core.Extension;
 using AElf.Sdk.CSharp;
 using AElf.Types;
+using Google.Protobuf;
 using Google.Protobuf.WellKnownTypes;
 
 namespace EcoEarn.Contracts.Tokens;
@@ -14,23 +12,65 @@ public partial class EcoEarnTokensContract
 {
     #region public
 
-    public override Empty Claim(Hash input)
+    public override Empty Claim(ClaimInput input)
     {
-        Assert(IsHashValid(input), "Invalid input.");
+        ValidateClaimInput(input);
 
-        var stakeInfo = State.StakeInfoMap[input];
+        var stakeInfo = State.StakeInfoMap[input.StakeId];
         Assert(stakeInfo != null, "Stake info not exists.");
         Assert(stakeInfo!.Account == Context.Sender, "No permission.");
-        Assert(stakeInfo.UnlockTime == null, "Already unlocked.");
 
         var poolInfo = GetPool(stakeInfo.PoolId);
+        Assert(Context.CurrentBlockTime >= poolInfo.Config.StartTime, "Pool not start.");
+        Assert(Context.CurrentBlockTime.Seconds < input.ExpirationTime, "Signature expired.");
+        
+        UpdateReward(poolInfo, stakeInfo);
+        
+        Assert(input.Amount <= stakeInfo.RewardAmount.Div(poolInfo.Config.ReleasePeriod), "Amount too much.");
 
-        var actualReward = ProcessClaim(poolInfo, stakeInfo);
-        Assert(actualReward > poolInfo.Config.MinimumClaimAmount, "Reward not enough.");
+        Assert(RecoverAddressFromSignature(input) == poolInfo.Config.UpdateAddress, "Signature not valid.");
+
+        State.SignatureMap[HashHelper.ComputeFrom(input.Signature.ToByteArray())] = true;
+
+        var claimId = GenerateClaimId(input.StakeId);
+        Assert(State.ClaimInfoMap[claimId] == null, "Claim id taken.");
+
+        var claimedAmount = ProcessCommissionFee(input.Amount, poolInfo);
+
+        stakeInfo.ClaimedAmount = stakeInfo.ClaimedAmount.Add(claimedAmount);
+
+        var claimInfo = new ClaimInfo
+        {
+            ClaimId = claimId,
+            ClaimedAmount = claimedAmount,
+            ClaimedBlockNumber = Context.CurrentHeight,
+            ClaimedSymbol = poolInfo.Config.RewardToken,
+            ClaimedTime = Context.CurrentBlockTime,
+            PoolId = poolInfo.PoolId,
+            Account = input.Account,
+            Seed = input.Seed
+        };
+
+        State.ClaimInfoMap[claimId] = claimInfo;
+
+        // transfer rewards to user
+        State.TokenContract.Transfer.VirtualSend(GetRewardVirtualAddress(stakeInfo.PoolId), new TransferInput
+        {
+            To = Context.Sender,
+            Amount = claimedAmount,
+            Symbol = poolInfo.Config.RewardToken,
+            Memo = "claim"
+        });
+
+        Context.Fire(new Claimed
+        {
+            StakeId = input.StakeId,
+            ClaimInfo = claimInfo
+        });
 
         return new Empty();
     }
-    
+
     public override Empty RecoverToken(RecoverTokenInput input)
     {
         Assert(input != null, "Invalid input.");
@@ -81,97 +121,6 @@ public partial class EcoEarnTokensContract
         return HashHelper.ConcatAndCompute(stakeId, HashHelper.ComputeFrom(Context.CurrentHeight));
     }
 
-    private long ProcessClaim(PoolInfo poolInfo, StakeInfo stakeInfo)
-    {
-        var poolData = State.PoolDataMap[poolInfo.PoolId];
-        UpdatePool(poolInfo, poolData);
-
-        var pending = CalculatePending(stakeInfo.BoostedAmount, poolData.AccTokenPerShare, stakeInfo.RewardDebt,
-            poolInfo.PrecisionFactor);
-        var actualReward = ProcessCommissionFee(pending, poolInfo).Add(stakeInfo.RewardAmount);
-
-        if (actualReward == 0) return 0;
-        stakeInfo.RewardAmount = 0;
-
-        var claimId = GenerateClaimId(stakeInfo.StakeId);
-        Assert(State.ClaimInfoMap[claimId] == null, "Claim id exists.");
-
-        stakeInfo.LockedRewardAmount = stakeInfo.LockedRewardAmount.Add(actualReward);
-
-        var claimInfo = new ClaimInfo
-        {
-            ClaimId = claimId,
-            Account = stakeInfo.Account,
-            ClaimedSymbol = poolInfo.Config.RewardToken,
-            ClaimedTime = Context.CurrentBlockTime,
-            ClaimedBlockNumber = Context.CurrentHeight,
-            ClaimedAmount = actualReward,
-            UnlockTime = Context.CurrentBlockTime.AddSeconds(poolInfo.Config.ReleasePeriod),
-            PoolId = stakeInfo.PoolId
-        };
-
-        State.ClaimInfoMap[claimId] = claimInfo;
-        stakeInfo.ClaimedAmount = stakeInfo.ClaimedAmount.Add(actualReward);
-        stakeInfo.RewardDebt = stakeInfo.RewardDebt.Add(pending);
-
-        Context.SendVirtualInline(GetRewardVirtualAddress(poolInfo.PoolId), poolInfo.Config.RewardTokenContract,
-            nameof(State.TokenContract.Transfer), new TransferInput
-            {
-                Amount = claimInfo.ClaimedAmount,
-                Symbol = claimInfo.ClaimedSymbol,
-                To = CalculateVirtualAddress(Context.Sender),
-                Memo = "claim"
-            });
-
-        Context.Fire(new Claimed
-        {
-            StakeId = stakeInfo.StakeId,
-            ClaimInfo = claimInfo
-        });
-
-        return actualReward;
-    }
-
-    private List<ClaimInfo> ProcessClaimInfos(List<Hash> claimIds)
-    {
-        var result = new List<ClaimInfo>();
-
-        foreach (var id in claimIds)
-        {
-            Assert(IsHashValid(id), "Invalid claim id.");
-
-            var claimInfo = State.ClaimInfoMap[id];
-            Assert(claimInfo != null, "Claim id not exists.");
-            Assert(claimInfo!.WithdrawTime == null, "Already withdrawn.");
-            Assert(claimInfo.Account == Context.Sender, "No permission.");
-            Assert(Context.CurrentBlockTime >= claimInfo.UnlockTime, "Not unlock yet.");
-
-            claimInfo.WithdrawTime = Context.CurrentBlockTime;
-
-            if (IsHashValid(claimInfo.StakeId))
-            {
-                var stakeInfo = State.StakeInfoMap[claimInfo.StakeId];
-                Assert(stakeInfo != null && stakeInfo.UnlockTime != null, "Not unlocked.");
-                stakeInfo!.LockedRewardAmount.Sub(claimInfo.ClaimedAmount);
-            }
-
-            var poolInfo = GetPool(claimInfo.PoolId);
-
-            Context.SendVirtualInline(GetRewardVirtualAddress(claimInfo.PoolId), poolInfo.Config.RewardTokenContract,
-                nameof(State.TokenContract.Transfer), new TransferInput
-                {
-                    To = claimInfo.Account,
-                    Symbol = claimInfo.ClaimedSymbol,
-                    Amount = claimInfo.ClaimedAmount,
-                    Memo = "confirm"
-                });
-
-            result.Add(claimInfo);
-        }
-
-        return result;
-    }
-
     private long CalculateCommissionFee(long amount, long commissionRate)
     {
         return amount.Mul(commissionRate).Div(EcoEarnTokensContractConstants.Denominator);
@@ -189,6 +138,53 @@ public partial class EcoEarnTokensContract
 
         return CalculatePending(stakeInfo.BoostedAmount, adjustedTokenPerShare, stakeInfo.RewardDebt,
             poolInfo.PrecisionFactor);
+    }
+
+    private void ValidateClaimInput(ClaimInput input)
+    {
+        Assert(input != null, "Invalid input.");
+        Assert(IsHashValid(input!.StakeId), "Invalid stake id.");
+        Assert(IsAddressValid(input.Account) && input.Account == Context.Sender, "Invalid account.");
+        Assert(input.Amount > 0, "Invalid amount.");
+        Assert(IsHashValid(input.Seed), "Invalid seed.");
+        Assert(input.ExpirationTime > 0, "Invalid expiration time.");
+        Assert(
+            !input.Signature.IsNullOrEmpty() &&
+            !State.SignatureMap[HashHelper.ComputeFrom(input.Signature.ToByteArray())], "Invalid signature.");
+    }
+
+    private Address RecoverAddressFromSignature(ClaimInput input)
+    {
+        var computedHash = ComputeConfirmInputHash(input);
+        var publicKey = Context.RecoverPublicKey(input.Signature.ToByteArray(), computedHash.ToByteArray());
+        Assert(publicKey != null, "Invalid signature.");
+
+        return Address.FromPublicKey(publicKey);
+    }
+
+    private Hash ComputeConfirmInputHash(ClaimInput input)
+    {
+        return HashHelper.ComputeFrom(new ClaimInput
+        {
+            StakeId = input.StakeId,
+            Account = input.Account,
+            Amount = input.Amount,
+            Seed = input.Seed,
+            ExpirationTime = input.ExpirationTime
+        }.ToByteArray());
+    }
+    
+    private void UpdateReward(PoolInfo poolInfo, StakeInfo stakeInfo)
+    {
+        var poolData = State.PoolDataMap[poolInfo.PoolId];
+        UpdatePool(poolInfo, poolData);
+
+        var pending = CalculatePending(stakeInfo.BoostedAmount, poolData.AccTokenPerShare, stakeInfo.RewardDebt,
+            poolInfo.PrecisionFactor);
+        var actualReward = ProcessCommissionFee(pending, poolInfo).Add(stakeInfo.RewardAmount);
+        stakeInfo.RewardAmount = stakeInfo.RewardAmount.Add(actualReward);
+        
+        stakeInfo.RewardDebt = stakeInfo.RewardDebt.Add(pending);
     }
 
     #endregion

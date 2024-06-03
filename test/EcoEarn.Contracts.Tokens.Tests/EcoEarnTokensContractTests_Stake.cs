@@ -1,3 +1,4 @@
+using System.Linq;
 using System.Threading.Tasks;
 using AElf;
 using AElf.Contracts.MultiToken;
@@ -44,12 +45,6 @@ public partial class EcoEarnTokensContractTests
         var poolData = await EcoEarnTokensContractStub.GetPoolData.CallAsync(poolId);
         poolData.TotalStakedAmount.ShouldBe(0);
         poolData.AccTokenPerShare.ShouldBeNull();
-        var stakeCount = await EcoEarnTokensContractStub.GetUserStakeCount.CallAsync(new GetUserStakeCountInput
-        {
-            Account = UserAddress,
-            PoolId = poolId
-        });
-        stakeCount.Value.ShouldBe(0);
         var userStakeId = await EcoEarnTokensContractStub.GetUserStakeId.CallAsync(new GetUserStakeIdInput
         {
             Account = UserAddress,
@@ -83,23 +78,12 @@ public partial class EcoEarnTokensContractTests
             stakeInfo.ClaimedAmount.ShouldBe(0);
             stakeInfo.RewardAmount.ShouldBe(0);
             stakeInfo.StakedAmount.ShouldBe(tokenBalance);
-            stakeInfo.EarlyStakedAmount.ShouldBe(0);
             stakeInfo.RewardDebt.ShouldBe(0);
-            stakeInfo.LockedRewardAmount.ShouldBe(0);
             stakeInfo.StakedTime.ShouldBe(BlockTimeProvider.GetBlockTime());
             stakeInfo.StakedBlockNumber.ShouldBe(result.TransactionResult.BlockNumber);
             stakeInfo.LastOperationTime.ShouldBe(stakeInfo.StakedTime);
             stakeInfo.UnlockTime.ShouldBeNull();
-            stakeInfo.StakeId.ShouldBe(HashHelper.ConcatAndCompute(
-                HashHelper.ConcatAndCompute(HashHelper.ComputeFrom(stakeCount.Value),
-                    HashHelper.ComputeFrom(UserAddress)), poolId));
-
-            stakeCount = await EcoEarnTokensContractStub.GetUserStakeCount.CallAsync(new GetUserStakeCountInput
-            {
-                Account = UserAddress,
-                PoolId = poolId
-            });
-            stakeCount.Value.ShouldBe(1);
+            
             userStakeId = await EcoEarnTokensContractStub.GetUserStakeId.CallAsync(new GetUserStakeIdInput
             {
                 Account = UserAddress,
@@ -118,11 +102,14 @@ public partial class EcoEarnTokensContractTests
 
             SetBlockTime(1);
 
-            var reward = await EcoEarnTokensContractStub.GetReward.CallAsync(stakeInfo.StakeId);
-            reward.Symbol.ShouldBe(Symbol);
-            reward.Account.ShouldBe(UserAddress);
-            reward.StakeId.ShouldBe(stakeInfo.StakeId);
-            reward.Amount.ShouldBe(100_00000000 - 100_00000000 * 100 / 10000);
+            var reward = await EcoEarnTokensContractStub.GetReward.CallAsync(new GetRewardInput
+            {
+                StakeIds = { stakeInfo.StakeId }
+            });
+            reward.RewardInfos.First().Symbol.ShouldBe(Symbol);
+            reward.RewardInfos.First().Account.ShouldBe(UserAddress);
+            reward.RewardInfos.First().StakeId.ShouldBe(stakeInfo.StakeId);
+            reward.RewardInfos.First().Amount.ShouldBe(100_00000000 - 100_00000000 * 100 / 10000);
         }
 
         // add position with more amount
@@ -155,13 +142,7 @@ public partial class EcoEarnTokensContractTests
 
             stakeInfo.RewardDebt.ShouldBe(value);
             stakeInfo.LastOperationTime.ShouldBe(stakeInfo.StakedTime);
-
-            stakeCount = await EcoEarnTokensContractStub.GetUserStakeCount.CallAsync(new GetUserStakeCountInput
-            {
-                Account = UserAddress,
-                PoolId = poolId
-            });
-            stakeCount.Value.ShouldBe(1);
+            
             userStakeId = await EcoEarnTokensContractStub.GetUserStakeId.CallAsync(new GetUserStakeIdInput
             {
                 Account = UserAddress,
@@ -178,8 +159,11 @@ public partial class EcoEarnTokensContractTests
             balance = await GetTokenBalance(Symbol, addressInfo.StakeAddress);
             balance.ShouldBe(tokenBalance * 2);
 
-            var reward = await EcoEarnTokensContractStub.GetReward.CallAsync(stakeInfo.StakeId);
-            reward.Amount.ShouldBe(100_00000000 * 2 - 100_00000000 * 100 / 10000 * 2);
+            var reward = await EcoEarnTokensContractStub.GetReward.CallAsync(new GetRewardInput
+            {
+                StakeIds = { stakeInfo.StakeId }
+            });
+            reward.RewardInfos.First().Amount.ShouldBe(100_00000000 * 2 - 100_00000000 * 100 / 10000 * 2);
         }
 
         // add position with more period
@@ -214,13 +198,7 @@ public partial class EcoEarnTokensContractTests
 
             stakeInfo.RewardDebt.ShouldBe(value);
             stakeInfo.LastOperationTime.ShouldBe(stakeInfo.StakedTime.AddSeconds(2));
-
-            stakeCount = await EcoEarnTokensContractStub.GetUserStakeCount.CallAsync(new GetUserStakeCountInput
-            {
-                Account = UserAddress,
-                PoolId = poolId
-            });
-            stakeCount.Value.ShouldBe(1);
+            
             userStakeId = await EcoEarnTokensContractStub.GetUserStakeId.CallAsync(new GetUserStakeIdInput
             {
                 Account = UserAddress,
@@ -237,8 +215,11 @@ public partial class EcoEarnTokensContractTests
             balance = await GetTokenBalance(Symbol, addressInfo.StakeAddress);
             balance.ShouldBe(tokenBalance * 2);
 
-            var reward = await EcoEarnTokensContractStub.GetReward.CallAsync(stakeInfo.StakeId);
-            reward.Amount.ShouldBe((100_00000000 - 100_00000000 * 100 / 10000) * 3);
+            var reward = await EcoEarnTokensContractStub.GetReward.CallAsync(new GetRewardInput
+            {
+                StakeIds = { stakeInfo.StakeId }
+            });
+            reward.RewardInfos.First().Amount.ShouldBe((100_00000000 - 100_00000000 * 100 / 10000) * 3);
         }
     }
 
@@ -408,13 +389,19 @@ public partial class EcoEarnTokensContractTests
         var stakeInfo = await Stake(poolId, tokenBalance);
         var stakeId = stakeInfo.StakeId;
 
-        var reward = await EcoEarnTokensContractStub.GetReward.CallAsync(stakeId);
-        reward.Amount.ShouldBe(0);
+        var reward = await EcoEarnTokensContractStub.GetReward.CallAsync(new GetRewardInput
+        {
+            StakeIds = { stakeId }
+        });
+        reward.RewardInfos.First().Amount.ShouldBe(0);
 
         SetBlockTime(86400);
 
-        reward = await EcoEarnTokensContractStub.GetReward.CallAsync(stakeId);
-        reward.Amount.ShouldBe(100_00000000 * 86400 - 100_00000000 * 86400 / 100);
+        reward = await EcoEarnTokensContractStub.GetReward.CallAsync(new GetRewardInput
+        {
+            StakeIds = { stakeId }
+        });
+        reward.RewardInfos.First().Amount.ShouldBe(100_00000000 * 86400 - 100_00000000 * 86400 / 100);
 
         var output = await EcoEarnTokensContractStub.GetStakeInfo.CallAsync(stakeId);
         stakeInfo = output.StakeInfo;
@@ -448,23 +435,38 @@ public partial class EcoEarnTokensContractTests
         stakeInfo.RewardAmount.ShouldBe(100_00000000 * 86400 - 100_00000000 * 86400 / 100);
         stakeInfo.BoostedAmount.ShouldBe(tokenBalance * 2);
 
-        reward = await EcoEarnTokensContractStub.GetReward.CallAsync(stakeId);
-        reward.Amount.ShouldBe(100_00000000 * 86400 - 100_00000000 * 86400 / 100);
+        reward = await EcoEarnTokensContractStub.GetReward.CallAsync(new GetRewardInput
+        {
+            StakeIds = { stakeId }
+        });
+        reward.RewardInfos.First().Amount.ShouldBe(100_00000000 * 86400 - 100_00000000 * 86400 / 100);
 
         SetBlockTime(1);
 
-        reward = await EcoEarnTokensContractStub.GetReward.CallAsync(stakeId);
-        reward.Amount.ShouldBe(100_00000000 * 86400 - 100_00000000 * 86400 / 100 + 100_00000000 - 100_00000000 / 100);
+        reward = await EcoEarnTokensContractStub.GetReward.CallAsync(new GetRewardInput
+        {
+            StakeIds = { stakeId }
+        });
+        reward.RewardInfos.First().Amount
+            .ShouldBe(100_00000000 * 86400 - 100_00000000 * 86400 / 100 + 100_00000000 - 100_00000000 / 100);
 
         SetBlockTime(1);
 
-        reward = await EcoEarnTokensContractStub.GetReward.CallAsync(stakeId);
-        reward.Amount.ShouldBe(100_00000000 * 86400 - 100_00000000 * 86400 / 100 + 100_00000000 - 100_00000000 / 100);
+        reward = await EcoEarnTokensContractStub.GetReward.CallAsync(new GetRewardInput
+        {
+            StakeIds = { stakeId }
+        });
+        reward.RewardInfos.First().Amount
+            .ShouldBe(100_00000000 * 86400 - 100_00000000 * 86400 / 100 + 100_00000000 - 100_00000000 / 100);
 
         SetBlockTime(1);
 
-        reward = await EcoEarnTokensContractStub.GetReward.CallAsync(stakeId);
-        reward.Amount.ShouldBe(100_00000000 * 86400 - 100_00000000 * 86400 / 100 + 100_00000000 - 100_00000000 / 100);
+        reward = await EcoEarnTokensContractStub.GetReward.CallAsync(new GetRewardInput
+        {
+            StakeIds = { stakeId }
+        });
+        reward.RewardInfos.First().Amount
+            .ShouldBe(100_00000000 * 86400 - 100_00000000 * 86400 / 100 + 100_00000000 - 100_00000000 / 100);
     }
 
     [Fact]
@@ -514,7 +516,7 @@ public partial class EcoEarnTokensContractTests
         const long tokenBalance = 5_00000000;
 
         var poolId = await CreateTokensPool();
-        var stakeInfo = await Stake(poolId, tokenBalance);
+        _ = await Stake(poolId, tokenBalance);
 
         var result = await EcoEarnTokensContractStub.Renew.SendWithExceptionAsync(new RenewInput());
         result.TransactionResult.Error.ShouldContain("Invalid period.");
@@ -662,10 +664,6 @@ public partial class EcoEarnTokensContractTests
             var output = await EcoEarnTokensContractStub.GetStakeInfo.CallAsync(HashHelper.ComputeFrom("test"));
             output.StakeInfo.ShouldBeNull();
         }
-        {
-            var output = await EcoEarnTokensContractStub.GetReward.CallAsync(new Hash());
-            output.StakeId.ShouldBeNull();
-        }
     }
 
     private async Task<StakeInfo> Stake(Hash poolId, long tokenBalance)
@@ -719,7 +717,8 @@ public partial class EcoEarnTokensContractTests
             RewardTokenContract = TokenContractAddress,
             StakeTokenContract = TokenContractAddress,
             MinimumStakeDuration = 1,
-            UnlockWindowDuration = 300
+            UnlockWindowDuration = 300,
+            UpdateAddress = DefaultAddress
         };
         var result = await EcoEarnTokensContractStub.CreateTokensPool.SendAsync(input);
         var log = GetLogEvent<TokensPoolCreated>(result.TransactionResult);

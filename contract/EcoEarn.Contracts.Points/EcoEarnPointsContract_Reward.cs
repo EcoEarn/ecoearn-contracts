@@ -1,7 +1,6 @@
 using AElf;
 using AElf.Contracts.MultiToken;
 using AElf.CSharp.Core;
-using AElf.CSharp.Core.Extension;
 using AElf.Sdk.CSharp;
 using AElf.Types;
 using Google.Protobuf;
@@ -85,7 +84,6 @@ public partial class EcoEarnPointsContract
             ClaimedBlockNumber = Context.CurrentHeight,
             ClaimedSymbol = poolInfo.Config.RewardToken,
             ClaimedTime = Context.CurrentBlockTime,
-            UnlockTime = Context.CurrentBlockTime.AddSeconds(poolInfo.Config.ReleasePeriod),
             PoolId = poolInfo.PoolId,
             Account = input.Account,
             Seed = input.Seed
@@ -93,7 +91,7 @@ public partial class EcoEarnPointsContract
 
         State.ClaimInfoMap[claimId] = claimInfo;
 
-        // transfer rewards to user's virtual address
+        // transfer rewards to user
         State.TokenContract.Transfer.VirtualSend(input.PoolId, new TransferInput
         {
             To = Context.Sender,

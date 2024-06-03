@@ -1,3 +1,4 @@
+using System.Linq;
 using AElf.CSharp.Core;
 using AElf.Types;
 using Google.Protobuf.WellKnownTypes;
@@ -81,24 +82,43 @@ public partial class EcoEarnTokensContract
         return output;
     }
 
-    public override GetRewardOutput GetReward(Hash input)
+    public override GetRewardOutput GetReward(GetRewardInput input)
     {
         var output = new GetRewardOutput();
-        if (!IsHashValid(input)) return output;
+        if (input.StakeIds == null || input.StakeIds.Count == 0) return output;
 
-        var stakeInfo = State.StakeInfoMap[input];
-        if (stakeInfo == null) return output;
+        foreach (var id in input.StakeIds.Distinct())
+        {
+            var rewardInfo = ProcessGetReward(id);
+            if (rewardInfo != null) output.RewardInfos.Add(rewardInfo);
+        }
 
-        output.Account = stakeInfo.Account;
-        output.StakeId = input;
+        return output;
+    }
+
+    public override Hash GetUserStakeId(GetUserStakeIdInput input)
+    {
+        return State.UserStakeIdMap[input.PoolId][input.Account];
+    }
+
+    private RewardInfo ProcessGetReward(Hash stakeId)
+    {
+        var rewardInfo = new RewardInfo();
+        if (!IsHashValid(stakeId)) return null;
+        
+        var stakeInfo = State.StakeInfoMap[stakeId];
+        if (stakeInfo == null) return null;
+
+        rewardInfo.Account = stakeInfo.Account;
+        rewardInfo.StakeId = stakeId;
+        rewardInfo.PoolId = stakeInfo.PoolId;
 
         var poolInfo = State.PoolInfoMap[stakeInfo.PoolId];
-        if (poolInfo == null) return output;
-
-        output.Symbol = poolInfo.Config.RewardToken;
-
+        if (poolInfo == null) return null;
+        
         var poolData = State.PoolDataMap[stakeInfo.PoolId];
-        if (poolData == null) return output;
+
+        rewardInfo.Symbol = poolInfo.Config.RewardToken;
 
         var blockTime = Context.CurrentBlockTime;
 
@@ -110,27 +130,14 @@ public partial class EcoEarnTokensContract
         }
         else
         {
-            output.Amount = stakeInfo.RewardAmount;
-            return output;
+            rewardInfo.Amount = stakeInfo.RewardAmount;
+            return rewardInfo;
         }
 
         var config = State.Config.Value;
-        output.Amount = reward.Sub(CalculateCommissionFee(reward, config.CommissionRate))
+        rewardInfo.Amount = reward.Sub(CalculateCommissionFee(reward, config.CommissionRate))
             .Add(stakeInfo.RewardAmount);
 
-        return output;
-    }
-
-    public override Int64Value GetUserStakeCount(GetUserStakeCountInput input)
-    {
-        return new Int64Value
-        {
-            Value = State.UserStakeCountMap[input.PoolId][input.Account]
-        };
-    }
-
-    public override Hash GetUserStakeId(GetUserStakeIdInput input)
-    {
-        return State.UserStakeIdMap[input.PoolId][input.Account];
+        return rewardInfo;
     }
 }
