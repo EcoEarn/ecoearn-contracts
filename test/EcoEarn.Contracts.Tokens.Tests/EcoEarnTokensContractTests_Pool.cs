@@ -807,6 +807,86 @@ public partial class EcoEarnTokensContractTests
             });
         result.TransactionResult.Error.ShouldContain("No permission.");
     }
+    
+    [Fact]
+    public async Task SetTokensPoolRewardConfigTests()
+    {
+        var poolId = await CreateTokensPool();
+
+        var output = await EcoEarnTokensContractStub.GetPoolInfo.CallAsync(poolId);
+        output.PoolInfo.Config.ReleasePeriods.Count.ShouldBe(3);
+
+        var result = await EcoEarnTokensContractStub.SetTokensPoolRewardConfig.SendAsync(
+            new SetTokensPoolRewardConfigInput
+            {
+                PoolId = poolId,
+                ReleasePeriods = { 1, 2 },
+                ClaimInterval = 50
+            });
+        result.TransactionResult.Status.ShouldBe(TransactionResultStatus.Mined);
+
+        var log = GetLogEvent<TokensPoolRewardConfigSet>(result.TransactionResult);
+        log.PoolId.ShouldBe(poolId);
+        log.ReleasePeriods.Data.Count.ShouldBe(2);
+        log.ReleasePeriods.Data.First().ShouldBe(1);
+        log.ReleasePeriods.Data.Last().ShouldBe(2);
+        log.ClaimInterval.ShouldBe(50);
+
+        output = await EcoEarnTokensContractStub.GetPoolInfo.CallAsync(poolId);
+        output.PoolInfo.Config.ReleasePeriods.Count.ShouldBe(2);
+        output.PoolInfo.Config.ReleasePeriods.First().ShouldBe(1);
+        output.PoolInfo.Config.ReleasePeriods.Last().ShouldBe(2);
+
+        result = await EcoEarnTokensContractStub.SetTokensPoolRewardConfig.SendAsync(
+            new SetTokensPoolRewardConfigInput
+            {
+                PoolId = poolId,
+                ReleasePeriods = { 1, 2 },
+                ClaimInterval = 50
+            });
+        result.TransactionResult.Logs.FirstOrDefault(l => l.Name.Contains(nameof(TokensPoolRewardConfigSet)))
+            .ShouldBeNull();
+    }
+
+    [Fact]
+    public async Task SetTokensPoolRewardConfigTests_Fail()
+    {
+        var poolId = await CreateTokensPool();
+
+        var result = await EcoEarnTokensContractStub.SetTokensPoolRewardConfig.SendWithExceptionAsync(
+            new SetTokensPoolRewardConfigInput());
+        result.TransactionResult.Error.ShouldContain("Invalid pool id.");
+
+        result = await EcoEarnTokensContractStub.SetTokensPoolRewardConfig.SendWithExceptionAsync(
+            new SetTokensPoolRewardConfigInput
+            {
+                PoolId = new Hash()
+            });
+        result.TransactionResult.Error.ShouldContain("Invalid pool id.");
+
+        result = await EcoEarnTokensContractStub.SetTokensPoolRewardConfig.SendWithExceptionAsync(
+            new SetTokensPoolRewardConfigInput
+            {
+                PoolId = HashHelper.ComputeFrom(1)
+            });
+        result.TransactionResult.Error.ShouldContain("Pool not exists.");
+
+        result = await EcoEarnTokensContractStub.SetTokensPoolRewardConfig.SendWithExceptionAsync(
+            new SetTokensPoolRewardConfigInput
+            {
+                PoolId = poolId,
+                ReleasePeriods = { -1 }
+            });
+        result.TransactionResult.Error.ShouldContain("Invalid release periods.");
+
+        result = await EcoEarnTokensContractUserStub.SetTokensPoolRewardConfig.SendWithExceptionAsync(
+            new SetTokensPoolRewardConfigInput
+            {
+                PoolId = poolId,
+                ReleasePeriods = { 0 }
+            });
+        result.TransactionResult.Error.ShouldContain("No permission.");
+    }
 
     private async Task<Hash> CreateTokensPool()
     {
