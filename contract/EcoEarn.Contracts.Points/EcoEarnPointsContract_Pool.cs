@@ -1,3 +1,4 @@
+using System.Linq;
 using AElf;
 using AElf.Contracts.MultiToken;
 using AElf.CSharp.Core;
@@ -86,7 +87,8 @@ public partial class EcoEarnPointsContract
         {
             RewardToken = input.RewardToken,
             RewardPerSecond = input.RewardPerSecond,
-            ReleasePeriod = input.ReleasePeriod,
+            ReleasePeriods = { input.ReleasePeriods.Distinct().OrderBy(n => n) },
+            ClaimInterval = input.ClaimInterval,
             UpdateAddress = input.UpdateAddress,
             StartTime = new Timestamp
             {
@@ -162,7 +164,8 @@ public partial class EcoEarnPointsContract
         {
             RewardToken = input.RewardToken,
             RewardPerSecond = input.RewardPerSecond,
-            ReleasePeriod = input.ReleasePeriod,
+            ReleasePeriods = { input.ReleasePeriods.Distinct().OrderBy(n => n) },
+            ClaimInterval = input.ClaimInterval,
             UpdateAddress = input.UpdateAddress,
             StartTime = new Timestamp
             {
@@ -208,23 +211,32 @@ public partial class EcoEarnPointsContract
         return new Empty();
     }
 
-    public override Empty SetPointsPoolRewardReleasePeriod(SetPointsPoolRewardReleasePeriodInput input)
+    public override Empty SetPointsPoolRewardConfig(SetPointsPoolRewardConfigInput input)
     {
         Assert(input != null, "Invalid input.");
-        Assert(input!.ReleasePeriod >= 0, "Invalid release period.");
 
         var poolInfo = GetPool(input.PoolId);
+        Assert(input!.ReleasePeriods != null && input.ReleasePeriods.Count > 0 && input.ReleasePeriods.All(p => p >= 0),
+            "Invalid release periods.");
+        Assert(input.ClaimInterval >= 0, "Invalid claim interval.");
 
         CheckDAppAdminPermission(poolInfo.DappId);
 
-        if (poolInfo.Config.ReleasePeriod == input.ReleasePeriod) return new Empty();
+        if (poolInfo.Config.ReleasePeriods.Equals(input.ReleasePeriods) &&
+            poolInfo.Config.ClaimInterval == input.ClaimInterval) return new Empty();
 
-        poolInfo.Config.ReleasePeriod = input.ReleasePeriod;
+        poolInfo.Config.ReleasePeriods.Clear();
+        poolInfo.Config.ReleasePeriods.AddRange(input.ReleasePeriods!.Distinct().OrderBy(n => n));
+        poolInfo.Config.ClaimInterval = input.ClaimInterval;
 
-        Context.Fire(new PointsPoolRewardReleasePeriodSet
+        Context.Fire(new PointsPoolRewardConfigSet
         {
             PoolId = input.PoolId,
-            ReleasePeriod = input.ReleasePeriod
+            ReleasePeriods = new ReleasePeriods
+            {
+                Data = { poolInfo.Config.ReleasePeriods }
+            },
+            ClaimInterval = input.ClaimInterval
         });
 
         return new Empty();
@@ -263,7 +275,9 @@ public partial class EcoEarnPointsContract
         Assert(input.StartTime >= Context.CurrentBlockTime.Seconds, "Invalid start time.");
         Assert(input.EndTime > input.StartTime, "Invalid end time.");
         Assert(input.RewardPerSecond > 0, "Invalid reward per second.");
-        Assert(input.ReleasePeriod >= 0, "Invalid release period.");
+        Assert(input.ReleasePeriods != null && input.ReleasePeriods.Count > 0 && input.ReleasePeriods.All(p => p >= 0),
+            "Invalid release periods.");
+        Assert(input.ClaimInterval >= 0, "Invalid claim interval.");
     }
 
     private void ValidatePointsPoolConfig(RestartPointsPoolInput input)
@@ -274,7 +288,9 @@ public partial class EcoEarnPointsContract
         Assert(input.StartTime >= Context.CurrentBlockTime.Seconds, "Invalid start time.");
         Assert(input.EndTime > input.StartTime, "Invalid end time.");
         Assert(input.RewardPerSecond > 0, "Invalid reward per second.");
-        Assert(input.ReleasePeriod >= 0, "Invalid release period.");
+        Assert(input.ReleasePeriods != null && input.ReleasePeriods.Count > 0 && input.ReleasePeriods.All(p => p >= 0),
+            "Invalid release periods.");
+        Assert(input.ClaimInterval >= 0, "Invalid claim interval.");
     }
 
     private void CheckTokenExists(string symbol)

@@ -123,7 +123,7 @@ public partial class EcoEarnPointsContractTests
 
         var balance = await GetTokenBalance(Symbol, UserAddress);
         balance.ShouldBe(0);
-        
+
         SetBlockTime(1);
 
         var input = new ClaimInput
@@ -141,22 +141,10 @@ public partial class EcoEarnPointsContractTests
         result.TransactionResult.Status.ShouldBe(TransactionResultStatus.Mined);
 
         var log = GetLogEvent<Claimed>(result.TransactionResult);
-        log.ClaimInfo.ClaimId.ShouldNotBeNull();
-        log.ClaimInfo.PoolId.ShouldBe(poolId);
-        log.ClaimInfo.ClaimedAmount.ShouldBe(9);
-        log.ClaimInfo.ClaimedSymbol.ShouldBe(Symbol);
-        log.ClaimInfo.ClaimedBlockNumber.ShouldBe(result.TransactionResult.BlockNumber);
-        log.ClaimInfo.ClaimedTime.ShouldNotBeNull();
-        log.ClaimInfo.Account.ShouldBe(UserAddress);
-
-        var output = await EcoEarnPointsContractStub.GetClaimInfo.CallAsync(log.ClaimInfo.ClaimId);
-        output.ShouldBe(log.ClaimInfo);
-
-        output = await EcoEarnPointsContractStub.GetClaimInfo.CallAsync(new Hash());
-        output.PoolId.ShouldBeNull();
-
-        balance = await GetTokenBalance(Symbol, UserAddress);
-        balance.ShouldBe(10 - 1);
+        log.PoolId.ShouldBe(poolId);
+        log.Account.ShouldBe(UserAddress);
+        log.Amount.ShouldBe(9);
+        log.Seed.ShouldBe(seed);
     }
 
     [Fact]

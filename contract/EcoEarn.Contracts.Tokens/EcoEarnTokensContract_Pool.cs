@@ -1,3 +1,4 @@
+using System.Linq;
 using AElf;
 using AElf.Contracts.MultiToken;
 using AElf.CSharp.Core;
@@ -83,7 +84,6 @@ public partial class EcoEarnTokensContract
             StakingToken = input.StakingToken,
             FixedBoostFactor = input.FixedBoostFactor,
             MinimumAmount = input.MinimumAmount,
-            ReleasePeriod = input.ReleasePeriod,
             MaximumStakeDuration = input.MaximumStakeDuration,
             RewardTokenContract = input.RewardTokenContract ?? State.TokenContract.Value,
             StakeTokenContract = input.StakeTokenContract ?? State.TokenContract.Value,
@@ -100,7 +100,8 @@ public partial class EcoEarnTokensContract
             },
             RewardPerSecond = input.RewardPerSecond,
             UnlockWindowDuration = input.UnlockWindowDuration,
-            UpdateAddress = input.UpdateAddress
+            ReleasePeriods = { input.ReleasePeriods.Distinct().OrderBy(n => n) },
+            MinimumEarlyStakeAmount = input.MinimumEarlyStakeAmount
         };
 
         var poolInfo = new PoolInfo
@@ -165,23 +166,28 @@ public partial class EcoEarnTokensContract
         return new Empty();
     }
 
-    public override Empty SetTokensPoolRewardReleasePeriod(SetTokensPoolRewardReleasePeriodInput input)
+    public override Empty SetTokensPoolRewardConfig(SetTokensPoolRewardConfigInput input)
     {
         Assert(input != null, "Invalid input.");
-        Assert(input!.ReleasePeriod >= 0, "Invalid release period.");
 
-        var poolInfo = GetPool(input.PoolId);
+        var poolInfo = GetPool(input!.PoolId);
+        Assert(input!.ReleasePeriods != null && input.ReleasePeriods.Count > 0 && input.ReleasePeriods.All(p => p >= 0),
+            "Invalid release periods.");
 
         CheckDAppAdminPermission(poolInfo.DappId);
 
-        if (poolInfo.Config.ReleasePeriod == input.ReleasePeriod) return new Empty();
+        if (poolInfo.Config.ReleasePeriods.Equals(input.ReleasePeriods)) return new Empty();
 
-        poolInfo.Config.ReleasePeriod = input.ReleasePeriod;
+        poolInfo.Config.ReleasePeriods.Clear();
+        poolInfo.Config.ReleasePeriods.AddRange(input.ReleasePeriods!.Distinct().OrderBy(n => n));
 
-        Context.Fire(new TokensPoolRewardReleasePeriodSet
+        Context.Fire(new TokensPoolRewardConfigSet
         {
             PoolId = input.PoolId,
-            ReleasePeriod = input.ReleasePeriod
+            ReleasePeriods = new ReleasePeriods
+            {
+                Data = { poolInfo.Config.ReleasePeriods }
+            }
         });
 
         return new Empty();
@@ -195,15 +201,17 @@ public partial class EcoEarnTokensContract
 
         CheckDAppAdminPermission(poolInfo.DappId);
 
-        Assert(input.MinimumAmount >= 0, "Invalid minimum amount.");
+        Assert(input.MinimumAmount > 0, "Invalid minimum amount.");
         Assert(input.MaximumStakeDuration > 0, "Invalid maximum stake duration.");
-        Assert(input.MinimumClaimAmount >= 0, "Invalid minimum claim amount.");
+        Assert(input.MinimumClaimAmount > 0, "Invalid minimum claim amount.");
         Assert(input.MinimumStakeDuration > 0, "Invalid minimum stake duration.");
+        Assert(input.MinimumEarlyStakeAmount > 0, "Invalid minimum early stake amount.");
 
         if (poolInfo.Config.MinimumAmount == input.MinimumAmount &&
             poolInfo.Config.MaximumStakeDuration == input.MaximumStakeDuration &&
             poolInfo.Config.MinimumClaimAmount == input.MinimumClaimAmount &&
-            poolInfo.Config.MinimumStakeDuration == input.MinimumStakeDuration)
+            poolInfo.Config.MinimumStakeDuration == input.MinimumStakeDuration &&
+            poolInfo.Config.MinimumEarlyStakeAmount == input.MinimumEarlyStakeAmount)
         {
             return new Empty();
         }
@@ -212,6 +220,7 @@ public partial class EcoEarnTokensContract
         poolInfo.Config.MaximumStakeDuration = input.MaximumStakeDuration;
         poolInfo.Config.MinimumClaimAmount = input.MinimumClaimAmount;
         poolInfo.Config.MinimumStakeDuration = input.MinimumStakeDuration;
+        poolInfo.Config.MinimumEarlyStakeAmount = input.MinimumEarlyStakeAmount;
 
         Context.Fire(new TokensPoolStakeConfigSet
         {
@@ -219,7 +228,8 @@ public partial class EcoEarnTokensContract
             MinimumClaimAmount = input.MinimumClaimAmount,
             MaximumStakeDuration = input.MaximumStakeDuration,
             MinimumAmount = input.MinimumAmount,
-            MinimumStakeDuration = input.MinimumStakeDuration
+            MinimumStakeDuration = input.MinimumStakeDuration,
+            MinimumEarlyStakeAmount = input.MinimumEarlyStakeAmount
         });
 
         return new Empty();
@@ -294,28 +304,6 @@ public partial class EcoEarnTokensContract
         return new Empty();
     }
 
-    public override Empty SetTokensPoolUpdateAddress(SetTokensPoolUpdateAddressInput input)
-    {
-        Assert(input != null, "Invalid input.");
-        Assert(IsAddressValid(input!.UpdateAddress), "Invalid update address.");
-
-        var poolInfo = GetPool(input.PoolId);
-
-        CheckDAppAdminPermission(poolInfo.DappId);
-
-        if (poolInfo.Config.UpdateAddress == input.UpdateAddress) return new Empty();
-
-        poolInfo.Config.UpdateAddress = input.UpdateAddress;
-
-        Context.Fire(new TokensPoolUpdateAddressSet
-        {
-            PoolId = input.PoolId,
-            UpdateAddress = input.UpdateAddress
-        });
-
-        return new Empty();
-    }
-
     #endregion
 
     #region private
@@ -326,7 +314,6 @@ public partial class EcoEarnTokensContract
             "Invalid reward token contract.");
         Assert(input.StakeTokenContract == null || !input.StakeTokenContract.Value.IsNullOrEmpty(),
             "Invalid stake token contract.");
-        Assert(IsAddressValid(input.UpdateAddress), "Invalid update address");
         Assert(IsStringValid(input.RewardToken), "Invalid reward token.");
         CheckTokenExists(input.RewardToken, input.RewardTokenContract ?? State.TokenContract.Value, out _);
         Assert(input.StartTime >= Context.CurrentBlockTime.Seconds, "Invalid start time.");
@@ -334,11 +321,18 @@ public partial class EcoEarnTokensContract
         Assert(input.RewardPerSecond > 0, "Invalid reward per second.");
         Assert(input.FixedBoostFactor > 0, "Invalid fixed boost factor.");
         Assert(input.MinimumAmount >= 0, "Invalid minimum amount.");
-        Assert(input.ReleasePeriod >= 0, "Invalid release period.");
         Assert(input.MaximumStakeDuration > 0, "Invalid maximum stake duration.");
         Assert(input.MinimumClaimAmount >= 0, "Invalid minimum claim amount.");
+        Assert(input.MinimumEarlyStakeAmount >= 0, "Invalid minimum early stake amount.");
         Assert(input.MinimumStakeDuration > 0, "Invalid minimum stake duration.");
         Assert(input.UnlockWindowDuration > 0, "Invalid unlock window duration.");
+        Assert(input.ReleasePeriods != null && input.ReleasePeriods.Count > 0 && input.ReleasePeriods.All(p => p >= 0),
+            "Invalid release periods.");
+
+        if (input.StakeTokenContract != null && input.StakeTokenContract != State.TokenContract.Value)
+        {
+            Assert(IsAddressValid(input.SwapContract), "Invalid swap contract.");
+        }
     }
 
     private void CheckTokenExists(string symbol, Address tokenContract, out int decimals)
@@ -366,11 +360,6 @@ public partial class EcoEarnTokensContract
     private Address CalculateVirtualAddress(Hash id)
     {
         return Context.ConvertVirtualAddressToContractAddress(id);
-    }
-
-    private Address CalculateVirtualAddress(Address account)
-    {
-        return Context.ConvertVirtualAddressToContractAddress(HashHelper.ComputeFrom(account));
     }
 
     private Hash GetStakeVirtualAddress(Hash id)

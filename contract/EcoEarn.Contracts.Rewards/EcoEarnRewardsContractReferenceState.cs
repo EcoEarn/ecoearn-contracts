@@ -1,16 +1,14 @@
 using AElf.Contracts.MultiToken;
 using AElf.Standards.ACS0;
-using EcoEarn.Contracts.Rewards;
+using EcoEarn.Contracts.Points;
 using EcoEarn.Contracts.Tokens;
-using Points.Contracts.PointsContract;
 
-namespace EcoEarn.Contracts.Points;
+namespace EcoEarn.Contracts.Rewards;
 
-public partial class EcoEarnPointsContractState
+public partial class EcoEarnRewardsContractState
 {
     internal ACS0Container.ACS0ReferenceState GenesisContract { get; set; }
     internal TokenContractContainer.TokenContractReferenceState TokenContract { get; set; }
-    internal PointsContractContainer.PointsContractReferenceState PointsContract { get; set; }
-    internal EcoEarnRewardsContractContainer.EcoEarnRewardsContractReferenceState EcoEarnRewardsContract { get; set; }
+    internal EcoEarnPointsContractContainer.EcoEarnPointsContractReferenceState EcoEarnPointsContract { get; set; }
     internal EcoEarnTokensContractContainer.EcoEarnTokensContractReferenceState EcoEarnTokensContract { get; set; }
 }

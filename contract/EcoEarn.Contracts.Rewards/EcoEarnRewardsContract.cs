@@ -3,9 +3,9 @@ using AElf.Sdk.CSharp;
 using AElf.Types;
 using Google.Protobuf.WellKnownTypes;
 
-namespace EcoEarn.Contracts.Tokens;
+namespace EcoEarn.Contracts.Rewards;
 
-public partial class EcoEarnTokensContract : EcoEarnTokensContractContainer.EcoEarnTokensContractBase
+public partial class EcoEarnRewardsContract : EcoEarnRewardsContractContainer.EcoEarnRewardsContractBase
 {
     public override Empty Initialize(InitializeInput input)
     {
@@ -14,21 +14,11 @@ public partial class EcoEarnTokensContract : EcoEarnTokensContractContainer.EcoE
         Assert(State.GenesisContract.GetContractAuthor.Call(Context.Self) == Context.Sender, "No permission.");
         Assert(input.Admin == null || !input.Admin.Value.IsNullOrEmpty(), "Invalid admin.");
         Assert(IsAddressValid(input.EcoearnPointsContract), "Invalid ecoearn points contract.");
-        Assert(IsAddressValid(input.EcoearnRewardsContract), "Invalid ecoearn rewards contract.");
+        Assert(IsAddressValid(input.EcoearnTokensContract), "Invalid ecoearn tokens contract.");
 
         State.Admin.Value = input.Admin ?? Context.Sender;
         State.EcoEarnPointsContract.Value = input.EcoearnPointsContract;
-        State.EcoEarnRewardsContract.Value = input.EcoearnRewardsContract;
-
-        Assert(input.CommissionRate >= 0, "Invalid commission rate.");
-        Assert(input.Recipient == null || !input.Recipient.Value.IsNullOrEmpty(), "Invalid recipient.");
-
-        State.Config.Value = new Config
-        {
-            CommissionRate = input.CommissionRate,
-            Recipient = input.Recipient ?? Context.Sender,
-            IsRegisterRestricted = input.IsRegisterRestricted,
-        };
+        State.EcoEarnTokensContract.Value = input.EcoearnTokensContract;
 
         State.TokenContract.Value = Context.GetContractAddressByName(SmartContractConstants.TokenContractSystemName);
 
@@ -49,26 +39,6 @@ public partial class EcoEarnTokensContract : EcoEarnTokensContractContainer.EcoE
         Context.Fire(new AdminSet
         {
             Admin = input
-        });
-
-        return new Empty();
-    }
-
-    public override Empty SetConfig(Config input)
-    {
-        CheckAdminPermission();
-
-        Assert(input != null, "Invalid input.");
-        Assert(input!.CommissionRate >= 0, "Invalid commission rate.");
-        Assert(IsAddressValid(input.Recipient), "Invalid recipient.");
-
-        if (input.Equals(State.Config.Value)) return new Empty();
-
-        State.Config.Value = input;
-
-        Context.Fire(new ConfigSet
-        {
-            Config = input
         });
 
         return new Empty();

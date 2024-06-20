@@ -17,7 +17,8 @@ public partial class EcoEarnTokensContractTests : EcoEarnTokensContractTestBase
             CommissionRate = 100,
             Recipient = User2Address,
             Admin = UserAddress,
-            EcoearnPointsContract = DefaultAddress
+            EcoearnPointsContract = DefaultAddress,
+            EcoearnRewardsContract = DefaultAddress
         };
 
         var result = await EcoEarnTokensContractStub.Initialize.SendAsync(input);
@@ -42,7 +43,8 @@ public partial class EcoEarnTokensContractTests : EcoEarnTokensContractTestBase
         var input = new InitializeInput
         {
             CommissionRate = 100,
-            EcoearnPointsContract = DefaultAddress
+            EcoearnPointsContract = DefaultAddress,
+            EcoearnRewardsContract = DefaultAddress
         };
 
         var result = await EcoEarnTokensContractStub.Initialize.SendAsync(input);
@@ -73,10 +75,24 @@ public partial class EcoEarnTokensContractTests : EcoEarnTokensContractTestBase
             EcoearnPointsContract = new Address()
         });
         result.TransactionResult.Error.ShouldContain("Invalid ecoearn points contract.");
+        
+        result = await EcoEarnTokensContractStub.Initialize.SendWithExceptionAsync(new InitializeInput
+        {
+            EcoearnPointsContract = DefaultAddress
+        });
+        result.TransactionResult.Error.ShouldContain("Invalid ecoearn rewards contract.");
+        
+        result = await EcoEarnTokensContractStub.Initialize.SendWithExceptionAsync(new InitializeInput
+        {
+            EcoearnPointsContract = DefaultAddress,
+            EcoearnRewardsContract = new Address()
+        });
+        result.TransactionResult.Error.ShouldContain("Invalid ecoearn rewards contract.");
 
         result = await EcoEarnTokensContractStub.Initialize.SendWithExceptionAsync(new InitializeInput
         {
             EcoearnPointsContract = DefaultAddress,
+            EcoearnRewardsContract = DefaultAddress,
             CommissionRate = -1
         });
         result.TransactionResult.Error.ShouldContain("Invalid commission rate.");
@@ -84,6 +100,7 @@ public partial class EcoEarnTokensContractTests : EcoEarnTokensContractTestBase
         result = await EcoEarnTokensContractStub.Initialize.SendWithExceptionAsync(new InitializeInput
         {
             EcoearnPointsContract = DefaultAddress,
+            EcoearnRewardsContract = DefaultAddress,
             CommissionRate = 0,
             Recipient = new Address()
         });
@@ -211,6 +228,7 @@ public partial class EcoEarnTokensContractTests : EcoEarnTokensContractTestBase
             CommissionRate = 100,
             Recipient = User2Address,
             EcoearnPointsContract = EcoEarnPointsContractAddress,
+            EcoearnRewardsContract = EcoEarnRewardsContractAddress,
             IsRegisterRestricted = true
         });
     }

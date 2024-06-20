@@ -7,27 +7,29 @@ using AElf.CSharp.Core;
 using AElf.Kernel;
 using AElf.Standards.ACS0;
 using AElf.Types;
-using EcoEarn.Contracts.Rewards;
+using EcoEarn.Contracts.Points;
 using EcoEarn.Contracts.TestPointsContract;
 using EcoEarn.Contracts.Tokens;
 using Google.Protobuf;
 using Volo.Abp.Threading;
 
-namespace EcoEarn.Contracts.Points;
+namespace EcoEarn.Contracts.Rewards;
 
-public class EcoEarnPointsContractTestBase : DAppContractTestBase<EcoEarnPointsContractTestModule>
+public class EcoEarnRewardsContractTestBase : DAppContractTestBase<EcoEarnRewardsContractTestModule>
 {
     internal ACS0Container.ACS0Stub ZeroContractStub { get; set; }
     internal TokenContractContainer.TokenContractStub TokenContractStub { get; set; }
+    internal TokenContractContainer.TokenContractStub UserTokenContractStub { get; set; }
     internal Address PointsContractAddress { get; set; }
-    internal Address EcoEarnPointsContractAddress { get; set; }
     internal Address EcoEarnTokensContractAddress { get; set; }
+    internal Address EcoEarnPointsContractAddress { get; set; }
     internal Address EcoEarnRewardsContractAddress { get; set; }
-    internal EcoEarnPointsContractContainer.EcoEarnPointsContractStub EcoEarnPointsContractStub { get; set; }
-    internal EcoEarnPointsContractContainer.EcoEarnPointsContractStub EcoEarnPointsContractUserStub { get; set; }
-    internal EcoEarnPointsContractContainer.EcoEarnPointsContractStub EcoEarnPointsContractUser2Stub { get; set; }
     internal EcoEarnTokensContractContainer.EcoEarnTokensContractStub EcoEarnTokensContractStub { get; set; }
+    internal EcoEarnPointsContractContainer.EcoEarnPointsContractStub EcoEarnPointsContractStub { get; set; }
     internal EcoEarnRewardsContractContainer.EcoEarnRewardsContractStub EcoEarnRewardsContractStub { get; set; }
+    internal EcoEarnRewardsContractContainer.EcoEarnRewardsContractStub UserEcoEarnRewardsContractStub { get; set; }
+
+
     internal TestPointsContractContainer.TestPointsContractStub PointsContractStub { get; set; }
 
     protected ECKeyPair DefaultKeyPair => Accounts[0].KeyPair;
@@ -40,32 +42,53 @@ public class EcoEarnPointsContractTestBase : DAppContractTestBase<EcoEarnPointsC
 
     protected readonly IBlockTimeProvider BlockTimeProvider;
 
-    protected EcoEarnPointsContractTestBase()
+    protected EcoEarnRewardsContractTestBase()
     {
         BlockTimeProvider = GetRequiredService<IBlockTimeProvider>();
 
         ZeroContractStub = GetContractStub<ACS0Container.ACS0Stub>(BasicContractZeroAddress, DefaultKeyPair);
         TokenContractStub =
             GetContractStub<TokenContractContainer.TokenContractStub>(TokenContractAddress, DefaultKeyPair);
+        UserTokenContractStub =
+            GetContractStub<TokenContractContainer.TokenContractStub>(TokenContractAddress, UserKeyPair);
 
         var result = AsyncHelper.RunSync(async () => await ZeroContractStub.DeploySmartContract.SendAsync(
             new ContractDeploymentInput
             {
                 Category = KernelConstants.CodeCoverageRunnerCategory,
-                Code = ByteString.CopyFrom(File.ReadAllBytes(typeof(EcoEarnPointsContract).Assembly.Location))
+                Code = ByteString.CopyFrom(File.ReadAllBytes(typeof(EcoEarnTokensContract).Assembly.Location))
             }));
 
-        EcoEarnPointsContractAddress = Address.Parser.ParseFrom(result.TransactionResult.ReturnValue);
+        EcoEarnTokensContractAddress = Address.Parser.ParseFrom(result.TransactionResult.ReturnValue);
 
+        EcoEarnTokensContractStub =
+            GetContractStub<EcoEarnTokensContractContainer.EcoEarnTokensContractStub>(EcoEarnTokensContractAddress,
+                DefaultKeyPair);
+
+        result = AsyncHelper.RunSync(async () => await ZeroContractStub.DeploySmartContract.SendAsync(
+            new ContractDeploymentInput
+            {
+                Category = KernelConstants.CodeCoverageRunnerCategory,
+                Code = ByteString.CopyFrom(File.ReadAllBytes(typeof(EcoEarnPointsContract).Assembly.Location))
+            }));
+        EcoEarnPointsContractAddress = Address.Parser.ParseFrom(result.TransactionResult.ReturnValue);
         EcoEarnPointsContractStub =
             GetContractStub<EcoEarnPointsContractContainer.EcoEarnPointsContractStub>(EcoEarnPointsContractAddress,
                 DefaultKeyPair);
-        EcoEarnPointsContractUserStub =
-            GetContractStub<EcoEarnPointsContractContainer.EcoEarnPointsContractStub>(EcoEarnPointsContractAddress,
+        
+        result = AsyncHelper.RunSync(async () => await ZeroContractStub.DeploySmartContract.SendAsync(
+            new ContractDeploymentInput
+            {
+                Category = KernelConstants.CodeCoverageRunnerCategory,
+                Code = ByteString.CopyFrom(File.ReadAllBytes(typeof(EcoEarnRewardsContract).Assembly.Location))
+            }));
+        EcoEarnRewardsContractAddress = Address.Parser.ParseFrom(result.TransactionResult.ReturnValue);
+        EcoEarnRewardsContractStub =
+            GetContractStub<EcoEarnRewardsContractContainer.EcoEarnRewardsContractStub>(EcoEarnRewardsContractAddress,
+                DefaultKeyPair);
+        UserEcoEarnRewardsContractStub =
+            GetContractStub<EcoEarnRewardsContractContainer.EcoEarnRewardsContractStub>(EcoEarnRewardsContractAddress,
                 UserKeyPair);
-        EcoEarnPointsContractUser2Stub =
-            GetContractStub<EcoEarnPointsContractContainer.EcoEarnPointsContractStub>(EcoEarnPointsContractAddress,
-                User2KeyPair);
 
         result = AsyncHelper.RunSync(async () => await ZeroContractStub.DeploySmartContract.SendAsync(
             new ContractDeploymentInput
@@ -78,30 +101,6 @@ public class EcoEarnPointsContractTestBase : DAppContractTestBase<EcoEarnPointsC
         PointsContractAddress = Address.Parser.ParseFrom(result.TransactionResult.ReturnValue);
         PointsContractStub =
             GetContractStub<TestPointsContractContainer.TestPointsContractStub>(PointsContractAddress, DefaultKeyPair);
-
-        result = AsyncHelper.RunSync(async () => await ZeroContractStub.DeploySmartContract.SendAsync(
-            new ContractDeploymentInput
-            {
-                Category = KernelConstants.CodeCoverageRunnerCategory,
-                Code = ByteString.CopyFrom(
-                    File.ReadAllBytes(typeof(EcoEarnTokensContract).Assembly.Location))
-            }));
-
-        EcoEarnTokensContractAddress = Address.Parser.ParseFrom(result.TransactionResult.ReturnValue);
-        EcoEarnTokensContractStub =
-            GetContractStub<EcoEarnTokensContractContainer.EcoEarnTokensContractStub>(EcoEarnTokensContractAddress,
-                DefaultKeyPair);
-
-        result = AsyncHelper.RunSync(async () => await ZeroContractStub.DeploySmartContract.SendAsync(
-            new ContractDeploymentInput
-            {
-                Category = KernelConstants.CodeCoverageRunnerCategory,
-                Code = ByteString.CopyFrom(File.ReadAllBytes(typeof(EcoEarnRewardsContract).Assembly.Location))
-            }));
-        EcoEarnRewardsContractAddress = Address.Parser.ParseFrom(result.TransactionResult.ReturnValue);
-        EcoEarnRewardsContractStub =
-            GetContractStub<EcoEarnRewardsContractContainer.EcoEarnRewardsContractStub>(EcoEarnRewardsContractAddress,
-                DefaultKeyPair);
     }
 
     internal T GetContractStub<T>(Address contractAddress, ECKeyPair senderKeyPair) where T : ContractStubBase, new()

@@ -2,9 +2,9 @@ using AElf;
 using AElf.Types;
 using Google.Protobuf.WellKnownTypes;
 
-namespace EcoEarn.Contracts.Tokens;
+namespace EcoEarn.Contracts.Rewards;
 
-public partial class EcoEarnTokensContract
+public partial class EcoEarnRewardsContract
 {
     private void CheckAdminPermission()
     {
@@ -33,12 +33,7 @@ public partial class EcoEarnTokensContract
 
     private void CheckDAppAdminPermission(Hash id)
     {
-        var info = State.DappInfoMap[id];
-        Assert(info != null && info.Admin == Context.Sender, "No permission.");
-    }
-
-    private bool CheckPoolEnabled(Timestamp endBlockNumber)
-    {
-        return Context.CurrentBlockTime < endBlockNumber;
+        var dappInfo = State.DappInfoMap[id];
+        Assert(dappInfo != null && dappInfo.Admin == Context.Sender, "No permission.");
     }
 }

@@ -60,11 +60,6 @@ public partial class EcoEarnTokensContract
         };
     }
 
-    public override ClaimInfo GetClaimInfo(Hash input)
-    {
-        return IsHashValid(input) ? State.ClaimInfoMap[input] : new ClaimInfo();
-    }
-
     public override GetStakeInfoOutput GetStakeInfo(Hash input)
     {
         var output = new GetStakeInfoOutput();
@@ -76,8 +71,8 @@ public partial class EcoEarnTokensContract
         output.StakeInfo = stakeInfo;
         var poolInfo = State.PoolInfoMap[stakeInfo.PoolId];
 
-        output.IsInUnlockWindow = CheckPoolEnabled(poolInfo.Config.EndTime) &&
-                                  IsInUnlockWindow(stakeInfo, poolInfo.Config.UnlockWindowDuration);
+        output.IsInUnlockWindow = CheckPoolEnabled(poolInfo.Config.EndTime) && IsInUnlockWindow(stakeInfo,
+            CalculateRemainTime(stakeInfo, poolInfo.Config.UnlockWindowDuration));
 
         return output;
     }
@@ -99,6 +94,14 @@ public partial class EcoEarnTokensContract
     public override Hash GetUserStakeId(GetUserStakeIdInput input)
     {
         return State.UserStakeIdMap[input.PoolId][input.Account];
+    }
+    
+    public override Int64Value GetUserStakeCount(GetUserStakeCountInput input)
+    {
+        return new Int64Value
+        {
+            Value = State.UserStakeCountMap[input.PoolId][input.Account]
+        };
     }
 
     private RewardInfo ProcessGetReward(Hash stakeId)
@@ -122,21 +125,17 @@ public partial class EcoEarnTokensContract
 
         var blockTime = Context.CurrentBlockTime;
 
-        long reward;
-
         if (blockTime >= poolData.LastRewardTime && poolData.TotalStakedAmount != 0)
         {
-            reward = CalculateRewardAmount(poolInfo, poolData, stakeInfo);
+            rewardInfo.Amount = CalculateRewardAmount(poolInfo, poolData, stakeInfo);
         }
         else
         {
-            rewardInfo.Amount = stakeInfo.RewardAmount;
-            return rewardInfo;
+            foreach (var subStakeInfo in stakeInfo.SubStakeInfos)
+            {
+                rewardInfo.Amount = rewardInfo.Amount.Add(subStakeInfo.RewardAmount);
+            }
         }
-
-        var config = State.Config.Value;
-        rewardInfo.Amount = reward.Sub(CalculateCommissionFee(reward, config.CommissionRate))
-            .Add(stakeInfo.RewardAmount);
 
         return rewardInfo;
     }

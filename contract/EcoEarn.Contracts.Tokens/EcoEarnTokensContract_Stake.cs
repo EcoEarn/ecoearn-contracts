@@ -1,10 +1,11 @@
 using AElf;
 using AElf.Contracts.MultiToken;
 using AElf.CSharp.Core;
+using AElf.CSharp.Core.Extension;
 using AElf.Sdk.CSharp;
 using AElf.Types;
+using EcoEarn.Contracts.Rewards;
 using Google.Protobuf.WellKnownTypes;
-using static System.Int64;
 
 namespace EcoEarn.Contracts.Tokens;
 
@@ -15,14 +16,26 @@ public partial class EcoEarnTokensContract
     public override Empty Stake(StakeInput input)
     {
         Assert(input != null, "Invalid input.");
-        Assert(input!.Amount >= 0, "Invalid amount.");
-        Assert(input.Period >= 0, "Invalid period.");
 
         var poolInfo = GetPool(input.PoolId);
+        
+        Assert(input!.Amount >= 0, "Invalid amount.");
+        Assert(input.Period >= 0, "Invalid period.");
+        Assert(input.Period <= poolInfo.Config.MaximumStakeDuration, "Period too long.");
 
         Assert(CheckPoolEnabled(poolInfo.Config.EndTime), "Pool closed.");
 
-        ProcessStake(poolInfo, input.Amount, input.Period, Context.Sender);
+        var existId = State.UserStakeIdMap[poolInfo.PoolId][Context.Sender];
+        var stakeInfo = existId == null ? null : State.StakeInfoMap[existId];
+
+        var remainTime = CalculateRemainTime(stakeInfo, poolInfo.Config.UnlockWindowDuration);
+        if (stakeInfo != null && stakeInfo.UnlockTime == null)
+        {
+            Assert(!IsInUnlockWindow(stakeInfo, remainTime),
+                "Cannot stake during unlock window.");
+        }
+
+        ProcessStake(poolInfo, stakeInfo, input.Amount, input.Period, Context.Sender, null, remainTime);
 
         if (input.Amount > 0)
         {
@@ -53,9 +66,18 @@ public partial class EcoEarnTokensContract
         Assert(existId != null && State.StakeInfoMap[existId] != null, "Stake info not exists.");
         var stakeInfo = State.StakeInfoMap[existId];
         Assert(stakeInfo.UnlockTime == null, "Already unlocked.");
-        Assert(IsInUnlockWindow(stakeInfo, poolInfo.Config.UnlockWindowDuration), "Not in unlock window.");
+        Assert(IsInUnlockWindow(stakeInfo, CalculateRemainTime(stakeInfo, poolInfo.Config.UnlockWindowDuration)),
+            "Not in unlock window.");
 
-        ProcessStakeInfo(stakeInfo, poolInfo, input.Period);
+        var poolData = State.PoolDataMap[poolInfo.PoolId];
+        UpdatePool(poolInfo, poolData);
+
+        Assert(input.Period <= poolInfo.Config.MaximumStakeDuration, "Period too long.");
+
+        stakeInfo.StakingPeriod = input.Period;
+        stakeInfo.LastOperationTime = Context.CurrentBlockTime;
+
+        ProcessSubStakeInfos(stakeInfo, poolInfo, poolData, input.Period, true);
 
         Context.Fire(new Renewed
         {
@@ -75,40 +97,90 @@ public partial class EcoEarnTokensContract
 
         var stakeInfo = State.StakeInfoMap[existId];
         Assert(stakeInfo != null, "Stake info not exists.");
-        Assert(stakeInfo!.Account == Context.Sender, "No permission.");
-        Assert(stakeInfo.UnlockTime == null, "Already unlocked.");
+        Assert(stakeInfo!.UnlockTime == null, "Already unlocked.");
 
         var poolInfo = GetPool(stakeInfo.PoolId);
+
         Assert(
-            !CheckPoolEnabled(poolInfo.Config.EndTime) ||
-            IsInUnlockWindow(stakeInfo, poolInfo.Config.UnlockWindowDuration), "Not in unlock window.");
+            !CheckPoolEnabled(poolInfo.Config.EndTime) || IsInUnlockWindow(stakeInfo,
+                CalculateRemainTime(stakeInfo, poolInfo.Config.UnlockWindowDuration)), "Not in unlock window.");
 
         stakeInfo.UnlockTime = Context.CurrentBlockTime;
         stakeInfo.LastOperationTime = Context.CurrentBlockTime;
 
-        UpdateReward(poolInfo, stakeInfo);
-        UpdateTotalStakedAmount(stakeInfo);
+        var rewards = UpdateRewards(poolInfo, stakeInfo);
+        ProcessStakeInfo(stakeInfo, out var stakedAmount, out var earlyStakedAmount);
 
-        if (stakeInfo.StakedAmount > 0)
+        if (rewards > 0)
+        {
+            rewards = ProcessCommissionFee(rewards, poolInfo);
+        }
+
+        if (stakedAmount > 0)
         {
             Context.SendVirtualInline(GetStakeVirtualAddress(input), poolInfo.Config.StakeTokenContract,
                 nameof(State.TokenContract.Transfer), new TransferInput
                 {
-                    Amount = stakeInfo.StakedAmount,
-                    Memo = "withdraw",
+                    Amount = stakedAmount,
+                    Memo = "unlock",
                     Symbol = poolInfo.Config.StakingToken,
                     To = stakeInfo.Account
                 });
         }
 
-        stakeInfo.StakedAmount = 0;
+        CallRewardsContractClaim(input, poolInfo, rewards, out var rewardAddress);
+            
+        if (earlyStakedAmount > 0)
+        {
+            Context.SendVirtualInline(GetStakeVirtualAddress(input), poolInfo.Config.StakeTokenContract,
+                nameof(State.TokenContract.Transfer), new TransferInput
+                {
+                    Amount = earlyStakedAmount,
+                    Memo = "unlock",
+                    Symbol = poolInfo.Config.StakingToken,
+                    To = rewardAddress
+                });
+        }
 
         Context.Fire(new Unlocked
         {
-            StakeId = existId,
-            PoolData = State.PoolDataMap[stakeInfo.PoolId],
-            StakedAmount = stakeInfo.StakedAmount
+            PoolId = input,
+            StakeInfo = stakeInfo,
+            Amount = stakedAmount.Add(earlyStakedAmount),
+            PoolData = State.PoolDataMap[stakeInfo.PoolId]
         });
+
+        return new Empty();
+    }
+
+    public override Empty StakeFor(StakeForInput input)
+    {
+        Assert(input != null, "Invalid input.");
+        Assert(input!.Amount > 0, "Invalid amount.");
+        Assert(input.Period > 0, "Invalid period.");
+        Assert(IsAddressValid(input.FromAddress), "Invalid from address.");
+        Assert(IsHashValid(input.Seed), "Invalid seed.");
+        Assert(input.LongestReleaseTime != null, "Invalid longest release time.");
+
+        var poolInfo = GetPool(input.PoolId);
+
+        Assert(Context.Sender == State.EcoEarnRewardsContract.Value, "No permission.");
+
+        Assert(CheckPoolEnabled(poolInfo.Config.EndTime), "Pool closed.");
+
+        var existId = State.UserStakeIdMap[poolInfo.PoolId][input.FromAddress];
+        var stakeInfo = existId == null ? null : State.StakeInfoMap[existId];
+
+        var remainTime = CalculateRemainTime(stakeInfo, poolInfo.Config.UnlockWindowDuration);
+        if (stakeInfo != null && stakeInfo.UnlockTime == null)
+        {
+            Assert(!IsInUnlockWindow(stakeInfo, remainTime),
+                "Cannot stake during unlock window.");
+            Assert(Context.CurrentBlockTime.AddSeconds(remainTime.Add(input.Period)) > input.LongestReleaseTime,
+                "Period not enough.");
+        }
+
+        ProcessStake(poolInfo, stakeInfo, input.Amount, input.Period, input.FromAddress, input.Seed, remainTime);
 
         return new Empty();
     }
@@ -125,6 +197,11 @@ public partial class EcoEarnTokensContract
         State.UserStakeCountMap[poolId][sender] = count.Add(1);
 
         return stakeId;
+    }
+
+    private Hash GenerateSubStakeId(Hash stakeId, long count)
+    {
+        return HashHelper.ConcatAndCompute(stakeId, HashHelper.ComputeFrom(count));
     }
 
     private long CalculateBoostedAmount(TokensPoolConfig config, long amount, long period)
@@ -167,39 +244,26 @@ public partial class EcoEarnTokensContract
     private long CalculatePending(long amount, BigIntValue accTokenPerShare, long debt, BigIntValue precisionFactor)
     {
         if (accTokenPerShare == null) return 0;
-        TryParse(accTokenPerShare.Mul(amount).Div(precisionFactor).Sub(debt).Value, out var result);
+        long.TryParse(accTokenPerShare.Mul(amount).Div(precisionFactor).Sub(debt).Value, out var result);
         return result < 0 ? 0 : result;
     }
 
     private long CalculateDebt(long amount, BigIntValue accTokenPerShare, BigIntValue precisionFactor)
     {
         if (accTokenPerShare == null) return 0;
-        TryParse(accTokenPerShare.Mul(amount).Div(precisionFactor).Value, out var result);
+        long.TryParse(accTokenPerShare.Mul(amount).Div(precisionFactor).Value, out var result);
         return result;
     }
 
-    private void ProcessStake(PoolInfo poolInfo, long amount, long period,
-        Address address)
+    private void ProcessStake(PoolInfo poolInfo, StakeInfo stakeInfo, long amount, long period, Address address,
+        Hash seed, long remainTime)
     {
-        var existId = State.UserStakeIdMap[poolInfo.PoolId][address];
-        var stakeInfo = existId == null ? new StakeInfo() : State.StakeInfoMap[existId];
-
-        if (amount > 0)
-        {
-            stakeInfo.StakedAmount = stakeInfo.StakedAmount.Add(amount);
-        }
-
-        if (period > 0)
-        {
-            Assert(period >= poolInfo.Config.MinimumStakeDuration, "Period too short.");
-            Assert(period <= poolInfo.Config.MaximumStakeDuration, "Period too long.");
-        }
-
         // create position
-        if (existId == null || stakeInfo.UnlockTime != null)
+        if (stakeInfo == null || stakeInfo.UnlockTime != null)
         {
-            Assert(amount > 0 && period > 0, "New position requires both amount and period.");
+            Assert(amount > 0, "Invalid amount.");
             Assert(amount >= poolInfo.Config.MinimumAmount, "Amount not enough.");
+
             var stakeId = GenerateStakeId(poolInfo.PoolId, address);
             Assert(State.StakeInfoMap[stakeId] == null, "Stake id exists.");
 
@@ -208,24 +272,35 @@ public partial class EcoEarnTokensContract
                 StakeId = stakeId,
                 PoolId = poolInfo.PoolId,
                 Account = address,
-                StakedBlockNumber = Context.CurrentHeight,
-                StakedTime = Context.CurrentBlockTime,
-                StakedAmount = amount,
-                StakingToken = poolInfo.Config.StakingToken,
-                LastOperationTime = Context.CurrentBlockTime,
-                Period = period
+                StakingToken = poolInfo.Config.StakingToken
             };
 
             State.StakeInfoMap[stakeId] = stakeInfo;
             State.UserStakeIdMap[poolInfo.PoolId][address] = stakeId;
         }
-        else
+
+        var poolData = State.PoolDataMap[poolInfo.PoolId];
+        UpdatePool(poolInfo, poolData);
+
+        // when remain time close to maximum stake duration, can accept 0 as Period
+        if (remainTime <= poolInfo.Config.MaximumStakeDuration.Sub(poolInfo.Config.MinimumStakeDuration))
         {
-            Assert(!IsInUnlockWindow(stakeInfo, poolInfo.Config.UnlockWindowDuration),
-                "Cannot stake during unlock window.");
+            Assert(period >= poolInfo.Config.MinimumStakeDuration, "Period too short.");
         }
 
-        ProcessStakeInfo(stakeInfo, poolInfo, period);
+        var stakingPeriod = remainTime.Add(period);
+        Assert(stakingPeriod <= poolInfo.Config.MaximumStakeDuration, "Period too long.");
+
+        stakeInfo.StakingPeriod = stakingPeriod;
+        stakeInfo.LastOperationTime = Context.CurrentBlockTime;
+
+        // extends 
+        ProcessSubStakeInfos(stakeInfo, poolInfo, poolData, period, false);
+
+        if (amount > 0)
+        {
+            AddSubStakeInfo(stakeInfo, poolInfo, poolData, amount, seed, remainTime.Add(period));
+        }
 
         Context.Fire(new Staked
         {
@@ -256,22 +331,82 @@ public partial class EcoEarnTokensContract
         return pending.Sub(commissionFee);
     }
 
-    private void UpdateTotalStakedAmount(StakeInfo stakeInfo)
+    private void ProcessStakeInfo(StakeInfo stakeInfo, out long stakedAmount, out long earlyStakedAmount)
     {
+        var boostedAmount = 0L;
+        stakedAmount = 0L;
+        earlyStakedAmount = 0L;
+
+        foreach (var subStakeInfo in stakeInfo.SubStakeInfos)
+        {
+            boostedAmount = boostedAmount.Add(subStakeInfo.BoostedAmount);
+            if (subStakeInfo.Seed == null)
+            {
+                stakedAmount = stakedAmount.Add(subStakeInfo.StakedAmount);
+            }
+            else earlyStakedAmount = earlyStakedAmount.Add(subStakeInfo.StakedAmount);
+
+            subStakeInfo.StakedAmount = 0;
+        }
+
         var poolData = State.PoolDataMap[stakeInfo.PoolId];
-        poolData.TotalStakedAmount = poolData.TotalStakedAmount.Sub(stakeInfo.BoostedAmount);
+        poolData.TotalStakedAmount = poolData.TotalStakedAmount.Sub(boostedAmount);
     }
 
-    private bool IsInUnlockWindow(StakeInfo stakeInfo, long unlockWindowDuration)
+    private bool IsInUnlockWindow(StakeInfo stakeInfo, long remainTime)
     {
-        var remainTime = CalculateRemainTime(stakeInfo, unlockWindowDuration);
-
         return stakeInfo.UnlockTime == null && remainTime <= 0;
+    }
+
+    private void ProcessSubStakeInfos(StakeInfo stakeInfo, PoolInfo poolInfo, PoolData poolData, long period,
+        bool isRenew)
+    {
+        if (stakeInfo.SubStakeInfos.Count == 0 || period == 0) return;
+
+        foreach (var subStakeInfo in stakeInfo.SubStakeInfos)
+        {
+            subStakeInfo.Period = isRenew ? period : subStakeInfo.Period.Add(period);
+
+            var pending = CalculatePending(subStakeInfo.BoostedAmount, poolData.AccTokenPerShare,
+                subStakeInfo.RewardDebt, poolInfo.PrecisionFactor);
+            var actualReward = ProcessCommissionFee(pending, poolInfo);
+            subStakeInfo.RewardAmount = subStakeInfo.RewardAmount.Add(actualReward);
+
+            var boostedAmount = CalculateBoostedAmount(poolInfo.Config, subStakeInfo.StakedAmount, subStakeInfo.Period);
+
+            if (boostedAmount != subStakeInfo.BoostedAmount)
+            {
+                poolData.TotalStakedAmount =
+                    poolData.TotalStakedAmount.Add(boostedAmount).Sub(subStakeInfo.BoostedAmount);
+                subStakeInfo.BoostedAmount = boostedAmount;
+            }
+
+            subStakeInfo.RewardDebt = CalculateDebt(boostedAmount, poolData.AccTokenPerShare, poolInfo.PrecisionFactor);
+        }
+    }
+
+    private void AddSubStakeInfo(StakeInfo stakeInfo, PoolInfo poolInfo, PoolData poolData, long amount, Hash seed, long period)
+    {
+        var boostedAmount = CalculateBoostedAmount(poolInfo.Config, amount, period);
+
+        stakeInfo.SubStakeInfos.Add(new SubStakeInfo
+        {
+            SubStakeId = GenerateSubStakeId(stakeInfo.StakeId, stakeInfo.SubStakeInfos.Count),
+            StakedAmount = amount,
+            StakedBlockNumber = Context.CurrentHeight,
+            StakedTime = Context.CurrentBlockTime,
+            Period = period,
+            BoostedAmount = boostedAmount,
+            RewardDebt = CalculateDebt(boostedAmount, poolData.AccTokenPerShare, poolInfo.PrecisionFactor),
+            Seed = seed
+        });
+
+        poolData.TotalStakedAmount = poolData.TotalStakedAmount.Add(boostedAmount);
     }
 
     private long CalculateRemainTime(StakeInfo stakeInfo, long unlockWindowDuration)
     {
-        if (stakeInfo.StakingPeriod == 0) return 0;
+        if (stakeInfo == null || stakeInfo.StakingPeriod == 0) return 0;
         var fullCycleSeconds = stakeInfo.StakingPeriod.Add(unlockWindowDuration);
         var timeSpan = (Context.CurrentBlockTime - stakeInfo.LastOperationTime).Seconds;
 
@@ -280,45 +415,13 @@ public partial class EcoEarnTokensContract
         return stakeInfo.StakingPeriod.Sub(secondsInCurrentCycle);
     }
 
-    private void ProcessStakeInfo(StakeInfo stakeInfo, PoolInfo poolInfo, long period)
+    private long CalculateWindowTerms(StakeInfo stakeInfo, long unlockWindowDuration)
     {
-        var poolData = State.PoolDataMap[poolInfo.PoolId];
-        UpdatePool(poolInfo, poolData);
+        if (stakeInfo.StakingPeriod == 0) return 0;
+        var fullCycleSeconds = stakeInfo.StakingPeriod.Add(unlockWindowDuration);
+        var timeSpan = (Context.CurrentBlockTime - stakeInfo.LastOperationTime).Seconds;
 
-        if (period > 0)
-        {
-            var remainTime = CalculateRemainTime(stakeInfo, poolInfo.Config.UnlockWindowDuration);
-
-            if (remainTime > 0)
-            {
-                var stakingPeriod = remainTime.Add(period);
-                Assert(stakingPeriod <= poolInfo.Config.MaximumStakeDuration, "Period too long.");
-
-                stakeInfo.StakingPeriod = stakingPeriod;
-                stakeInfo.Period = stakeInfo.Period.Add(period);
-            }
-            else
-            {
-                stakeInfo.StakingPeriod = period;
-            }
-
-            stakeInfo.LastOperationTime = Context.CurrentBlockTime;
-        }
-
-        var pending = CalculatePending(stakeInfo.BoostedAmount, poolData.AccTokenPerShare, stakeInfo.RewardDebt,
-            poolInfo.PrecisionFactor);
-        var actualReward = ProcessCommissionFee(pending, poolInfo);
-        stakeInfo.RewardAmount = stakeInfo.RewardAmount.Add(actualReward);
-
-        var boostedAmount = CalculateBoostedAmount(poolInfo.Config, stakeInfo.StakedAmount, stakeInfo.Period);
-
-        if (boostedAmount != stakeInfo.BoostedAmount)
-        {
-            poolData.TotalStakedAmount = poolData.TotalStakedAmount.Add(boostedAmount).Sub(stakeInfo.BoostedAmount);
-            stakeInfo.BoostedAmount = boostedAmount;
-        }
-
-        stakeInfo.RewardDebt = CalculateDebt(boostedAmount, poolData.AccTokenPerShare, poolInfo.PrecisionFactor);
+        return timeSpan.Div(fullCycleSeconds);
     }
 
     #endregion

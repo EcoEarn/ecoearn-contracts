@@ -1,11 +1,11 @@
 <Project Sdk="Microsoft.NET.Sdk">
     <PropertyGroup>
         <TargetFramework>net6.0</TargetFramework>
-        <RootNamespace>EcoEarn.Contracts.Points</RootNamespace>
+        <RootNamespace>EcoEarn.Contracts.TestContract</RootNamespace>
         <IsContract>true</IsContract>
-        <PackageId>EcoEarn.Contracts.Points</PackageId>
+        <PackageId>EcoEarn.Contracts.TestContract</PackageId>
         <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
-        <Description>EcoEarn Points Contract</Description>
+        <Description>EcoEarn.Contracts.TestContract</Description>
     </PropertyGroup>
     <PropertyGroup Condition=" '$(Configuration)' == 'Debug' ">
         <CheckForOverflowUnderflow>true</CheckForOverflowUnderflow>
@@ -20,14 +20,8 @@
         <ContractReference Include="..\..\protobuf\token_contract.proto">
             <Link>Protobuf\Proto\token_contract.proto</Link>
         </ContractReference>
-        <ContractReference Include="..\..\protobuf\points_contract.proto">
-            <Link>Protobuf\Proto\points_contract.proto</Link>
-        </ContractReference>
-        <ContractReference Include="..\..\protobuf\ecoearn_tokens.proto">
-            <Link>Protobuf\Proto\ecoearn_tokens.proto</Link>
-        </ContractReference>
-        <ContractReference Include="..\..\protobuf\ecoearn_rewards.proto">
-            <Link>Protobuf\Proto\ecoearn_rewards.proto</Link>
+        <ContractReference Include="..\..\protobuf\awaken_swap_contract.proto">
+            <Link>Protobuf\Proto\awaken_swap_contract.proto</Link>
         </ContractReference>
     </ItemGroup>
     <ItemGroup>
@@ -37,8 +31,8 @@
     </ItemGroup>
 
     <ItemGroup>
-        <ContractCode Include="..\..\protobuf\ecoearn_points.proto">
-            <Link>Protobuf\Proto\ecoearn_points.proto</Link>
+        <ContractCode Include="..\..\protobuf\test.proto">
+            <Link>Protobuf\Proto\test.proto</Link>
         </ContractCode>
     </ItemGroup>
 </Project>

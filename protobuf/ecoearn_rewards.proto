@@ -1,0 +1,259 @@
+// the version of the language, use proto3 for contracts
+syntax = "proto3";
+
+import "aelf/core.proto";
+import "aelf/options.proto";
+import "acs12.proto";
+import "google/protobuf/empty.proto";
+import "google/protobuf/timestamp.proto";
+
+option csharp_namespace = "EcoEarn.Contracts.Rewards";
+
+service EcoEarnRewardsContract {
+  option (aelf.base) = "acs12.proto";
+  option (aelf.csharp_state) = "EcoEarn.Contracts.Rewards.EcoEarnRewardsContractState";
+
+  // contract
+  rpc Initialize (InitializeInput) returns (google.protobuf.Empty) {}
+  rpc SetAdmin (aelf.Address) returns (google.protobuf.Empty) {}
+  rpc GetAdmin (google.protobuf.Empty) returns (aelf.Address) {option (aelf.is_view) = true;}
+
+  // dapp
+  rpc Register (RegisterInput) returns (google.protobuf.Empty) {}
+  rpc SetDappAdmin (SetDappAdminInput) returns (google.protobuf.Empty) {}
+  rpc SetDappConfig (SetDappConfigInput) returns (google.protobuf.Empty) {}
+  rpc GetDappInfo (aelf.Hash) returns (DappInfo) {option (aelf.is_view) = true;}
+
+  // reward
+  rpc GetRewardAddress (GetRewardAddressInput) returns (aelf.Address) { option (aelf.is_view) = true; }
+  rpc Claim (ClaimInput) returns (google.protobuf.Empty) {}
+  rpc GetClaimInfo (aelf.Hash) returns (ClaimInfo) {option (aelf.is_view) = true;}
+  rpc Withdraw (WithdrawInput) returns (google.protobuf.Empty) {}
+  rpc EarlyStake (EarlyStakeInput) returns (google.protobuf.Empty) {}
+  
+  // lp
+  rpc AddLiquidityAndStake (AddLiquidityAndStakeInput) returns (google.protobuf.Empty) {}
+  rpc RemoveLiquidity (RemoveLiquidityInput) returns (google.protobuf.Empty) {}
+  rpc StakeLiquidity (StakeLiquidityInput) returns (google.protobuf.Empty) {}
+}
+
+message InitializeInput {
+  aelf.Address admin = 1;
+  aelf.Address ecoearn_points_contract = 2;
+  aelf.Address ecoearn_tokens_contract = 3;
+}
+
+message RegisterInput {
+  aelf.Hash dapp_id = 1;
+  aelf.Address admin = 2;
+  aelf.Address update_address = 3;
+}
+
+message DappConfig {
+  aelf.Address update_address = 1;
+}
+
+message DappInfo {
+  aelf.Hash dapp_id = 1;
+  aelf.Address admin = 2;
+  DappConfig config = 3;
+}
+
+message GetRewardAddressInput {
+  aelf.Hash dapp_id = 1;
+  aelf.Address account = 2;
+}
+
+message ClaimInput {
+  aelf.Hash pool_id = 1;
+  aelf.Address account = 2;
+  string symbol = 3;
+  int64 amount = 4;
+  repeated int64 release_periods = 5;
+  aelf.Hash seed = 6;
+}
+
+message ClaimInfo {
+  aelf.Hash claim_id = 1;
+  aelf.Hash pool_id = 2;
+  int64 claimed_amount = 3;
+  string claimed_symbol = 4;
+  int64 claimed_block_number = 5;
+  aelf.Address account = 6;
+  google.protobuf.Timestamp claimed_time = 7;
+  google.protobuf.Timestamp release_time = 8;
+  google.protobuf.Timestamp withdrawn_time = 9;
+  int64 early_staked_amount = 10;
+  aelf.Hash stake_id = 11;
+  aelf.Hash liquidity_id = 12;
+  aelf.Hash seed = 13;
+  aelf.Address contract_address = 14;
+}
+
+message ClaimInfos {
+  repeated ClaimInfo data = 1;
+}
+
+message WithdrawInput {
+  repeated aelf.Hash claim_ids = 1;
+  aelf.Address account = 2;
+  int64 amount = 3;
+  aelf.Hash seed = 4;
+  int64 expiration_time = 5;
+  aelf.Hash dapp_id = 6;
+  bytes signature = 10000;
+}
+
+
+message StakeInput {
+  repeated aelf.Hash claim_ids = 1;
+  aelf.Address account = 2;
+  int64 amount = 3;
+  aelf.Hash seed = 4;   
+  int64 expiration_time = 5;
+  aelf.Hash pool_id = 6;
+  int64 period = 7;
+  aelf.Hash dapp_id = 8;
+}
+
+message EarlyStakeInput {
+  StakeInput stake_input = 1;
+  bytes signature = 10000;
+}
+
+message SetDappAdminInput {
+  aelf.Hash dapp_id = 1;
+  aelf.Address admin = 2;
+}
+
+message SetDappConfigInput {
+  aelf.Hash dapp_id = 1;
+  DappConfig config = 2;
+}
+
+message HashList {
+  repeated aelf.Hash data = 1;
+}
+
+message AddLiquidityAndStakeInput {
+  StakeInput stake_input = 1;
+  int64 token_a_min = 2;
+  int64 token_b_min = 3;
+  google.protobuf.Timestamp deadline = 4;
+  bytes signature = 10000;
+}
+
+message RemoveLiquidityInput {
+  repeated aelf.Hash liquidity_ids = 1;
+  int64 token_a_min = 2;
+  int64 token_b_min = 3;
+  google.protobuf.Timestamp deadline = 4;
+  aelf.Hash dapp_id = 5;
+}
+
+message StakeLiquidityInput {
+  repeated aelf.Hash liquidity_ids = 1;
+  aelf.Hash pool_id = 2;
+  int64 period = 3;
+}
+
+message LiquidityInfo {
+  aelf.Hash liquidity_id = 1;
+  aelf.Hash stake_id = 2;
+  aelf.Hash seed = 3;
+  int64 lp_amount = 4;
+  string lp_symbol = 5;
+  string reward_symbol = 6;
+  int64 token_a_amount = 7;
+  string token_a_symbol = 8;
+  int64 token_b_amount = 9;
+  string token_b_symbol = 10;
+  google.protobuf.Timestamp added_time = 11;
+  google.protobuf.Timestamp removed_time = 12;
+  aelf.Hash dapp_id = 13;
+  aelf.Address swap_address = 14;
+  aelf.Address token_address = 15;
+  aelf.Address account = 16;
+}
+
+message LiquidityInfos {
+  repeated LiquidityInfo data = 1;
+}
+
+// log event
+message AdminSet {
+  option (aelf.is_event) = true;
+  aelf.Address admin = 1;
+}
+
+message Registered {
+  option (aelf.is_event) = true;
+  aelf.Hash dapp_id = 1;
+  aelf.Address admin = 2;
+  DappConfig config = 3;
+}
+
+message DappConfigSet {
+  option (aelf.is_event) = true;
+  aelf.Hash dapp_id = 1;
+  DappConfig config = 2;
+}
+
+message Claimed {
+  option (aelf.is_event) = true;
+  ClaimInfos claim_infos = 1;
+  aelf.Hash seed = 2;
+}
+
+message DappAdminSet {
+  option (aelf.is_event) = true;
+  aelf.Hash dapp_id = 1;
+  aelf.Address admin = 2;
+}
+
+message Withdrawn {
+  option (aelf.is_event) = true;
+  ClaimInfos claim_infos = 1;
+  aelf.Address account = 2;
+  int64 amount = 3;
+  aelf.Hash seed = 4;
+}
+
+message EarlyStaked {
+  option (aelf.is_event) = true;
+  ClaimInfos claim_infos = 1;
+  aelf.Address account = 2;
+  int64 amount = 3;
+  aelf.Hash seed = 4;
+  aelf.Hash pool_id = 5;
+  int64 period = 6;
+  aelf.Hash stake_id = 7;
+}
+
+message LiquidityAdded {
+  option (aelf.is_event) = true;
+  ClaimInfos claim_infos = 1;
+  aelf.Address account = 2;
+  int64 amount = 3;
+  aelf.Hash pool_id = 4;
+  int64 period = 5;
+  aelf.Hash stake_id = 6;
+  LiquidityInfo liquidity_info = 7;
+}
+
+message LiquidityRemoved {
+  option (aelf.is_event) = true;
+  LiquidityInfos liquidity_infos = 1;
+  int64 lp_amount = 2;
+  int64 token_a_amount = 3;
+  int64 token_b_amount = 4;
+}
+
+message LiquidityStaked {
+  option (aelf.is_event) = true;
+  LiquidityInfos liquidity_infos = 1;
+  aelf.Hash pool_id = 2;
+  int64 amount = 3;
+  int64 period = 4;
+  aelf.Hash stake_id = 5;
+}

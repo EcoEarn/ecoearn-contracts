@@ -39,11 +39,6 @@ public partial class EcoEarnPointsContract
         return IsHashValid(input) ? CalculateVirtualAddress(input) : new Address();
     }
 
-    public override ClaimInfo GetClaimInfo(Hash input)
-    {
-        return IsHashValid(input) ? State.ClaimInfoMap[input] : new ClaimInfo();
-    }
-
     public override Snapshot GetSnapshot(GetSnapshotInput input)
     {
         return input.BlockNumber > 0 && IsHashValid(input.PoolId)

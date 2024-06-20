@@ -1,8 +1,10 @@
 using AElf;
 using AElf.Contracts.MultiToken;
 using AElf.CSharp.Core;
+using AElf.CSharp.Core.Extension;
 using AElf.Sdk.CSharp;
 using AElf.Types;
+using EcoEarn.Contracts.Rewards;
 using Google.Protobuf;
 using Google.Protobuf.WellKnownTypes;
 
@@ -48,6 +50,12 @@ public partial class EcoEarnPointsContract
         var poolInfo = GetPool(input.PoolId);
         Assert(Context.CurrentBlockTime >= poolInfo.Config.StartTime, "Pool not start.");
         Assert(Context.CurrentBlockTime.Seconds < input.ExpirationTime, "Signature expired.");
+        Assert(
+            State.ClaimTimeMap[input.PoolId][Context.Sender] == null || Context.CurrentBlockTime >=
+            State.ClaimTimeMap[input.PoolId][Context.Sender].AddSeconds(poolInfo.Config.ClaimInterval),
+            "Cannot claim yet.");
+
+        State.ClaimTimeMap[input.PoolId][Context.Sender] = Context.CurrentBlockTime;
 
         var maximumReward =
             (Context.CurrentBlockTime - poolInfo.Config.StartTime).Seconds.Mul(poolInfo.Config.RewardPerSecond);
@@ -56,10 +64,7 @@ public partial class EcoEarnPointsContract
         Assert(RecoverAddressFromSignature(input) == poolInfo.Config.UpdateAddress, "Signature not valid.");
 
         State.SignatureMap[HashHelper.ComputeFrom(input.Signature.ToByteArray())] = true;
-
-        var claimId = GenerateClaimId(input);
-        Assert(State.ClaimInfoMap[claimId] == null, "Claim id taken.");
-
+        
         var config = State.Config.Value;
 
         // calculate and charge commission fee
@@ -77,32 +82,36 @@ public partial class EcoEarnPointsContract
 
         var claimedAmount = input.Amount.Sub(commissionFee);
 
-        var claimInfo = new ClaimInfo
+        var userRewardAddress = State.EcoEarnRewardsContract.GetRewardAddress.Call(new GetRewardAddressInput
         {
-            ClaimId = claimId,
-            ClaimedAmount = claimedAmount,
-            ClaimedBlockNumber = Context.CurrentHeight,
-            ClaimedSymbol = poolInfo.Config.RewardToken,
-            ClaimedTime = Context.CurrentBlockTime,
-            PoolId = poolInfo.PoolId,
-            Account = input.Account,
-            Seed = input.Seed
-        };
-
-        State.ClaimInfoMap[claimId] = claimInfo;
+            DappId = poolInfo.DappId,
+            Account = Context.Sender
+        });
 
         // transfer rewards to user
         State.TokenContract.Transfer.VirtualSend(input.PoolId, new TransferInput
         {
-            To = Context.Sender,
+            To = userRewardAddress,
             Amount = claimedAmount,
             Symbol = poolInfo.Config.RewardToken,
             Memo = "claim"
         });
+        
+        State.EcoEarnRewardsContract.Claim.Send(new Rewards.ClaimInput
+        {
+            PoolId = input.PoolId,
+            Symbol = poolInfo.Config.RewardToken,
+            Account = Context.Sender,
+            Amount = claimedAmount,
+            ReleasePeriods = { poolInfo.Config.ReleasePeriods }
+        });
 
         Context.Fire(new Claimed
         {
-            ClaimInfo = claimInfo
+            PoolId = input.PoolId,
+            Account = Context.Sender,
+            Amount = claimedAmount,
+            Seed = input.Seed
         });
 
         return new Empty();
@@ -187,12 +196,6 @@ public partial class EcoEarnPointsContract
     private long CalculateCommissionFee(long amount, long commissionRate)
     {
         return amount.Mul(commissionRate).Div(EcoEarnPointsContractConstants.Denominator);
-    }
-
-    private Hash GenerateClaimId(ClaimInput input)
-    {
-        return HashHelper.ConcatAndCompute(HashHelper.ComputeFrom(input),
-            HashHelper.ComputeFrom(Context.CurrentHeight));
     }
 
     #endregion

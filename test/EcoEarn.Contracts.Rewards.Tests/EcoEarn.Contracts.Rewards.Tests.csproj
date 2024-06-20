@@ -1,7 +1,7 @@
 <Project Sdk="Microsoft.NET.Sdk">
     <PropertyGroup>
         <TargetFramework>net6.0</TargetFramework>
-        <RootNamespace>EcoEarn.Contracts.Points</RootNamespace>
+        <RootNamespace>EcoEarn.Contracts.Rewards</RootNamespace>
         <IsPackable>false</IsPackable>
     </PropertyGroup>
 
@@ -73,7 +73,7 @@
     </ItemGroup>
 
     <ItemGroup>
-        <Folder Include="obj\Debug\net6.0" />
+        <Folder Include="obj\Debug\net6.0"/>
         <Folder Include="Protobuf\Generated\"/>
     </ItemGroup>
 

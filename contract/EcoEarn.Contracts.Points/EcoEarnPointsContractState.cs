@@ -1,5 +1,6 @@
 using AElf.Sdk.CSharp.State;
 using AElf.Types;
+using Google.Protobuf.WellKnownTypes;
 
 namespace EcoEarn.Contracts.Points;
 
@@ -20,8 +21,9 @@ public partial class EcoEarnPointsContractState : ContractState
 
     // <PoolId, BlockNumber, PoolInfo>
     public MappedState<Hash, long, Snapshot> SnapshotMap { get; set; }
-
-    // <ClaimId, ClaimInfo>
-    public MappedState<Hash, ClaimInfo> ClaimInfoMap { get; set; }
+    
     public MappedState<Hash, bool> SignatureMap { get; set; }
+    
+    // <PoolId, User Address, LastClaimTime>
+    public MappedState<Hash, Address, Timestamp> ClaimTimeMap { get; set; }
 }
