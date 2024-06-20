@@ -1,0 +1,41 @@
+<Project Sdk="Microsoft.NET.Sdk">
+    <PropertyGroup>
+        <TargetFramework>net6.0</TargetFramework>
+        <RootNamespace>EcoEarn.Contracts.Points</RootNamespace>
+        <IsContract>true</IsContract>
+        <PackageId>EcoEarn.Contracts.Points</PackageId>
+        <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
+        <Description>EcoEarn Points Contract</Description>
+    </PropertyGroup>
+    <PropertyGroup Condition=" '$(Configuration)' == 'Debug' ">
+        <CheckForOverflowUnderflow>true</CheckForOverflowUnderflow>
+    </PropertyGroup>
+    <PropertyGroup Condition=" '$(Configuration)' == 'Release' ">
+        <CheckForOverflowUnderflow>true</CheckForOverflowUnderflow>
+    </PropertyGroup>
+    <ItemGroup>
+        <ContractReference Include="..\..\protobuf\acs0.proto">
+            <Link>Protobuf\Proto\acs0.proto</Link>
+        </ContractReference>
+        <ContractReference Include="..\..\protobuf\token_contract.proto">
+            <Link>Protobuf\Proto\token_contract.proto</Link>
+        </ContractReference>
+        <ContractReference Include="..\..\protobuf\points_contract.proto">
+            <Link>Protobuf\Proto\points_contract.proto</Link>
+        </ContractReference>
+        <ContractReference Include="..\..\protobuf\ecoearn_tokens.proto">
+            <Link>Protobuf\Proto\ecoearn_tokens.proto</Link>
+        </ContractReference>
+    </ItemGroup>
+    <ItemGroup>
+        <ContractBase Include="..\..\protobuf\acs12.proto">
+            <Link>Protobuf\Proto\reference\acs12.proto</Link>
+        </ContractBase>
+    </ItemGroup>
+
+    <ItemGroup>
+        <ContractCode Include="..\..\protobuf\ecoearn_points.proto">
+            <Link>Protobuf\Proto\ecoearn_points.proto</Link>
+        </ContractCode>
+    </ItemGroup>
+</Project>
