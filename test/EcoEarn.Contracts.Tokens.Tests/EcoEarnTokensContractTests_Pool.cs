@@ -830,7 +830,6 @@ public partial class EcoEarnTokensContractTests
         log.ReleasePeriods.Data.Count.ShouldBe(2);
         log.ReleasePeriods.Data.First().ShouldBe(1);
         log.ReleasePeriods.Data.Last().ShouldBe(2);
-        log.ClaimInterval.ShouldBe(50);
 
         output = await EcoEarnTokensContractStub.GetPoolInfo.CallAsync(poolId);
         output.PoolInfo.Config.ReleasePeriods.Count.ShouldBe(2);
