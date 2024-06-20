@@ -98,5 +98,33 @@ public partial class EcoEarnRewardsContractTests : EcoEarnRewardsContractTestBas
             EcoearnPointsContract = EcoEarnPointsContractAddress,
             EcoearnTokensContract = EcoEarnTokensContractAddress
         });
+        await EcoEarnPointsContractStub.Initialize.SendAsync(new Points.InitializeInput
+        {
+            PointsContract = PointsContractAddress,
+            CommissionRate = 1000,
+            Recipient = User2Address,
+            EcoearnTokensContract = EcoEarnTokensContractAddress,
+            EcoearnRewardsContract = EcoEarnRewardsContractAddress
+        });
+        await EcoEarnTokensContractStub.Initialize.SendAsync(new Tokens.InitializeInput
+        {
+            CommissionRate = 100,
+            Recipient = User2Address,
+            EcoearnPointsContract = EcoEarnPointsContractAddress,
+            EcoearnRewardsContract = EcoEarnRewardsContractAddress,
+            IsRegisterRestricted = true
+        });
+        await PointsContractStub.Initialize.SendAsync(new TestPointsContract.InitializeInput
+        {
+            PointsName = PointsName
+        });
+        await EcoEarnPointsContractStub.Register.SendAsync(new Points.RegisterInput
+        {
+            DappId = _appId
+        });
+        await EcoEarnTokensContractStub.Register.SendAsync(new Tokens.RegisterInput
+        {
+            DappId = _appId
+        });
     }
 }

@@ -202,7 +202,6 @@ message DappConfigSet {
 message Claimed {
   option (aelf.is_event) = true;
   ClaimInfos claim_infos = 1;
-  aelf.Hash seed = 2;
 }
 
 message DappAdminSet {

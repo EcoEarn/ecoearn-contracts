@@ -14,7 +14,7 @@ public partial class EcoEarnRewardsContract
     {
         return IsHashValid(input) ? State.DappInfoMap[input] : new DappInfo();
     }
-    
+
     public override ClaimInfo GetClaimInfo(Hash input)
     {
         return IsHashValid(input) ? State.ClaimInfoMap[input] : new ClaimInfo();

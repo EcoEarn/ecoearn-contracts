@@ -20,7 +20,8 @@ public partial class EcoEarnRewardsContract
         Assert(State.DappInfoMap[input.DappId] == null, "Dapp registered.");
 
         var dappInfo = State.EcoEarnPointsContract.GetDappInfo.Call(input.DappId);
-        Assert(dappInfo.Admin == Context.Sender, "No permission to register.");
+        Assert(dappInfo.DappId != null, "Dapp id not exists.");
+        if (dappInfo.DappId != null) Assert(dappInfo.Admin == Context.Sender, "No permission to register.");
 
         var info = new DappInfo
         {
@@ -71,8 +72,8 @@ public partial class EcoEarnRewardsContract
     {
         Assert(input != null, "Invalid input.");
         Assert(IsHashValid(input!.DappId), "Invalid dapp id.");
-        Assert(input.Config != null && IsAddressValid(input.Config.UpdateAddress), "Invalid update address");
-        
+        Assert(input.Config != null && IsAddressValid(input.Config.UpdateAddress), "Invalid update address.");
+
         CheckDAppAdminPermission(input.DappId);
 
         if (input.Config!.Equals(State.DappInfoMap[input.DappId].Config)) return new Empty();
@@ -91,11 +92,15 @@ public partial class EcoEarnRewardsContract
     #endregion
 
     #region private
+    
+    private Hash CalculateUserAddressHash(Hash dappId, Address account)
+    {
+        return HashHelper.ConcatAndCompute(dappId, HashHelper.ComputeFrom(account));
+    }
 
     private Address CalculateUserAddress(Hash dappId, Address account)
     {
-        return Context.ConvertVirtualAddressToContractAddress(
-            HashHelper.ConcatAndCompute(dappId, HashHelper.ComputeFrom(account)));
+        return Context.ConvertVirtualAddressToContractAddress(CalculateUserAddressHash(dappId, account));
     }
 
     #endregion

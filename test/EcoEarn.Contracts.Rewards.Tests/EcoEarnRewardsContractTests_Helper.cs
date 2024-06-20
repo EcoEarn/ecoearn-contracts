@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 using AElf.Contracts.MultiToken;
@@ -18,6 +19,17 @@ public partial class EcoEarnRewardsContractTests
 
         var logEvent = new T();
         logEvent.MergeFrom(log.NonIndexed);
+
+        return logEvent;
+    }
+    
+    private T GetLogEvent<T>(TransactionResult transactionResult, int index) where T : IEvent<T>, new()
+    {
+        var logs = transactionResult.Logs.Where(l => l.Name == typeof(T).Name).ToList();
+        logs.Count.ShouldNotBe(0);
+        
+        var logEvent = new T();
+        logEvent.MergeFrom(logs[index].NonIndexed);
 
         return logEvent;
     }

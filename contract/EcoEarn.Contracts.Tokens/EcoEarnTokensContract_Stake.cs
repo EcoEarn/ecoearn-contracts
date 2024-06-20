@@ -174,8 +174,7 @@ public partial class EcoEarnTokensContract
         var remainTime = CalculateRemainTime(stakeInfo, poolInfo.Config.UnlockWindowDuration);
         if (stakeInfo != null && stakeInfo.UnlockTime == null)
         {
-            Assert(!IsInUnlockWindow(stakeInfo, remainTime),
-                "Cannot stake during unlock window.");
+            Assert(!IsInUnlockWindow(stakeInfo, remainTime), "Cannot stake during unlock window.");
             Assert(Context.CurrentBlockTime.AddSeconds(remainTime.Add(input.Period)) > input.LongestReleaseTime,
                 "Period not enough.");
         }
