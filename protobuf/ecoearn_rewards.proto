@@ -155,6 +155,7 @@ message StakeLiquidityInput {
   repeated aelf.Hash liquidity_ids = 1;
   aelf.Hash pool_id = 2;
   int64 period = 3;
+  aelf.Hash dapp_id = 4;
 }
 
 message LiquidityInfo {
@@ -174,6 +175,7 @@ message LiquidityInfo {
   aelf.Address swap_address = 14;
   aelf.Address token_address = 15;
   aelf.Address account = 16;
+  google.protobuf.Timestamp longest_release_time = 17;
 }
 
 message LiquidityInfos {

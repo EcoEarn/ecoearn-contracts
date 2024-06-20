@@ -69,7 +69,8 @@ public partial class EcoEarnRewardsContract
             TokenAddress = poolInfo.Config.StakeTokenContract,
             LpSymbol = poolInfo.Config.StakingToken,
             DappId = stakeInput.DappId,
-            Account = Context.Sender
+            Account = Context.Sender,
+            LongestReleaseTime = longestReleaseTime
         };
 
         State.LiquidityInfoMap[liquidityId] = liquidityInfo;
@@ -124,7 +125,7 @@ public partial class EcoEarnRewardsContract
 
         var liquidityInfos = ProcessLiquidity(input.LiquidityIds!.Distinct().ToList(), null, Context.CurrentBlockTime,
             out var amount, out var swapContractAddress, out var lpSymbol, out var rewardSymbol,
-            out var tokenContractAddress);
+            out var tokenContractAddress, out _);
 
         PrepareRemoveLiquidity(lpSymbol, amount, CalculateUserAddressHash(input.DappId, Context.Sender),
             tokenContractAddress, swapContractAddress, out var symbolA, out var symbolB, out var amountA,
@@ -177,28 +178,31 @@ public partial class EcoEarnRewardsContract
         Assert(input!.LiquidityIds != null && input.LiquidityIds.Count > 0, "Invalid liquidity ids.");
         Assert(IsHashValid(input.PoolId), "Invalid pool id.");
         Assert(input.Period > 0, "Invalid period.");
+        Assert(IsHashValid(input.DappId), "Invalid dapp id.");
 
         var stakeId = GetStakeId(input.PoolId);
 
         var liquidityInfos = ProcessLiquidity(input.LiquidityIds!.Distinct().ToList(), stakeId, null, out var amount,
-            out _, out var lpSymbol, out _, out _);
+            out _, out var lpSymbol, out _, out var tokenContractAddress, out var longestReleaseTime);
 
         var poolAddressInfo = State.EcoEarnTokensContract.GetPoolAddressInfo.Call(input.PoolId);
 
-        State.TokenContract.Transfer.Send(new TransferInput
-        {
-            Amount = amount,
-            Memo = "early",
-            Symbol = lpSymbol,
-            To = poolAddressInfo.StakeAddress
-        });
+        Context.SendVirtualInline(CalculateUserAddressHash(input.DappId, Context.Sender), tokenContractAddress,
+            nameof(State.TokenContract.Transfer), new TransferInput
+            {
+                Amount = amount,
+                Memo = "early",
+                Symbol = lpSymbol,
+                To = poolAddressInfo.StakeAddress
+            });
 
         State.EcoEarnTokensContract.StakeFor.Send(new StakeForInput
         {
             PoolId = input.PoolId,
             Amount = amount,
             FromAddress = Context.Sender,
-            Period = input.Period
+            Period = input.Period,
+            LongestReleaseTime = longestReleaseTime
         });
 
         Context.Fire(new LiquidityStaked
@@ -261,7 +265,7 @@ public partial class EcoEarnRewardsContract
 
     private List<LiquidityInfo> ProcessLiquidity(List<Hash> liquidityIds, Hash stakeId, Timestamp removeTime,
         out long amount, out Address swapContractAddress, out string lpSymbol, out string rewardSymbol,
-        out Address tokenContractAddress)
+        out Address tokenContractAddress, out Timestamp longestReleaseTime)
     {
         var liquidityInfos = new List<LiquidityInfo>();
 
@@ -270,6 +274,7 @@ public partial class EcoEarnRewardsContract
         lpSymbol = null;
         rewardSymbol = null;
         tokenContractAddress = null;
+        longestReleaseTime = null;
 
         foreach (var liquidityId in liquidityIds)
         {
@@ -298,6 +303,11 @@ public partial class EcoEarnRewardsContract
             lpSymbol ??= liquidityInfo.LpSymbol;
             rewardSymbol ??= liquidityInfo.RewardSymbol;
             tokenContractAddress ??= liquidityInfo.TokenAddress;
+
+            longestReleaseTime ??= liquidityInfo.LongestReleaseTime;
+            longestReleaseTime = longestReleaseTime == null || longestReleaseTime <= liquidityInfo.LongestReleaseTime
+                ? liquidityInfo.LongestReleaseTime
+                : longestReleaseTime;
         }
 
         return liquidityInfos;
@@ -424,22 +434,23 @@ public partial class EcoEarnRewardsContract
         var getTotalSupplyOutput = Context.Call<GetTotalSupplyOutput>(swapContractAddress,
             nameof(AwakenSwapContractContainer.AwakenSwapContractReferenceState.GetTotalSupply),
             new StringList { Value = { lpSymbol } });
-        
+
         Assert(
             getTotalSupplyOutput?.Results != null && getTotalSupplyOutput.Results.Count > 0 &&
             getTotalSupplyOutput.Results.First().SymbolPair != null, "GetTotalSupply failed.");
 
         var totalSupplyResult = getTotalSupplyOutput!.Results!.First();
-        
+
         amountA = amount.Mul(reservePairResult.ReserveA).Div(totalSupplyResult.TotalSupply);
         amountB = amount.Mul(reservePairResult.ReserveB).Div(totalSupplyResult.TotalSupply);
 
-        State.TokenContract.Transfer.VirtualSend(userAddressHash, new TransferInput
-        {
-            To = Context.Self,
-            Symbol = lpSymbol,
-            Amount = amount
-        });
+        Context.SendVirtualInline(userAddressHash, tokenContractAddress, nameof(State.TokenContract.Transfer),
+            new TransferInput
+            {
+                To = Context.Self,
+                Symbol = lpSymbol,
+                Amount = amount
+            });
 
         Context.SendInline(tokenContractAddress, nameof(State.TokenContract.Approve), new ApproveInput
         {
