@@ -513,33 +513,37 @@ public partial class EcoEarnTokensContractTests
         result.TransactionResult.Error.ShouldContain("Pool closed.");
     }
 
-    // [Fact]
-    // public async Task UnlockTests()
-    // {
-    //     const long tokenBalance = 5_00000000;
-    //
-    //     var poolId = await CreateTokensPool();
-    //     var stakeInfo = await Stake(poolId, tokenBalance);
-    //     stakeInfo.StakedAmount.ShouldBe(tokenBalance);
-    //
-    //     var balance = await GetTokenBalance(Symbol, UserAddress);
-    //     balance.ShouldBe(0);
-    //     var poolData = await EcoEarnTokensContractStub.GetPoolData.CallAsync(poolId);
-    //     poolData.TotalStakedAmount.ShouldBe(tokenBalance * 2);
-    //
-    //     SetBlockTime(86400);
-    //
-    //     var result = await EcoEarnTokensContractUserStub.Unlock.SendAsync(poolId);
-    //     result.TransactionResult.Status.ShouldBe(TransactionResultStatus.Mined);
-    //
-    //     balance = await GetTokenBalance(Symbol, UserAddress);
-    //     balance.ShouldBe(tokenBalance);
-    //
-    //     var log = GetLogEvent<Unlocked>(result.TransactionResult);
-    //     log.StakeId.ShouldBe(stakeInfo.StakeId);
-    //     log.StakedAmount.ShouldBe(0);
-    //     log.PoolData.TotalStakedAmount.ShouldBe(0);
-    // }
+    [Fact]
+    public async Task UnlockTests()
+    {
+        const long tokenBalance = 5_00000000;
+    
+        var poolId = await CreateTokensPool();
+        var stakeInfo = await Stake(poolId, tokenBalance);
+        stakeInfo.SubStakeInfos.First().StakedAmount.ShouldBe(tokenBalance);
+    
+        var balance = await GetTokenBalance(Symbol, UserAddress);
+        balance.ShouldBe(0);
+        var poolData = await EcoEarnTokensContractStub.GetPoolData.CallAsync(poolId);
+        poolData.TotalStakedAmount.ShouldBe(tokenBalance);
+    
+        SetBlockTime(500);
+    
+        var result = await EcoEarnTokensContractUserStub.Unlock.SendAsync(poolId);
+        result.TransactionResult.Status.ShouldBe(TransactionResultStatus.Mined);
+    
+        balance = await GetTokenBalance(Symbol, UserAddress);
+        balance.ShouldBe(tokenBalance);
+    
+        var log = GetLogEvent<Unlocked>(result.TransactionResult);
+        log.StakeInfo.StakeId.ShouldBe(stakeInfo.StakeId);
+        log.StakeInfo.SubStakeInfos.First().StakedAmount.ShouldBe(0);
+        log.PoolData.TotalStakedAmount.ShouldBe(0);
+        
+        stakeInfo = await Stake(poolId, tokenBalance);
+        stakeInfo.StakingPeriod.ShouldBe(500);
+        stakeInfo.SubStakeInfos.First().Period.ShouldBe(500);
+    }
 
     [Fact]
     public async Task UnlockTests_Fail()

@@ -405,7 +405,7 @@ public partial class EcoEarnTokensContract
 
     private long CalculateRemainTime(StakeInfo stakeInfo, long unlockWindowDuration)
     {
-        if (stakeInfo == null || stakeInfo.StakingPeriod == 0) return 0;
+        if (stakeInfo == null || stakeInfo.StakingPeriod == 0 || stakeInfo.UnlockTime != null) return 0;
         var fullCycleSeconds = stakeInfo.StakingPeriod.Add(unlockWindowDuration);
         var timeSpan = (Context.CurrentBlockTime - stakeInfo.LastOperationTime).Seconds;
 
