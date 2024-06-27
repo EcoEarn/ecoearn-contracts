@@ -196,7 +196,8 @@ public partial class EcoEarnTokensContract
                 Symbol = poolInfo.Config.StakingToken
             });
 
-        ProcessStake(poolInfo, stakeInfo, 0, input.Amount, input.Period, input.FromAddress, remainTime, input.IsLiquidity);
+        ProcessStake(poolInfo, stakeInfo, 0, input.Amount, input.Period, input.FromAddress, remainTime,
+            input.IsLiquidity);
 
         return new Empty();
     }
@@ -432,7 +433,8 @@ public partial class EcoEarnTokensContract
 
             boostedAmount = CalculateBoostedAmount(poolInfo.Config,
                 lastSubStakeInfo.StakedAmount.Add(lastSubStakeInfo.EarlyStakedAmount), lastSubStakeInfo.Period);
-            lastSubStakeInfo.RewardDebt = CalculateDebt(boostedAmount, poolData.AccTokenPerShare, poolInfo.PrecisionFactor);
+            lastSubStakeInfo.RewardDebt =
+                CalculateDebt(boostedAmount, poolData.AccTokenPerShare, poolInfo.PrecisionFactor);
             lastSubStakeInfo.BoostedAmount = boostedAmount;
         }
         // add position
@@ -440,7 +442,7 @@ public partial class EcoEarnTokensContract
         {
             Assert(stakeInfo.SubStakeInfos.Count < State.Config.Value.MaximumPositionAmount,
                 "Position exceed maximum.");
-            
+
             boostedAmount = CalculateBoostedAmount(poolInfo.Config, amount, period);
 
             stakeInfo.SubStakeInfos.Add(new SubStakeInfo

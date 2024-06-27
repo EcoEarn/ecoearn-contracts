@@ -107,10 +107,9 @@ message SetTokensPoolEndTimeInput {
 message SetTokensPoolRewardConfigInput {
   aelf.Hash pool_id = 1;
   repeated int64 release_periods = 2;
-  int64 claim_interval = 3;  // TODO remove later
 }
 
-message ReleasePeriods {
+message LongList {
   repeated int64 data = 1;
 }
 
@@ -176,20 +175,19 @@ message StakeInfo {
   int64 staking_period = 5;
   google.protobuf.Timestamp unlock_time = 6;
   google.protobuf.Timestamp last_operation_time = 7;
-  google.protobuf.Timestamp longest_release_time = 8;
-  repeated SubStakeInfo sub_stake_infos = 9;
+  repeated SubStakeInfo sub_stake_infos = 8;
 }
 
 message SubStakeInfo {
   aelf.Hash sub_stake_id = 1;
   int64 staked_amount = 2;
-  int64 staked_block_number = 3;
-  google.protobuf.Timestamp staked_time = 4;
-  int64 period = 5;
-  int64 boosted_amount = 6;
-  int64 reward_debt = 7;
-  int64 reward_amount = 8;
-  int64 early_staked_amount = 10;  // change to 9 later
+  int64 early_staked_amount = 3;
+  int64 staked_block_number = 4;
+  google.protobuf.Timestamp staked_time = 5;
+  int64 period = 6;
+  int64 boosted_amount = 7;
+  int64 reward_debt = 8;
+  int64 reward_amount = 9;
 }
 
 message StakeForInput {
@@ -296,8 +294,7 @@ message TokensPoolEndTimeSet {
 message TokensPoolRewardConfigSet {
   option (aelf.is_event) = true;
   aelf.Hash pool_id = 1;
-  ReleasePeriods release_periods = 2;
-  int64 claim_interval = 3;
+  LongList release_periods = 2;
 }
 
 message TokensPoolStakeConfigSet {

@@ -83,12 +83,8 @@ message ClaimInfo {
   aelf.Address account = 6;
   google.protobuf.Timestamp claimed_time = 7;
   google.protobuf.Timestamp release_time = 8;
-  google.protobuf.Timestamp withdrawn_time = 9;
-  int64 early_staked_amount = 10;
-  aelf.Hash stake_id = 11;
-  aelf.Hash liquidity_id = 12;
-  aelf.Hash seed = 13;
-  aelf.Address contract_address = 14;
+  aelf.Hash seed = 9;
+  aelf.Address contract_address = 10;
 }
 
 message ClaimInfos {
@@ -114,6 +110,7 @@ message StakeInput {
   aelf.Hash pool_id = 6;
   int64 period = 7;
   aelf.Hash dapp_id = 8;
+  google.protobuf.Timestamp longest_release_time = 9;
 }
 
 message EarlyStakeInput {
@@ -145,37 +142,37 @@ message AddLiquidityAndStakeInput {
 
 message RemoveLiquidityInput {
   repeated aelf.Hash liquidity_ids = 1;
-  int64 token_a_min = 2;
-  int64 token_b_min = 3;
-  google.protobuf.Timestamp deadline = 4;
-  aelf.Hash dapp_id = 5;
+  int64 lp_amount = 2;
+  int64 token_a_min = 3;
+  int64 token_b_min = 4;
+  google.protobuf.Timestamp deadline = 5;
+  aelf.Hash dapp_id = 6;
 }
 
 message StakeLiquidityInput {
   repeated aelf.Hash liquidity_ids = 1;
   aelf.Hash pool_id = 2;
-  int64 period = 3;
-  aelf.Hash dapp_id = 4;
+  int64 lp_amount = 3;
+  int64 period = 4;
+  aelf.Hash dapp_id = 5;
+  google.protobuf.Timestamp longest_release_time = 6;
 }
 
 message LiquidityInfo {
   aelf.Hash liquidity_id = 1;
-  aelf.Hash stake_id = 2;
-  aelf.Hash seed = 3;
-  int64 lp_amount = 4;
-  string lp_symbol = 5;
-  string reward_symbol = 6;
-  int64 token_a_amount = 7;
-  string token_a_symbol = 8;
-  int64 token_b_amount = 9;
-  string token_b_symbol = 10;
-  google.protobuf.Timestamp added_time = 11;
-  google.protobuf.Timestamp removed_time = 12;
-  aelf.Hash dapp_id = 13;
-  aelf.Address swap_address = 14;
-  aelf.Address token_address = 15;
-  aelf.Address account = 16;
-  google.protobuf.Timestamp longest_release_time = 17;
+  aelf.Hash seed = 2;
+  int64 lp_amount = 3;
+  string lp_symbol = 4;
+  string reward_symbol = 5;
+  int64 token_a_amount = 6;
+  string token_a_symbol = 7;
+  int64 token_b_amount = 8;
+  string token_b_symbol = 9;
+  google.protobuf.Timestamp added_time = 10;
+  aelf.Hash dapp_id = 11;
+  aelf.Address swap_address = 12;
+  aelf.Address token_address = 13;
+  aelf.Address account = 14;
 }
 
 message LiquidityInfos {
@@ -214,26 +211,28 @@ message DappAdminSet {
 
 message Withdrawn {
   option (aelf.is_event) = true;
-  ClaimInfos claim_infos = 1;
+  HashList claim_ids = 1;
   aelf.Address account = 2;
   int64 amount = 3;
   aelf.Hash seed = 4;
+  aelf.Hash dapp_id = 5;
 }
 
 message EarlyStaked {
   option (aelf.is_event) = true;
-  ClaimInfos claim_infos = 1;
+  HashList claim_ids = 1;
   aelf.Address account = 2;
   int64 amount = 3;
   aelf.Hash seed = 4;
   aelf.Hash pool_id = 5;
   int64 period = 6;
-  aelf.Hash stake_id = 7;
+  aelf.Hash dapp_id = 7;
+  aelf.Hash stake_id = 8;
 }
 
 message LiquidityAdded {
   option (aelf.is_event) = true;
-  ClaimInfos claim_infos = 1;
+  HashList claim_ids = 1;
   aelf.Address account = 2;
   int64 amount = 3;
   aelf.Hash pool_id = 4;
@@ -244,7 +243,7 @@ message LiquidityAdded {
 
 message LiquidityRemoved {
   option (aelf.is_event) = true;
-  LiquidityInfos liquidity_infos = 1;
+  HashList liquidity_ids = 1;
   int64 lp_amount = 2;
   int64 token_a_amount = 3;
   int64 token_b_amount = 4;
@@ -252,7 +251,7 @@ message LiquidityRemoved {
 
 message LiquidityStaked {
   option (aelf.is_event) = true;
-  LiquidityInfos liquidity_infos = 1;
+  HashList liquidity_ids = 1;
   aelf.Hash pool_id = 2;
   int64 amount = 3;
   int64 period = 4;

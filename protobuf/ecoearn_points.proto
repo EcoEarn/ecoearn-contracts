@@ -162,7 +162,7 @@ message SetPointsPoolRewardConfigInput {
   int64 claim_interval = 3;
 }
 
-message ReleasePeriods {
+message LongList {
   repeated int64 data = 1;
 }
 
@@ -256,7 +256,7 @@ message PointsPoolUpdateAddressSet {
 message PointsPoolRewardConfigSet {
   option (aelf.is_event) = true;
   aelf.Hash pool_id = 1;
-  ReleasePeriods release_periods = 2;
+  LongList release_periods = 2;
   int64 claim_interval = 3;
 }
 

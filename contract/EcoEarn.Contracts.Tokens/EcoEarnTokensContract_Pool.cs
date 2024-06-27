@@ -184,7 +184,7 @@ public partial class EcoEarnTokensContract
         Context.Fire(new TokensPoolRewardConfigSet
         {
             PoolId = input.PoolId,
-            ReleasePeriods = new ReleasePeriods
+            ReleasePeriods = new LongList
             {
                 Data = { poolInfo.Config.ReleasePeriods }
             }
@@ -303,7 +303,7 @@ public partial class EcoEarnTokensContract
 
         return new Empty();
     }
-    
+
     public override Empty SetTokensPoolMergeInterval(SetTokensPoolMergeIntervalInput input)
     {
         Assert(input != null, "Invalid input.");

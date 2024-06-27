@@ -47,10 +47,6 @@ public partial class EcoEarnRewardsContractTests
         claimInfo.ClaimedTime.ShouldBe(BlockTimeProvider.GetBlockTime());
         claimInfo.ClaimedBlockNumber.ShouldBe(result.TransactionResult.BlockNumber);
         claimInfo.ReleaseTime.ShouldBe(BlockTimeProvider.GetBlockTime().AddSeconds(10));
-        claimInfo.WithdrawnTime.ShouldBeNull();
-        claimInfo.EarlyStakedAmount.ShouldBe(0);
-        claimInfo.StakeId.ShouldBeNull();
-        claimInfo.LiquidityId.ShouldBeNull();
         claimInfo.Seed.ShouldBeNull();
         claimInfo.ContractAddress.ShouldBe(EcoEarnTokensContractAddress);
 
@@ -199,11 +195,7 @@ public partial class EcoEarnRewardsContractTests
         result.TransactionResult.Status.ShouldBe(TransactionResultStatus.Mined);
 
         var log = GetLogEvent<Withdrawn>(result.TransactionResult);
-        log.ClaimInfos.Data.Count.ShouldBe(3);
-        log.ClaimInfos.Data[0].ClaimId.ShouldBe(claimIds[0]);
-        log.ClaimInfos.Data[0].WithdrawnTime.ShouldBe(BlockTimeProvider.GetBlockTime());
-        log.ClaimInfos.Data[1].ClaimId.ShouldBe(claimIds[1]);
-        log.ClaimInfos.Data[2].ClaimId.ShouldBe(claimIds[2]);
+        log.ClaimIds.Data.Count.ShouldBe(3);
 
         balance = await GetTokenBalance(Symbol, UserAddress);
         balance.ShouldBe(1_00000000);
@@ -297,7 +289,7 @@ public partial class EcoEarnRewardsContractTests
             Signature = ByteString.Empty
         });
         result.TransactionResult.Error.ShouldContain("Invalid signature.");
-        
+
         result = await UserEcoEarnRewardsContractStub.Withdraw.SendWithExceptionAsync(new WithdrawInput
         {
             ClaimIds = { new Hash() },
@@ -368,8 +360,7 @@ public partial class EcoEarnRewardsContractTests
             Seed = seed,
             ExpirationTime = expirationTime,
             Signature = GenerateSignature(DefaultKeyPair.PrivateKey, new List<Hash> { HashHelper.ComputeFrom("test") },
-                1, DefaultAddress,
-                seed, expirationTime, _appId),
+                1, DefaultAddress, seed, expirationTime, _appId),
             DappId = _appId
         });
         result.TransactionResult.Error.ShouldContain("Claim id not exists.");
@@ -386,68 +377,6 @@ public partial class EcoEarnRewardsContractTests
             DappId = _appId
         });
         result.TransactionResult.Error.ShouldContain("Amount too much.");
-
-        var stakeInput = new StakeInput
-        {
-            Account = UserAddress,
-            Amount = 1_00000000,
-            ClaimIds = { claimIds },
-            DappId = _appId,
-            ExpirationTime = expirationTime,
-            Period = 100,
-            PoolId = poolId,
-            Seed = seed
-        };
-
-        SetBlockTime(100);
-
-        await UserEcoEarnRewardsContractStub.EarlyStake.SendAsync(new EarlyStakeInput
-        {
-            StakeInput = stakeInput,
-            Signature = GenerateSignature(DefaultKeyPair.PrivateKey, new EarlyStakeInput { StakeInput = stakeInput })
-        });
-
-        result = await UserEcoEarnRewardsContractStub.Withdraw.SendWithExceptionAsync(new WithdrawInput
-        {
-            ClaimIds = { claimIds },
-            Account = DefaultAddress,
-            Amount = 1_00000000,
-            Seed = seed,
-            ExpirationTime = expirationTime,
-            Signature = GenerateSignature(DefaultKeyPair.PrivateKey, claimIds, 1_00000000, DefaultAddress,
-                seed, expirationTime, _appId),
-            DappId = _appId
-        });
-        result.TransactionResult.Error.ShouldContain("Cannot claim yet.");
-
-        SetBlockTime(200);
-
-        await UserEcoEarnTokensContractStub.Unlock.SendAsync(poolId);
-
-        await UserEcoEarnRewardsContractStub.Withdraw.SendAsync(new WithdrawInput
-        {
-            ClaimIds = { claimIds },
-            Account = DefaultAddress,
-            Amount = 1_00000000,
-            Seed = seed,
-            ExpirationTime = expirationTime,
-            Signature = GenerateSignature(DefaultKeyPair.PrivateKey, claimIds, 1_00000000, DefaultAddress,
-                seed, expirationTime, _appId),
-            DappId = _appId
-        });
-
-        result = await UserEcoEarnRewardsContractStub.Withdraw.SendWithExceptionAsync(new WithdrawInput
-        {
-            ClaimIds = { claimIds },
-            Account = DefaultAddress,
-            Amount = 2_00000000,
-            Seed = seed,
-            ExpirationTime = expirationTime,
-            Signature = GenerateSignature(DefaultKeyPair.PrivateKey, claimIds, 2_00000000, DefaultAddress,
-                seed, expirationTime, _appId),
-            DappId = _appId
-        });
-        result.TransactionResult.Error.ShouldContain("Already claimed.");
     }
 
     [Fact]
@@ -473,7 +402,8 @@ public partial class EcoEarnRewardsContractTests
             ExpirationTime = expirationTime,
             DappId = _appId,
             PoolId = poolId,
-            Period = 100
+            Period = 100,
+            LongestReleaseTime = BlockTimeProvider.GetBlockTime()
         };
 
         var input = new EarlyStakeInput
@@ -484,14 +414,14 @@ public partial class EcoEarnRewardsContractTests
                 StakeInput = stakeInput
             })
         };
-        
+
         SetBlockTime(100);
 
         var result = await UserEcoEarnRewardsContractStub.EarlyStake.SendAsync(input);
         result.TransactionResult.Status.ShouldBe(TransactionResultStatus.Mined);
 
         var log = GetLogEvent<EarlyStaked>(result.TransactionResult);
-        log.ClaimInfos.Data.Count.ShouldBe(3);
+        log.ClaimIds.Data.Count.ShouldBe(3);
         log.Account.ShouldBe(UserAddress);
         log.Amount.ShouldBe(1_00000000);
         log.Seed.ShouldBe(seed);

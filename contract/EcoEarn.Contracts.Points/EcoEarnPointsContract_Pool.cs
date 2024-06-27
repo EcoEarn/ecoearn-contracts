@@ -227,7 +227,7 @@ public partial class EcoEarnPointsContract
     {
         Assert(input != null, "Invalid input.");
 
-        var poolInfo = GetPool(input.PoolId);
+        var poolInfo = GetPool(input!.PoolId);
         Assert(input!.ReleasePeriods != null && input.ReleasePeriods.Count > 0 && input.ReleasePeriods.All(p => p >= 0),
             "Invalid release periods.");
         Assert(input.ClaimInterval >= 0, "Invalid claim interval.");
@@ -244,7 +244,7 @@ public partial class EcoEarnPointsContract
         Context.Fire(new PointsPoolRewardConfigSet
         {
             PoolId = input.PoolId,
-            ReleasePeriods = new ReleasePeriods
+            ReleasePeriods = new LongList
             {
                 Data = { poolInfo.Config.ReleasePeriods }
             },
@@ -347,11 +347,6 @@ public partial class EcoEarnPointsContract
     private Address CalculateVirtualAddress(Hash id)
     {
         return Context.ConvertVirtualAddressToContractAddress(id);
-    }
-
-    private Address CalculateVirtualAddress(Address account)
-    {
-        return Context.ConvertVirtualAddressToContractAddress(HashHelper.ComputeFrom(account));
     }
 
     private PoolInfo GetPool(Hash poolId)

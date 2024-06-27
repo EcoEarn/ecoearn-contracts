@@ -1,5 +1,4 @@
 using System;
-using System.Collections.Generic;
 using System.Linq;
 using AElf;
 using AElf.Contracts.MultiToken;
@@ -42,13 +41,15 @@ public partial class EcoEarnRewardsContract
             RecoverAddressFromSignature(ComputeAddLiquidityAndStakeHash(input), input.Signature) ==
             dappInfo!.Config.UpdateAddress, "Signature not valid.");
 
-        var claimInfos = ProcessEarlyStake(stakeInput, stakeId, dappInfo.DappId, out var rewardSymbol,
-            out var longestReleaseTime);
+        var claimInfo = GetClaimInfoFromClaimId(stakeInput.ClaimIds.FirstOrDefault());
+
+        CheckMaximumAmount(State.TokenContract.Value, stakeInput.DappId, claimInfo.ClaimedSymbol, stakeInput.Amount);
 
         var poolInfo = State.EcoEarnTokensContract.GetPoolInfo.Call(stakeInput.PoolId).PoolInfo;
         Assert(stakeInput.Amount >= poolInfo.Config.MinimumAddLiquidityAmount, "Amount not enough.");
 
-        PrepareAddLiquidity(poolInfo.Config.StakingToken, rewardSymbol, poolInfo.Config.SwapContract, stakeInput.Amount,
+        PrepareAddLiquidity(poolInfo.Config.StakingToken, claimInfo.ClaimedSymbol, poolInfo.Config.SwapContract,
+            stakeInput.Amount,
             CalculateUserAddressHash(dappInfo.DappId, Context.Sender), out var symbolA, out var symbolB,
             out var amountA, out var amountB);
 
@@ -60,7 +61,6 @@ public partial class EcoEarnRewardsContract
         var liquidityInfo = new LiquidityInfo
         {
             LiquidityId = liquidityId,
-            StakeId = stakeId,
             Seed = stakeInput.Seed,
             LpAmount = lpAmount,
             TokenASymbol = symbolA,
@@ -68,13 +68,12 @@ public partial class EcoEarnRewardsContract
             TokenAAmount = amountA,
             TokenBAmount = amountB,
             AddedTime = Context.CurrentBlockTime,
-            RewardSymbol = rewardSymbol,
+            RewardSymbol = claimInfo.ClaimedSymbol,
             SwapAddress = poolInfo.Config.SwapContract,
             TokenAddress = poolInfo.Config.StakeTokenContract,
             LpSymbol = poolInfo.Config.StakingToken,
             DappId = stakeInput.DappId,
-            Account = Context.Sender,
-            LongestReleaseTime = longestReleaseTime
+            Account = Context.Sender
         };
 
         State.LiquidityInfoMap[liquidityId] = liquidityInfo;
@@ -106,13 +105,16 @@ public partial class EcoEarnRewardsContract
             Amount = lpAmount,
             FromAddress = stakeInput.Account,
             Period = stakeInput.Period,
-            LongestReleaseTime = longestReleaseTime,
+            LongestReleaseTime = stakeInput.LongestReleaseTime,
             IsLiquidity = true
         });
 
         Context.Fire(new LiquidityAdded
         {
-            ClaimInfos = claimInfos,
+            ClaimIds = new HashList
+            {
+                Data = { stakeInput.ClaimIds }
+            },
             Account = stakeInput.Account,
             Amount = stakeInput.Amount,
             PoolId = stakeInput.PoolId,
@@ -128,53 +130,56 @@ public partial class EcoEarnRewardsContract
     {
         Assert(input != null, "Invalid input.");
         Assert(input!.LiquidityIds != null && input.LiquidityIds.Count > 0, "Invalid liquidity ids.");
+        Assert(input.LpAmount > 0, "Invalid lp amount.");
         Assert(input.TokenAMin > 0, "Invalid token A min.");
         Assert(input.TokenBMin > 0, "Invalid token B min.");
         Assert(input.Deadline != null, "Invalid deadline.");
         Assert(IsHashValid(input.DappId), "Invalid dapp id.");
 
-        var liquidityInfos = ProcessLiquidity(input.LiquidityIds!.Distinct().ToList(), null, Context.CurrentBlockTime,
-            out var amount, out var swapContractAddress, out var lpSymbol, out var rewardSymbol,
-            out var tokenContractAddress, out _, out var tokenSymbolA, out var tokenSymbolB);
+        var liquidityInfo = GetLiquidityInfoFromLiquidityId(input.LiquidityIds!.FirstOrDefault());
 
-        PrepareRemoveLiquidity(lpSymbol, amount, CalculateUserAddressHash(input.DappId, Context.Sender),
-            tokenContractAddress, swapContractAddress, out var symbolA, out var symbolB, out var amountA,
+        CheckMaximumAmount(liquidityInfo.TokenAddress, liquidityInfo.DappId, liquidityInfo.RewardSymbol,
+            input.LpAmount);
+
+        PrepareRemoveLiquidity(liquidityInfo.LpSymbol, input.LpAmount,
+            CalculateUserAddressHash(input.DappId, Context.Sender),
+            liquidityInfo.TokenAddress, liquidityInfo.SwapAddress, out var symbolA, out var symbolB, out var amountA,
             out var amountB);
 
-        Context.SendInline(swapContractAddress,
+        Context.SendInline(liquidityInfo.SwapAddress,
             nameof(AwakenSwapContractContainer.AwakenSwapContractReferenceState.RemoveLiquidity),
             new Awaken.Contracts.Swap.RemoveLiquidityInput
             {
                 SymbolA = symbolA,
                 SymbolB = symbolB,
-                AmountAMin = symbolA == tokenSymbolA ? input.TokenAMin : input.TokenBMin,
-                AmountBMin = symbolA == tokenSymbolA ? input.TokenBMin : input.TokenAMin,
+                AmountAMin = symbolA == liquidityInfo.TokenASymbol ? input.TokenAMin : input.TokenBMin,
+                AmountBMin = symbolA == liquidityInfo.TokenASymbol ? input.TokenBMin : input.TokenAMin,
                 Deadline = input.Deadline,
                 To = Context.Self,
-                LiquidityRemove = amount
+                LiquidityRemove = input.LpAmount
             });
 
         State.TokenContract.Transfer.Send(new TransferInput
         {
             To = CalculateUserAddress(input.DappId, Context.Sender),
-            Symbol = rewardSymbol,
-            Amount = rewardSymbol == symbolA ? amountA : amountB
+            Symbol = liquidityInfo.RewardSymbol,
+            Amount = liquidityInfo.RewardSymbol == symbolA ? amountA : amountB
         });
 
         State.TokenContract.Transfer.Send(new TransferInput
         {
             To = Context.Sender,
-            Symbol = rewardSymbol == symbolA ? symbolB : symbolA,
-            Amount = rewardSymbol == symbolA ? amountB : amountA
+            Symbol = liquidityInfo.RewardSymbol == symbolA ? symbolB : symbolA,
+            Amount = liquidityInfo.RewardSymbol == symbolA ? amountB : amountA
         });
 
         Context.Fire(new LiquidityRemoved
         {
-            LiquidityInfos = new LiquidityInfos
+            LiquidityIds = new HashList
             {
-                Data = { liquidityInfos }
+                Data = { input.LiquidityIds }
             },
-            LpAmount = amount,
+            LpAmount = input.LpAmount,
             TokenAAmount = amountA,
             TokenBAmount = amountB
         });
@@ -187,45 +192,47 @@ public partial class EcoEarnRewardsContract
         Assert(input != null, "Invalid input.");
         Assert(input!.LiquidityIds != null && input.LiquidityIds.Count > 0, "Invalid liquidity ids.");
         Assert(IsHashValid(input.PoolId), "Invalid pool id.");
+        Assert(input.LpAmount > 0, "Invalid lp amount.");
         Assert(input.Period > 0, "Invalid period.");
         Assert(IsHashValid(input.DappId), "Invalid dapp id.");
+        Assert(input.LongestReleaseTime != null, "Invalid longest release time.");
 
         var stakeId = GetStakeId(input.PoolId);
 
-        var liquidityInfos = ProcessLiquidity(input.LiquidityIds!.Distinct().ToList(), stakeId, null, out var amount,
-            out _, out var lpSymbol, out _, out var tokenContractAddress, out var longestReleaseTime, out _, out _);
+        var liquidityInfo = GetLiquidityInfoFromLiquidityId(input.LiquidityIds!.FirstOrDefault());
+        CheckMaximumAmount(liquidityInfo.TokenAddress, input.DappId, liquidityInfo.LpSymbol, input.LpAmount);
 
-        Context.SendVirtualInline(CalculateUserAddressHash(input.DappId, Context.Sender), tokenContractAddress,
+        Context.SendVirtualInline(CalculateUserAddressHash(input.DappId, Context.Sender), liquidityInfo.TokenAddress,
             nameof(State.TokenContract.Transfer), new TransferInput
             {
-                Amount = amount,
-                Symbol = lpSymbol,
+                Amount = input.LpAmount,
+                Symbol = liquidityInfo.LpSymbol,
                 To = Context.Self
             });
 
-        Context.SendInline(tokenContractAddress, nameof(State.TokenContract.Approve), new ApproveInput
+        Context.SendInline(liquidityInfo.TokenAddress, nameof(State.TokenContract.Approve), new ApproveInput
         {
             Spender = State.EcoEarnTokensContract.Value,
-            Symbol = lpSymbol,
-            Amount = amount
+            Symbol = liquidityInfo.LpSymbol,
+            Amount = input.LpAmount
         });
 
         State.EcoEarnTokensContract.StakeFor.Send(new StakeForInput
         {
             PoolId = input.PoolId,
-            Amount = amount,
+            Amount = input.LpAmount,
             FromAddress = Context.Sender,
             Period = input.Period,
-            LongestReleaseTime = longestReleaseTime
+            LongestReleaseTime = input.LongestReleaseTime
         });
 
         Context.Fire(new LiquidityStaked
         {
-            LiquidityInfos = new LiquidityInfos
+            LiquidityIds = new HashList
             {
-                Data = { liquidityInfos }
+                Data = { input.LiquidityIds }
             },
-            Amount = amount,
+            Amount = input.LpAmount,
             PoolId = input.PoolId,
             Period = input.Period,
             StakeId = stakeId
@@ -307,58 +314,13 @@ public partial class EcoEarnRewardsContract
         return left;
     }
 
-    private List<LiquidityInfo> ProcessLiquidity(List<Hash> liquidityIds, Hash stakeId, Timestamp removeTime,
-        out long amount, out Address swapContractAddress, out string lpSymbol, out string rewardSymbol,
-        out Address tokenContractAddress, out Timestamp longestReleaseTime, out string symbolA, out string symbolB)
+    private LiquidityInfo GetLiquidityInfoFromLiquidityId(Hash liquidityId)
     {
-        var liquidityInfos = new List<LiquidityInfo>();
+        Assert(IsHashValid(liquidityId), "Invalid liquidity id.");
+        var liquidityInfo = State.LiquidityInfoMap[liquidityId];
+        Assert(liquidityInfo != null && IsHashValid(liquidityInfo.LiquidityId), "Liquidity id not exists.");
 
-        amount = 0L;
-        swapContractAddress = null;
-        lpSymbol = null;
-        rewardSymbol = null;
-        tokenContractAddress = null;
-        longestReleaseTime = null;
-        symbolA = null;
-        symbolB = null;
-
-        foreach (var liquidityId in liquidityIds)
-        {
-            Assert(IsHashValid(liquidityId), "Invalid liquidity id.");
-
-            var liquidityInfo = State.LiquidityInfoMap[liquidityId];
-            Assert(liquidityInfo != null, "Liquidity info not exists.");
-            Assert(liquidityInfo!.Account == Context.Sender, "No permission.");
-
-            Assert(liquidityInfo.RemovedTime == null, "Already removed.");
-
-            if (liquidityInfo.StakeId != null)
-            {
-                var getStakeInfoOutput = State.EcoEarnTokensContract.GetStakeInfo.Call(liquidityInfo.StakeId);
-                Assert(getStakeInfoOutput.StakeInfo?.UnlockTime != null, "Liquidity occupied.");
-            }
-
-            liquidityInfo.RemovedTime = removeTime;
-            liquidityInfo.StakeId = stakeId;
-
-            amount = amount.Add(liquidityInfo.LpAmount);
-
-            liquidityInfos.Add(liquidityInfo);
-
-            swapContractAddress ??= liquidityInfo.SwapAddress;
-            lpSymbol ??= liquidityInfo.LpSymbol;
-            rewardSymbol ??= liquidityInfo.RewardSymbol;
-            tokenContractAddress ??= liquidityInfo.TokenAddress;
-            symbolA ??= liquidityInfo.TokenASymbol;
-            symbolB ??= liquidityInfo.TokenBSymbol;
-
-            longestReleaseTime ??= liquidityInfo.LongestReleaseTime;
-            longestReleaseTime = longestReleaseTime == null || longestReleaseTime <= liquidityInfo.LongestReleaseTime
-                ? liquidityInfo.LongestReleaseTime
-                : longestReleaseTime;
-        }
-
-        return liquidityInfos;
+        return liquidityInfo;
     }
 
     private void PrepareAddLiquidity(string stakingToken, string rewardSymbol, Address swapContract, long amount,
