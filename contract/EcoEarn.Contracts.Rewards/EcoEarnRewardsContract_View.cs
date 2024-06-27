@@ -24,4 +24,9 @@ public partial class EcoEarnRewardsContract
     {
         return CalculateUserAddress(input.DappId, input.Account);
     }
+
+    public override LiquidityInfo GetLiquidityInfo(Hash input)
+    {
+        return IsHashValid(input) ? State.LiquidityInfoMap[input] : new LiquidityInfo();
+    }
 }

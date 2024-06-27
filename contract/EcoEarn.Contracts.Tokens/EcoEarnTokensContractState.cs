@@ -31,10 +31,10 @@ public partial class EcoEarnTokensContractState : ContractState
 
     // <PoolId, UserAddress, long>
     public MappedState<Hash, Address, long> UserStakeCountMap { get; set; }
-    
+
     // <PoolId, User Address, LastClaimTime>
     public MappedState<Hash, Address, Timestamp> ClaimTimeMap { get; set; }
-    
+
     // <StakeId, LastOperationTime, UnlockWindowCount, IsClaimed>
     public MappedState<Hash, Timestamp, long, bool> WindowTermMap { get; set; }
 }

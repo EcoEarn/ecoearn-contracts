@@ -35,8 +35,8 @@ service EcoEarnRewardsContract {
   rpc AddLiquidityAndStake (AddLiquidityAndStakeInput) returns (google.protobuf.Empty) {}
   rpc RemoveLiquidity (RemoveLiquidityInput) returns (google.protobuf.Empty) {}
   rpc StakeLiquidity (StakeLiquidityInput) returns (google.protobuf.Empty) {}
+  rpc GetLiquidityInfo (aelf.Hash) returns (LiquidityInfo) {option (aelf.is_view) = true;}
 }
-
 message InitializeInput {
   aelf.Address admin = 1;
   aelf.Address ecoearn_points_contract = 2;
@@ -65,12 +65,13 @@ message GetRewardAddressInput {
 }
 
 message ClaimInput {
-  aelf.Hash pool_id = 1;
-  aelf.Address account = 2;
-  string symbol = 3;
-  int64 amount = 4;
-  repeated int64 release_periods = 5;
-  aelf.Hash seed = 6;
+  aelf.Hash dapp_id = 1;
+  aelf.Hash pool_id = 2;
+  aelf.Address account = 3;
+  string symbol = 4;
+  int64 amount = 5;
+  repeated int64 release_periods = 6;
+  aelf.Hash seed = 7;
 }
 
 message ClaimInfo {
@@ -103,7 +104,6 @@ message WithdrawInput {
   aelf.Hash dapp_id = 6;
   bytes signature = 10000;
 }
-
 
 message StakeInput {
   repeated aelf.Hash claim_ids = 1;

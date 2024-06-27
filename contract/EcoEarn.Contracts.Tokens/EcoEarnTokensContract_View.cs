@@ -95,7 +95,7 @@ public partial class EcoEarnTokensContract
     {
         return State.UserStakeIdMap[input.PoolId][input.Account];
     }
-    
+
     public override Int64Value GetUserStakeCount(GetUserStakeCountInput input)
     {
         return new Int64Value
@@ -108,7 +108,7 @@ public partial class EcoEarnTokensContract
     {
         var rewardInfo = new RewardInfo();
         if (!IsHashValid(stakeId)) return null;
-        
+
         var stakeInfo = State.StakeInfoMap[stakeId];
         if (stakeInfo == null) return null;
 
@@ -118,7 +118,7 @@ public partial class EcoEarnTokensContract
 
         var poolInfo = State.PoolInfoMap[stakeInfo.PoolId];
         if (poolInfo == null) return null;
-        
+
         var poolData = State.PoolDataMap[stakeInfo.PoolId];
 
         rewardInfo.Symbol = poolInfo.Config.RewardToken;

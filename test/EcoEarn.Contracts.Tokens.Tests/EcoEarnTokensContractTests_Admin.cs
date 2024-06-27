@@ -18,7 +18,8 @@ public partial class EcoEarnTokensContractTests : EcoEarnTokensContractTestBase
             Recipient = User2Address,
             Admin = UserAddress,
             EcoearnPointsContract = DefaultAddress,
-            EcoearnRewardsContract = DefaultAddress
+            EcoearnRewardsContract = DefaultAddress,
+            MaximumPositionAmount = 100
         };
 
         var result = await EcoEarnTokensContractStub.Initialize.SendAsync(input);
@@ -30,6 +31,8 @@ public partial class EcoEarnTokensContractTests : EcoEarnTokensContractTestBase
         var config = await EcoEarnTokensContractStub.GetConfig.CallAsync(new Empty());
         config.CommissionRate.ShouldBe(100);
         config.Recipient.ShouldBe(User2Address);
+        config.MaximumPositionAmount.ShouldBe(100);
+        config.IsRegisterRestricted.ShouldBeFalse();
 
         // initialize twice
         result = await EcoEarnTokensContractStub.Initialize
@@ -44,7 +47,8 @@ public partial class EcoEarnTokensContractTests : EcoEarnTokensContractTestBase
         {
             CommissionRate = 100,
             EcoearnPointsContract = DefaultAddress,
-            EcoearnRewardsContract = DefaultAddress
+            EcoearnRewardsContract = DefaultAddress,
+            MaximumPositionAmount = 1
         };
 
         var result = await EcoEarnTokensContractStub.Initialize.SendAsync(input);
@@ -105,6 +109,15 @@ public partial class EcoEarnTokensContractTests : EcoEarnTokensContractTestBase
             Recipient = new Address()
         });
         result.TransactionResult.Error.ShouldContain("Invalid recipient.");
+        
+        result = await EcoEarnTokensContractStub.Initialize.SendWithExceptionAsync(new InitializeInput
+        {
+            EcoearnPointsContract = DefaultAddress,
+            EcoearnRewardsContract = DefaultAddress,
+            CommissionRate = 0,
+            Recipient = DefaultAddress
+        });
+        result.TransactionResult.Error.ShouldContain("Invalid maximum position amount.");
 
         // sender != author
         result = await EcoEarnTokensContractUserStub.Initialize.SendWithExceptionAsync(new InitializeInput
@@ -229,7 +242,8 @@ public partial class EcoEarnTokensContractTests : EcoEarnTokensContractTestBase
             Recipient = User2Address,
             EcoearnPointsContract = EcoEarnPointsContractAddress,
             EcoearnRewardsContract = EcoEarnRewardsContractAddress,
-            IsRegisterRestricted = true
+            IsRegisterRestricted = true,
+            MaximumPositionAmount = 100
         });
     }
 }

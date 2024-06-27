@@ -27,6 +27,7 @@ service EcoEarnTokensContract {
   rpc SetTokensPoolFixedBoostFactor (SetTokensPoolFixedBoostFactorInput) returns (google.protobuf.Empty) {}
   rpc SetTokensPoolRewardPerSecond (SetTokensPoolRewardPerSecondInput) returns (google.protobuf.Empty) {}
   rpc SetTokensPoolUnlockWindowDuration (SetTokensPoolUnlockWindowDurationInput) returns (google.protobuf.Empty) {}
+  rpc SetTokensPoolMergeInterval (SetTokensPoolMergeIntervalInput) returns (google.protobuf.Empty) {}
 
   rpc Stake (StakeInput) returns (google.protobuf.Empty) {}
   rpc StakeFor (StakeForInput) returns (google.protobuf.Empty) {}
@@ -68,13 +69,14 @@ message CreateTokensPoolInput {
   int64 minimum_amount = 8;
   int64 maximum_stake_duration = 9;
   int64 minimum_claim_amount = 10;
-  int64 minimum_early_stake_amount = 11;
+  int64 minimum_add_liquidity_amount = 11;
   int64 minimum_stake_duration = 12;
   aelf.Address reward_token_contract = 13;
   aelf.Address stake_token_contract = 14;
   aelf.Address swap_contract = 15;
   int64 unlock_window_duration = 16;
   repeated int64 release_periods = 17;
+  int64 merge_interval = 18;
 }
 
 message TokensPoolConfig {
@@ -88,12 +90,13 @@ message TokensPoolConfig {
   int64 minimum_stake_duration = 8;
   int64 maximum_stake_duration = 9;
   int64 minimum_claim_amount = 10;
-  int64 minimum_early_stake_amount = 11;
+  int64 minimum_add_liquidity_amount = 11;
   aelf.Address reward_token_contract = 12;
   aelf.Address stake_token_contract = 13;
   aelf.Address swap_contract = 14;
   int64 unlock_window_duration = 15;
   repeated int64 release_periods = 16;
+  int64 merge_interval = 17;
 }
 
 message SetTokensPoolEndTimeInput {
@@ -117,7 +120,7 @@ message SetTokensPoolStakeConfigInput {
   int64 maximum_stake_duration = 3;
   int64 minimum_claim_amount = 4;
   int64 minimum_stake_duration = 5;
-  int64 minimum_early_stake_amount = 6;
+  int64 minimum_add_liquidity_amount = 6;
 }
 
 message SetTokensPoolFixedBoostFactorInput {
@@ -133,6 +136,11 @@ message SetTokensPoolRewardPerSecondInput {
 message SetTokensPoolUnlockWindowDurationInput {
   aelf.Hash pool_id = 1;
   int64 unlock_window_duration = 2;
+}
+
+message SetTokensPoolMergeIntervalInput {
+  aelf.Hash pool_id = 1;
+  int64 merge_interval = 2;
 }
 
 message GetPoolInfoOutput {
@@ -181,7 +189,7 @@ message SubStakeInfo {
   int64 boosted_amount = 6;
   int64 reward_debt = 7;
   int64 reward_amount = 8;
-  aelf.Hash seed = 9;
+  int64 early_staked_amount = 10;  // change to 9 later
 }
 
 message StakeForInput {
@@ -189,8 +197,8 @@ message StakeForInput {
   int64 amount = 2;
   int64 period = 3;
   aelf.Address from_address = 4;
-  aelf.Hash seed = 5;
-  google.protobuf.Timestamp longest_release_time = 6;
+  google.protobuf.Timestamp longest_release_time = 5;
+  bool is_liquidity = 6;
 }
 
 message RenewInput {
@@ -232,12 +240,14 @@ message InitializeInput {
   int64 commission_rate = 4;
   aelf.Address recipient = 5;
   bool is_register_restricted = 6;
+  int64 maximum_position_amount = 7;
 }
 
 message Config {
   int64 commission_rate = 1;
   aelf.Address recipient = 2;
   bool is_register_restricted = 3;
+  int64 maximum_position_amount = 4;
 }
 
 message SetDappAdminInput {
@@ -297,7 +307,7 @@ message TokensPoolStakeConfigSet {
   int64 maximum_stake_duration = 3;
   int64 minimum_claim_amount = 4;
   int64 minimum_stake_duration = 5;
-  int64 minimum_early_stake_amount = 6;
+  int64 minimum_add_liquidity_amount = 6;
 }
 
 message Staked {
@@ -362,6 +372,12 @@ message TokensPoolUnlockWindowDurationSet {
   option (aelf.is_event) = true;
   aelf.Hash pool_id = 1;
   int64 unlock_window_duration = 2;
+}
+
+message TokensPoolMergeIntervalSet {
+  option (aelf.is_event) = true;
+  aelf.Hash pool_id = 1;
+  int64 merge_interval = 2;
 }
 
 message Renewed {

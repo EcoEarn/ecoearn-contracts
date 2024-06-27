@@ -11,5 +11,4 @@ public partial class EcoEarnTokensContractState
     internal TokenContractContainer.TokenContractReferenceState TokenContract { get; set; }
     internal EcoEarnPointsContractContainer.EcoEarnPointsContractReferenceState EcoEarnPointsContract { get; set; }
     internal EcoEarnRewardsContractContainer.EcoEarnRewardsContractReferenceState EcoEarnRewardsContract { get; set; }
-    
 }

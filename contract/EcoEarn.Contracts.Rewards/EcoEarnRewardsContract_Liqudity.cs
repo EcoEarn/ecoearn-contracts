@@ -24,9 +24,11 @@ public partial class EcoEarnRewardsContract
         Assert(input.TokenAMin > 0, "Invalid token A min.");
         Assert(input.TokenBMin > 0, "Invalid token B min.");
         Assert(input.Deadline != null, "Invalid deadline.");
-        Assert(
-            !input.Signature.IsNullOrEmpty() &&
-            !State.SignatureMap[HashHelper.ComputeFrom(input.Signature.ToByteArray())], "Invalid signature.");
+        Assert(!input.Signature.IsNullOrEmpty(), "Invalid signature");
+
+        var signatureHash = HashHelper.ComputeFrom(input.Signature.ToByteArray());
+        Assert(!State.SignatureMap[signatureHash], "Signature used.");
+        State.SignatureMap[signatureHash] = true;
 
         var stakeInput = input!.StakeInput;
 
@@ -35,14 +37,16 @@ public partial class EcoEarnRewardsContract
         var dappInfo = State.DappInfoMap[stakeInput.DappId];
         Assert(dappInfo != null, "Dapp id not exists.");
 
+        Assert(Context.CurrentBlockTime.Seconds < stakeInput.ExpirationTime, "Signature expired.");
         Assert(
             RecoverAddressFromSignature(ComputeAddLiquidityAndStakeHash(input), input.Signature) ==
             dappInfo!.Config.UpdateAddress, "Signature not valid.");
 
-        var claimInfos = ProcessEarlyStake(stakeInput, input.Signature, stakeId, dappInfo.DappId, out var rewardSymbol,
+        var claimInfos = ProcessEarlyStake(stakeInput, stakeId, dappInfo.DappId, out var rewardSymbol,
             out var longestReleaseTime);
 
         var poolInfo = State.EcoEarnTokensContract.GetPoolInfo.Call(stakeInput.PoolId).PoolInfo;
+        Assert(stakeInput.Amount >= poolInfo.Config.MinimumAddLiquidityAmount, "Amount not enough.");
 
         PrepareAddLiquidity(poolInfo.Config.StakingToken, rewardSymbol, poolInfo.Config.SwapContract, stakeInput.Amount,
             CalculateUserAddressHash(dappInfo.DappId, Context.Sender), out var symbolA, out var symbolB,
@@ -75,8 +79,6 @@ public partial class EcoEarnRewardsContract
 
         State.LiquidityInfoMap[liquidityId] = liquidityInfo;
 
-        var poolAddressInfo = State.EcoEarnTokensContract.GetPoolAddressInfo.Call(stakeInput.PoolId);
-
         Context.SendInline(poolInfo.Config.SwapContract,
             nameof(AwakenSwapContractContainer.AwakenSwapContractReferenceState.AddLiquidity), new AddLiquidityInput
             {
@@ -87,17 +89,25 @@ public partial class EcoEarnRewardsContract
                 AmountAMin = input.TokenAMin,
                 AmountBMin = input.TokenBMin,
                 Deadline = input.Deadline,
-                To = poolAddressInfo.StakeAddress,
+                To = Context.Self,
                 Channel = EcoEarnRewardsContractConstants.Channel
             });
+
+        Context.SendInline(poolInfo.Config.StakeTokenContract, nameof(State.TokenContract.Approve), new ApproveInput
+        {
+            Amount = lpAmount,
+            Spender = State.EcoEarnTokensContract.Value,
+            Symbol = poolInfo.Config.StakingToken
+        });
 
         State.EcoEarnTokensContract.StakeFor.Send(new StakeForInput
         {
             PoolId = stakeInput.PoolId,
-            Amount = stakeInput.Amount,
+            Amount = lpAmount,
             FromAddress = stakeInput.Account,
             Period = stakeInput.Period,
-            LongestReleaseTime = longestReleaseTime
+            LongestReleaseTime = longestReleaseTime,
+            IsLiquidity = true
         });
 
         Context.Fire(new LiquidityAdded
@@ -125,7 +135,7 @@ public partial class EcoEarnRewardsContract
 
         var liquidityInfos = ProcessLiquidity(input.LiquidityIds!.Distinct().ToList(), null, Context.CurrentBlockTime,
             out var amount, out var swapContractAddress, out var lpSymbol, out var rewardSymbol,
-            out var tokenContractAddress, out _);
+            out var tokenContractAddress, out _, out var tokenSymbolA, out var tokenSymbolB);
 
         PrepareRemoveLiquidity(lpSymbol, amount, CalculateUserAddressHash(input.DappId, Context.Sender),
             tokenContractAddress, swapContractAddress, out var symbolA, out var symbolB, out var amountA,
@@ -137,8 +147,8 @@ public partial class EcoEarnRewardsContract
             {
                 SymbolA = symbolA,
                 SymbolB = symbolB,
-                AmountAMin = input.TokenAMin,
-                AmountBMin = input.TokenBMin,
+                AmountAMin = symbolA == tokenSymbolA ? input.TokenAMin : input.TokenBMin,
+                AmountBMin = symbolA == tokenSymbolA ? input.TokenBMin : input.TokenAMin,
                 Deadline = input.Deadline,
                 To = Context.Self,
                 LiquidityRemove = amount
@@ -154,7 +164,7 @@ public partial class EcoEarnRewardsContract
         State.TokenContract.Transfer.Send(new TransferInput
         {
             To = Context.Sender,
-            Symbol = rewardSymbol == symbolA ? symbolB : rewardSymbol,
+            Symbol = rewardSymbol == symbolA ? symbolB : symbolA,
             Amount = rewardSymbol == symbolA ? amountB : amountA
         });
 
@@ -183,18 +193,22 @@ public partial class EcoEarnRewardsContract
         var stakeId = GetStakeId(input.PoolId);
 
         var liquidityInfos = ProcessLiquidity(input.LiquidityIds!.Distinct().ToList(), stakeId, null, out var amount,
-            out _, out var lpSymbol, out _, out var tokenContractAddress, out var longestReleaseTime);
-
-        var poolAddressInfo = State.EcoEarnTokensContract.GetPoolAddressInfo.Call(input.PoolId);
+            out _, out var lpSymbol, out _, out var tokenContractAddress, out var longestReleaseTime, out _, out _);
 
         Context.SendVirtualInline(CalculateUserAddressHash(input.DappId, Context.Sender), tokenContractAddress,
             nameof(State.TokenContract.Transfer), new TransferInput
             {
                 Amount = amount,
-                Memo = "early",
                 Symbol = lpSymbol,
-                To = poolAddressInfo.StakeAddress
+                To = Context.Self
             });
+
+        Context.SendInline(tokenContractAddress, nameof(State.TokenContract.Approve), new ApproveInput
+        {
+            Spender = State.EcoEarnTokensContract.Value,
+            Symbol = lpSymbol,
+            Amount = amount
+        });
 
         State.EcoEarnTokensContract.StakeFor.Send(new StakeForInput
         {
@@ -224,12 +238,42 @@ public partial class EcoEarnRewardsContract
 
     #region private
 
-    private void GetSymbols(string lpSymbol, out string symbolA, out string symbolB)
+    private void ExtractTokenPair(string lpSymbol, out string symbolA, out string symbolB)
     {
         var symbols = lpSymbol.Split(EcoEarnRewardsContractConstants.Space)[1]
             .Split(EcoEarnRewardsContractConstants.Separator);
-        symbolA = symbols[0];
-        symbolB = symbols[1];
+
+        symbolA = "";
+        symbolB = "";
+
+        switch (symbols.Length)
+        {
+            // ABC-DEF
+            case 2:
+                symbolA = symbols[0];
+                symbolB = symbols[1];
+                break;
+            // ABC-1 - DEF / ABC - DEF-1
+            case 3:
+                symbolA = symbols[1].All(IsValidItemIdChar)
+                    ? $"{symbols[0]}-{symbols[1]}"
+                    : $"{symbols[1]}-{symbols[2]}";
+                symbolB = symbols[1].All(IsValidItemIdChar) ? symbols[2] : symbols[0];
+                break;
+            // ABC-1 - DEF-1
+            case 4:
+                symbolA = $"{symbols[0]}-{symbols[1]}";
+                symbolB = $"{symbols[2]}-{symbols[3]}";
+                break;
+            default:
+                Assert(true, "Invalid lp symbol.");
+                break;
+        }
+    }
+
+    private bool IsValidItemIdChar(char character)
+    {
+        return character >= '0' && character <= '9';
     }
 
     private Hash GenerateLiquidityId(Hash seed)
@@ -265,7 +309,7 @@ public partial class EcoEarnRewardsContract
 
     private List<LiquidityInfo> ProcessLiquidity(List<Hash> liquidityIds, Hash stakeId, Timestamp removeTime,
         out long amount, out Address swapContractAddress, out string lpSymbol, out string rewardSymbol,
-        out Address tokenContractAddress, out Timestamp longestReleaseTime)
+        out Address tokenContractAddress, out Timestamp longestReleaseTime, out string symbolA, out string symbolB)
     {
         var liquidityInfos = new List<LiquidityInfo>();
 
@@ -275,6 +319,8 @@ public partial class EcoEarnRewardsContract
         rewardSymbol = null;
         tokenContractAddress = null;
         longestReleaseTime = null;
+        symbolA = null;
+        symbolB = null;
 
         foreach (var liquidityId in liquidityIds)
         {
@@ -303,6 +349,8 @@ public partial class EcoEarnRewardsContract
             lpSymbol ??= liquidityInfo.LpSymbol;
             rewardSymbol ??= liquidityInfo.RewardSymbol;
             tokenContractAddress ??= liquidityInfo.TokenAddress;
+            symbolA ??= liquidityInfo.TokenASymbol;
+            symbolB ??= liquidityInfo.TokenBSymbol;
 
             longestReleaseTime ??= liquidityInfo.LongestReleaseTime;
             longestReleaseTime = longestReleaseTime == null || longestReleaseTime <= liquidityInfo.LongestReleaseTime
@@ -316,7 +364,7 @@ public partial class EcoEarnRewardsContract
     private void PrepareAddLiquidity(string stakingToken, string rewardSymbol, Address swapContract, long amount,
         Hash userAddressHash, out string symbolA, out string symbolB, out long amountA, out long amountB)
     {
-        GetSymbols(stakingToken, out symbolA, out symbolB);
+        ExtractTokenPair(stakingToken, out symbolA, out symbolB);
 
         var quoteSymbol = rewardSymbol == symbolA ? symbolB : symbolA;
 
@@ -362,8 +410,10 @@ public partial class EcoEarnRewardsContract
             Amount = quoteAmount
         });
 
-        amountA = symbolA == rewardSymbol ? amount : quoteAmount;
-        amountB = symbolA == rewardSymbol ? quoteAmount : amount;
+        symbolA = rewardSymbol;
+        symbolB = quoteSymbol;
+        amountA = amount;
+        amountB = quoteAmount;
     }
 
     private long CalculateLpAmount(string symbolA, string symbolB, long amountA, long amountB, Address swapContract)
@@ -389,9 +439,12 @@ public partial class EcoEarnRewardsContract
         }
         else
         {
-            var liquidity0Str = new BigIntValue(amountA).Mul(totalSupplyResult.TotalSupply)
+            var reserveA = symbolA == reservePairResult.SymbolA ? amountA : amountB;
+            var reserveB = symbolA == reservePairResult.SymbolA ? amountB : amountA;
+
+            var liquidity0Str = new BigIntValue(reserveA).Mul(totalSupplyResult.TotalSupply)
                 .Div(reservePairResult.ReserveA).Value;
-            var liquidity1Str = new BigIntValue(amountB).Mul(totalSupplyResult.TotalSupply)
+            var liquidity1Str = new BigIntValue(reserveB).Mul(totalSupplyResult.TotalSupply)
                 .Div(reservePairResult.ReserveB).Value;
             if (!long.TryParse(liquidity0Str, out var liquidity0))
             {
@@ -408,19 +461,20 @@ public partial class EcoEarnRewardsContract
 
         Assert(liquidity > 0, "Insufficient liquidity supply.");
 
-        var lp = Sqrt(new BigIntValue(amountA.Mul(amountB))).Value;
-        long.TryParse(lp, out var lpAmount);
-
-        return lpAmount;
+        return liquidity;
     }
 
     private void PrepareRemoveLiquidity(string lpSymbol, long amount, Hash userAddressHash,
         Address tokenContractAddress, Address swapContractAddress, out string symbolA, out string symbolB,
         out long amountA, out long amountB)
     {
+        ExtractTokenPair(lpSymbol, out symbolA, out symbolB);
+
+        var pairSymbol = symbolA + EcoEarnRewardsContractConstants.Separator + symbolB;
+
         var getReservesOutput = Context.Call<GetReservesOutput>(swapContractAddress,
             nameof(AwakenSwapContractContainer.AwakenSwapContractReferenceState.GetReserves),
-            new GetReservesInput { SymbolPair = { lpSymbol } });
+            new GetReservesInput { SymbolPair = { pairSymbol } });
 
         Assert(
             getReservesOutput?.Results != null && getReservesOutput.Results.Count > 0 &&
@@ -428,12 +482,9 @@ public partial class EcoEarnRewardsContract
 
         var reservePairResult = getReservesOutput!.Results!.First();
 
-        symbolA = reservePairResult.SymbolA;
-        symbolB = reservePairResult.SymbolB;
-
         var getTotalSupplyOutput = Context.Call<GetTotalSupplyOutput>(swapContractAddress,
             nameof(AwakenSwapContractContainer.AwakenSwapContractReferenceState.GetTotalSupply),
-            new StringList { Value = { lpSymbol } });
+            new StringList { Value = { pairSymbol } });
 
         Assert(
             getTotalSupplyOutput?.Results != null && getTotalSupplyOutput.Results.Count > 0 &&
@@ -441,8 +492,18 @@ public partial class EcoEarnRewardsContract
 
         var totalSupplyResult = getTotalSupplyOutput!.Results!.First();
 
-        amountA = amount.Mul(reservePairResult.ReserveA).Div(totalSupplyResult.TotalSupply);
-        amountB = amount.Mul(reservePairResult.ReserveB).Div(totalSupplyResult.TotalSupply);
+        var valueA = new BigIntValue(amount).Mul(reservePairResult.ReserveA).Div(totalSupplyResult.TotalSupply).Value;
+        var valueB = new BigIntValue(amount).Mul(reservePairResult.ReserveB).Div(totalSupplyResult.TotalSupply).Value;
+
+        if (!long.TryParse(valueA, out amountA))
+        {
+            throw new AssertionException($"Failed to parse {valueA}");
+        }
+
+        if (!long.TryParse(valueB, out amountB))
+        {
+            throw new AssertionException($"Failed to parse {valueB}");
+        }
 
         Context.SendVirtualInline(userAddressHash, tokenContractAddress, nameof(State.TokenContract.Transfer),
             new TransferInput

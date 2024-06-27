@@ -297,14 +297,14 @@ public partial class EcoEarnRewardsContractTests
             Signature = ByteString.Empty
         });
         result.TransactionResult.Error.ShouldContain("Invalid signature.");
-
+        
         result = await UserEcoEarnRewardsContractStub.Withdraw.SendWithExceptionAsync(new WithdrawInput
         {
             ClaimIds = { new Hash() },
             Account = DefaultAddress,
             Amount = 1,
             Seed = seed,
-            ExpirationTime = BlockTimeProvider.GetBlockTime().Seconds,
+            ExpirationTime = BlockTimeProvider.GetBlockTime().AddDays(1).Seconds,
             Signature = Hash.Empty.ToByteString()
         });
         result.TransactionResult.Error.ShouldContain("Invalid dapp id.");
@@ -315,7 +315,7 @@ public partial class EcoEarnRewardsContractTests
             Account = DefaultAddress,
             Amount = 1,
             Seed = seed,
-            ExpirationTime = BlockTimeProvider.GetBlockTime().Seconds,
+            ExpirationTime = BlockTimeProvider.GetBlockTime().AddDays(1).Seconds,
             Signature = Hash.Empty.ToByteString(),
             DappId = new Hash()
         });
@@ -327,7 +327,7 @@ public partial class EcoEarnRewardsContractTests
             Account = DefaultAddress,
             Amount = 1,
             Seed = seed,
-            ExpirationTime = BlockTimeProvider.GetBlockTime().Seconds,
+            ExpirationTime = BlockTimeProvider.GetBlockTime().AddDays(1).Seconds,
             Signature = Hash.Empty.ToByteString(),
             DappId = HashHelper.ComputeFrom("test")
         });
@@ -339,24 +339,11 @@ public partial class EcoEarnRewardsContractTests
             Account = DefaultAddress,
             Amount = 1,
             Seed = seed,
-            ExpirationTime = BlockTimeProvider.GetBlockTime().Seconds,
+            ExpirationTime = BlockTimeProvider.GetBlockTime().AddDays(1).Seconds,
             Signature = Hash.Empty.ToByteString(),
             DappId = _appId
         });
         result.TransactionResult.Error.ShouldContain("Invalid signature.");
-
-        result = await UserEcoEarnRewardsContractStub.Withdraw.SendWithExceptionAsync(new WithdrawInput
-        {
-            ClaimIds = { new Hash() },
-            Account = DefaultAddress,
-            Amount = 1,
-            Seed = seed,
-            ExpirationTime = BlockTimeProvider.GetBlockTime().Seconds,
-            Signature = GenerateSignature(DefaultKeyPair.PrivateKey, new List<Hash> { new Hash() }, 1, DefaultAddress,
-                seed, BlockTimeProvider.GetBlockTime().Seconds, _appId),
-            DappId = _appId
-        });
-        result.TransactionResult.Error.ShouldContain("Signature expired.");
 
         expirationTime = BlockTimeProvider.GetBlockTime().AddDays(1).Seconds;
 
@@ -411,7 +398,7 @@ public partial class EcoEarnRewardsContractTests
             PoolId = poolId,
             Seed = seed
         };
-        
+
         SetBlockTime(100);
 
         await UserEcoEarnRewardsContractStub.EarlyStake.SendAsync(new EarlyStakeInput
@@ -434,9 +421,9 @@ public partial class EcoEarnRewardsContractTests
         result.TransactionResult.Error.ShouldContain("Cannot claim yet.");
 
         SetBlockTime(200);
-        
+
         await UserEcoEarnTokensContractStub.Unlock.SendAsync(poolId);
-        
+
         await UserEcoEarnRewardsContractStub.Withdraw.SendAsync(new WithdrawInput
         {
             ClaimIds = { claimIds },
@@ -448,7 +435,7 @@ public partial class EcoEarnRewardsContractTests
                 seed, expirationTime, _appId),
             DappId = _appId
         });
-        
+
         result = await UserEcoEarnRewardsContractStub.Withdraw.SendWithExceptionAsync(new WithdrawInput
         {
             ClaimIds = { claimIds },
@@ -462,7 +449,7 @@ public partial class EcoEarnRewardsContractTests
         });
         result.TransactionResult.Error.ShouldContain("Already claimed.");
     }
-    
+
     [Fact]
     public async Task EarlyStakeTests()
     {

@@ -45,4 +45,9 @@ public partial class EcoEarnPointsContract
             ? State.SnapshotMap[input.PoolId][input.BlockNumber]
             : new Snapshot();
     }
+
+    public override PoolData GetPoolData(Hash input)
+    {
+        return IsHashValid(input) ? State.PoolDataMap[input] : new PoolData();
+    }
 }

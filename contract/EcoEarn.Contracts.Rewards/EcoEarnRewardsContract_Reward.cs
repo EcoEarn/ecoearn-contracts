@@ -34,6 +34,14 @@ public partial class EcoEarnRewardsContract
 
         var claimInfos = GenerateClaimInfos(input);
 
+        State.TokenContract.TransferFrom.Send(new TransferFromInput
+        {
+            From = Context.Sender,
+            Symbol = input.Symbol,
+            To = CalculateUserAddress(input.DappId, input.Account),
+            Amount = input.Amount
+        });
+
         Context.Fire(new Claimed
         {
             ClaimInfos = claimInfos
@@ -53,12 +61,10 @@ public partial class EcoEarnRewardsContract
             RecoverAddressFromSignature(ComputeWithdrawInputHash(input), input.Signature) ==
             dappInfo!.Config.UpdateAddress, "Signature not valid.");
 
-        Assert(Context.CurrentBlockTime.Seconds < input.ExpirationTime, "Signature expired.");
-
         State.SignatureMap[HashHelper.ComputeFrom(input.Signature.ToByteArray())] = true;
 
         var claimInfos = ProcessClaimIds(input.ClaimIds.Distinct().ToList(), out var symbol);
-            
+
         var maximumReward = State.TokenContract.GetBalance.Call(new GetBalanceInput
         {
             Owner = CalculateUserAddress(dappInfo.DappId, Context.Sender),
@@ -90,9 +96,11 @@ public partial class EcoEarnRewardsContract
     {
         Assert(input != null, "Invalid input.");
         ValidateEarlyStakeInput(input!.StakeInput);
-        Assert(
-            !input.Signature.IsNullOrEmpty() &&
-            !State.SignatureMap[HashHelper.ComputeFrom(input.Signature.ToByteArray())], "Invalid signature.");
+        Assert(!input.Signature.IsNullOrEmpty(), "Invalid signature");
+
+        var signatureHash = HashHelper.ComputeFrom(input.Signature.ToByteArray());
+        Assert(!State.SignatureMap[signatureHash], "Signature used.");
+        State.SignatureMap[signatureHash] = true;
 
         var stakeInput = input!.StakeInput;
 
@@ -101,23 +109,29 @@ public partial class EcoEarnRewardsContract
         var dappInfo = State.DappInfoMap[stakeInput.DappId];
         Assert(dappInfo != null, "Dapp id not exists.");
 
+        Assert(Context.CurrentBlockTime.Seconds < stakeInput.ExpirationTime, "Signature expired.");
         Assert(
             RecoverAddressFromSignature(ComputeEarlyStakeInputHash(input), input.Signature) ==
             dappInfo!.Config.UpdateAddress, "Signature not valid.");
 
-        var claimInfos = ProcessEarlyStake(stakeInput, input.Signature, stakeId, dappInfo.DappId, out var symbol,
+        var claimInfos = ProcessEarlyStake(stakeInput, stakeId, dappInfo.DappId, out var symbol,
             out var longestReleaseTime);
-
-        var poolAddressInfo = State.EcoEarnTokensContract.GetPoolAddressInfo.Call(stakeInput.PoolId);
 
         State.TokenContract.Transfer.VirtualSend(CalculateUserAddressHash(dappInfo.DappId, Context.Sender),
             new TransferInput
             {
                 Amount = stakeInput.Amount,
-                Memo = "early",
                 Symbol = symbol,
-                To = poolAddressInfo.StakeAddress
+                To = Context.Self,
+                Memo = "early"
             });
+
+        State.TokenContract.Approve.Send(new ApproveInput
+        {
+            Spender = State.EcoEarnTokensContract.Value,
+            Amount = stakeInput.Amount,
+            Symbol = symbol
+        });
 
         State.EcoEarnTokensContract.StakeFor.Send(new StakeForInput
         {
@@ -125,8 +139,7 @@ public partial class EcoEarnRewardsContract
             Amount = stakeInput.Amount,
             FromAddress = stakeInput.Account,
             Period = stakeInput.Period,
-            LongestReleaseTime = longestReleaseTime,
-            Seed = stakeInput.Seed
+            LongestReleaseTime = longestReleaseTime
         });
 
         Context.Fire(new EarlyStaked
@@ -223,6 +236,7 @@ public partial class EcoEarnRewardsContract
         Assert(
             !input.Signature.IsNullOrEmpty() &&
             !State.SignatureMap[HashHelper.ComputeFrom(input.Signature.ToByteArray())], "Invalid signature.");
+        Assert(Context.CurrentBlockTime.Seconds < input.ExpirationTime, "Signature expired.");
         Assert(IsHashValid(input.DappId), "Invalid dapp id.");
     }
 
@@ -278,22 +292,9 @@ public partial class EcoEarnRewardsContract
         }.ToByteArray());
     }
 
-    private Hash ComputeStakeInputHash(StakeInput input)
+    private ClaimInfos ProcessEarlyStake(StakeInput input, Hash stakeId, Hash dappId, out string symbol,
+        out Timestamp longestReleaseTime)
     {
-        return HashHelper.ComputeFrom(input.ToByteArray());
-    }
-
-    private ClaimInfos ProcessEarlyStake(StakeInput input, ByteString signature, Hash stakeId, Hash dappId,
-        out string symbol, out Timestamp longestReleaseTime)
-    {
-        ValidateEarlyStakeInput(input);
-        Assert(!signature.IsNullOrEmpty() && !State.SignatureMap[HashHelper.ComputeFrom(signature.ToByteArray())],
-            "Invalid signature.");
-
-        Assert(Context.CurrentBlockTime.Seconds < input.ExpirationTime, "Signature expired.");
-
-        State.SignatureMap[HashHelper.ComputeFrom(signature.ToByteArray())] = true;
-
         var claimInfos = new ClaimInfos();
         symbol = null;
         longestReleaseTime = null;
@@ -321,7 +322,7 @@ public partial class EcoEarnRewardsContract
             longestReleaseTime = longestReleaseTime == null || longestReleaseTime < claimInfo.ReleaseTime
                 ? claimInfo.ReleaseTime
                 : longestReleaseTime;
-            
+
             claimInfos.Data.Add(claimInfo);
         }
 
@@ -375,7 +376,7 @@ public partial class EcoEarnRewardsContract
 
             var claimInfo = State.ClaimInfoMap[claimId];
             Assert(claimInfo != null, "Claim id not exists.");
-            Assert(claimInfo.WithdrawnTime == null, "Already claimed.");
+            Assert(claimInfo!.WithdrawnTime == null, "Already claimed.");
 
             claimInfo.WithdrawnTime = Context.CurrentBlockTime;
 

@@ -222,6 +222,72 @@ public partial class EcoEarnTokensContractTests
         });
         GetLogEvent<Staked>(result.TransactionResult).StakeInfo.StakeId.ShouldNotBe(stakeId);
     }
+    
+    [Fact]
+    public async Task StakeTests_MergePosition()
+    {
+        var poolId = await CreateTokensPool();
+
+        await TokenContractStub.Approve.SendAsync(new ApproveInput
+        {
+            Spender = EcoEarnTokensContractAddress,
+            Symbol = Symbol,
+            Amount = 10_00000000
+        });
+
+        var result = await EcoEarnTokensContractStub.Stake.SendAsync(new StakeInput
+        {
+            PoolId = poolId,
+            Amount = 1_00000000,
+            Period = 10
+        });
+        var stakeInfo = GetLogEvent<Staked>(result.TransactionResult).StakeInfo;
+        stakeInfo.SubStakeInfos.Count.ShouldBe(1);
+        stakeInfo.SubStakeInfos.First().StakedAmount.ShouldBe(1_00000000);
+        stakeInfo.SubStakeInfos.First().BoostedAmount.ShouldBe(1_00000000);
+        stakeInfo.SubStakeInfos.First().Period.ShouldBe(10);
+
+        result = await EcoEarnTokensContractStub.Stake.SendAsync(new StakeInput
+        {
+            PoolId = poolId,
+            Amount = 1_00000000,
+            Period = 10
+        });
+        stakeInfo = GetLogEvent<Staked>(result.TransactionResult).StakeInfo;
+        stakeInfo.SubStakeInfos.Count.ShouldBe(1);
+        stakeInfo.SubStakeInfos.First().StakedAmount.ShouldBe(2_00000000);
+        stakeInfo.SubStakeInfos.First().BoostedAmount.ShouldBe(2_00000000);
+        stakeInfo.SubStakeInfos.First().Period.ShouldBe(20);
+        
+        result = await EcoEarnTokensContractStub.Stake.SendAsync(new StakeInput
+        {
+            PoolId = poolId,
+            Amount = 1_00000000,
+            Period = 10
+        });
+        stakeInfo = GetLogEvent<Staked>(result.TransactionResult).StakeInfo;
+        stakeInfo.SubStakeInfos.Count.ShouldBe(1);
+        stakeInfo.SubStakeInfos.First().StakedAmount.ShouldBe(3_00000000);
+        stakeInfo.SubStakeInfos.First().BoostedAmount.ShouldBe(3_00000000);
+        stakeInfo.SubStakeInfos.First().Period.ShouldBe(30);
+
+        SetBlockTime(6);
+
+        result = await EcoEarnTokensContractStub.Stake.SendAsync(new StakeInput
+        {
+            PoolId = poolId,
+            Amount = 1_00000000,
+            Period = 10
+        });
+        stakeInfo = GetLogEvent<Staked>(result.TransactionResult).StakeInfo;
+        stakeInfo.SubStakeInfos.Count.ShouldBe(2);
+        stakeInfo.SubStakeInfos.First().StakedAmount.ShouldBe(3_00000000);
+        stakeInfo.SubStakeInfos.First().BoostedAmount.ShouldBe(3_00000000);
+        stakeInfo.SubStakeInfos.First().Period.ShouldBe(40);
+        stakeInfo.SubStakeInfos.Last().StakedAmount.ShouldBe(1_00000000);
+        stakeInfo.SubStakeInfos.Last().BoostedAmount.ShouldBe(1_00000000);
+        stakeInfo.SubStakeInfos.Last().Period.ShouldBe(34);
+    }
 
     [Fact]
     public async Task StakeTests_Fail()
@@ -249,19 +315,19 @@ public partial class EcoEarnTokensContractTests
         });
         result.TransactionResult.Error.ShouldContain("Invalid amount.");
         
-        result = await EcoEarnTokensContractStub.Stake.SendWithExceptionAsync(new StakeInput
-        {
-            PoolId = poolId,
-            Amount = 1
-        });
-        result.TransactionResult.Error.ShouldContain("Amount not enough.");
-        
         await TokenContractStub.Approve.SendAsync(new ApproveInput
         {
             Symbol = Symbol,
             Amount = 2_00000000,
             Spender = EcoEarnTokensContractAddress
         });
+        
+        result = await EcoEarnTokensContractStub.Stake.SendWithExceptionAsync(new StakeInput
+        {
+            PoolId = poolId,
+            Amount = 1
+        });
+        result.TransactionResult.Error.ShouldContain("Amount not enough.");
 
         result = await EcoEarnTokensContractStub.Stake.SendWithExceptionAsync(new StakeInput
         {

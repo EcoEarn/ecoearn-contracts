@@ -1,8 +1,6 @@
-using System.Linq;
 using AElf;
 using AElf.Contracts.MultiToken;
 using AElf.CSharp.Core;
-using AElf.CSharp.Core.Extension;
 using AElf.Sdk.CSharp;
 using AElf.Types;
 using EcoEarn.Contracts.Rewards;
@@ -48,7 +46,7 @@ public partial class EcoEarnTokensContract
             rewards = ProcessCommissionFee(rewards, poolInfo);
         }
 
-        CallRewardsContractClaim(input, poolInfo, rewards, out _);
+        CallRewardsContractClaim(poolInfo, rewards);
 
         Context.Fire(new Claimed
         {
@@ -139,7 +137,7 @@ public partial class EcoEarnTokensContract
         var rewards = 0L;
 
         var config = State.Config.Value;
-        
+
         var poolData = State.PoolDataMap[poolInfo.PoolId];
         UpdatePool(poolInfo, poolData);
 
@@ -150,7 +148,7 @@ public partial class EcoEarnTokensContract
 
             var actualReward = pending.Sub(CalculateCommissionFee(pending, config.CommissionRate))
                 .Add(subStakeInfo.RewardAmount);
-            
+
             if (actualReward <= 0) continue;
             subStakeInfo.RewardAmount = 0;
 
@@ -162,30 +160,30 @@ public partial class EcoEarnTokensContract
         return rewards;
     }
 
-    private void CallRewardsContractClaim(Hash poolId, PoolInfo poolInfo, long rewards, out Address rewardAddress)
+    private void CallRewardsContractClaim(PoolInfo poolInfo, long rewards)
     {
-        rewardAddress = State.EcoEarnRewardsContract.GetRewardAddress.Call(new GetRewardAddressInput
+        State.TokenContract.Transfer.VirtualSend(GetRewardVirtualAddress(poolInfo.PoolId), new TransferInput
         {
-            DappId = poolInfo.DappId,
-            Account = Context.Sender
+            To = Context.Self,
+            Amount = rewards,
+            Symbol = poolInfo.Config.RewardToken
         });
 
-        // transfer rewards to user
-        State.TokenContract.Transfer.VirtualSend(GetRewardVirtualAddress(poolId), new TransferInput
+        State.TokenContract.Approve.Send(new ApproveInput
         {
-            To = rewardAddress,
             Amount = rewards,
-            Symbol = poolInfo.Config.RewardToken,
-            Memo = "claim"
+            Spender = State.EcoEarnRewardsContract.Value,
+            Symbol = poolInfo.Config.RewardToken
         });
 
         State.EcoEarnRewardsContract.Claim.Send(new ClaimInput
         {
-            PoolId = poolId,
+            PoolId = poolInfo.PoolId,
             Symbol = poolInfo.Config.RewardToken,
             Account = Context.Sender,
             Amount = rewards,
-            ReleasePeriods = { poolInfo.Config.ReleasePeriods }
+            ReleasePeriods = { poolInfo.Config.ReleasePeriods },
+            DappId = poolInfo.DappId
         });
     }
 

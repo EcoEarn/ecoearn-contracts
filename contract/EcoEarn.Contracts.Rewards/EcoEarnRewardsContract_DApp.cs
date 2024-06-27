@@ -92,7 +92,7 @@ public partial class EcoEarnRewardsContract
     #endregion
 
     #region private
-    
+
     private Hash CalculateUserAddressHash(Hash dappId, Address account)
     {
         return HashHelper.ConcatAndCompute(dappId, HashHelper.ComputeFrom(account));

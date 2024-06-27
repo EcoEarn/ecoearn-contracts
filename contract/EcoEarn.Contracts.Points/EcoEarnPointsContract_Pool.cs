@@ -110,6 +110,12 @@ public partial class EcoEarnPointsContract
 
         var totalReward = CalculateTotalRewardAmount(input.StartTime, input.EndTime, input.RewardPerSecond);
 
+        State.PoolDataMap[poolId] = new PoolData
+        {
+            LastRewardsUpdateTime = Context.CurrentBlockTime,
+            PoolId = poolId
+        };
+
         Context.Fire(new PointsPoolCreated
         {
             DappId = input.DappId,
@@ -178,6 +184,12 @@ public partial class EcoEarnPointsContract
         };
 
         var totalReward = CalculateTotalRewardAmount(input.StartTime, input.EndTime, input.RewardPerSecond);
+
+        State.PoolDataMap[poolInfo.PoolId] = new PoolData
+        {
+            LastRewardsUpdateTime = Context.CurrentBlockTime,
+            PoolId = poolInfo.PoolId
+        };
 
         Context.Fire(new PointsPoolRestarted
         {
@@ -252,6 +264,12 @@ public partial class EcoEarnPointsContract
         CheckDAppAdminPermission(poolInfo.DappId);
 
         if (poolInfo.Config.RewardPerSecond == input.RewardPerSecond) return new Empty();
+
+        // update pool data
+        var poolData = State.PoolDataMap[input.PoolId];
+        poolData.CalculatedRewards = poolData.CalculatedRewards.Add(
+            (Context.CurrentBlockTime - poolData.LastRewardsUpdateTime).Seconds.Mul(poolInfo.Config.RewardPerSecond));
+        poolData.LastRewardsUpdateTime = Context.CurrentBlockTime;
 
         poolInfo.Config.RewardPerSecond = input.RewardPerSecond;
 

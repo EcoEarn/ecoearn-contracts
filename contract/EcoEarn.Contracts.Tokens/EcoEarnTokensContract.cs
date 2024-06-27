@@ -22,12 +22,14 @@ public partial class EcoEarnTokensContract : EcoEarnTokensContractContainer.EcoE
 
         Assert(input.CommissionRate >= 0, "Invalid commission rate.");
         Assert(input.Recipient == null || !input.Recipient.Value.IsNullOrEmpty(), "Invalid recipient.");
+        Assert(input.MaximumPositionAmount > 0, "Invalid maximum position amount.");
 
         State.Config.Value = new Config
         {
             CommissionRate = input.CommissionRate,
             Recipient = input.Recipient ?? Context.Sender,
             IsRegisterRestricted = input.IsRegisterRestricted,
+            MaximumPositionAmount = input.MaximumPositionAmount
         };
 
         State.TokenContract.Value = Context.GetContractAddressByName(SmartContractConstants.TokenContractSystemName);

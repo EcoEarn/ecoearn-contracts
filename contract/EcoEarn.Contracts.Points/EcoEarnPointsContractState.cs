@@ -21,9 +21,12 @@ public partial class EcoEarnPointsContractState : ContractState
 
     // <PoolId, BlockNumber, PoolInfo>
     public MappedState<Hash, long, Snapshot> SnapshotMap { get; set; }
-    
+
     public MappedState<Hash, bool> SignatureMap { get; set; }
-    
+
     // <PoolId, User Address, LastClaimTime>
     public MappedState<Hash, Address, Timestamp> ClaimTimeMap { get; set; }
+
+    // <PoolId, PoolData>
+    public MappedState<Hash, PoolData> PoolDataMap { get; set; }
 }

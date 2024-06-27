@@ -31,6 +31,7 @@ service EcoEarnPointsContract {
   rpc SetPointsPoolRewardConfig (SetPointsPoolRewardConfigInput) returns (google.protobuf.Empty) {}
   rpc SetPointsPoolRewardPerSecond (SetPointsPoolRewardPerSecondInput) returns (google.protobuf.Empty) {}
   rpc GetPoolInfo (aelf.Hash) returns (GetPoolInfoOutput) {option (aelf.is_view) = true;}
+  rpc GetPoolData (aelf.Hash) returns (PoolData) {option (aelf.is_view) = true;}
   rpc GetPoolAddress (aelf.Hash) returns (aelf.Address) {option (aelf.is_view) = true;}
 
   // reward
@@ -173,6 +174,13 @@ message SetPointsPoolRewardPerSecondInput {
 message SetDappAdminInput {
   aelf.Hash dapp_id = 1;
   aelf.Address admin = 2;
+}
+
+message PoolData {
+  aelf.Hash pool_id = 1;
+  google.protobuf.Timestamp last_rewards_update_time = 2;
+  int64 calculated_rewards = 3;
+  int64 claimed_rewards = 4;
 }
 
 // log event
