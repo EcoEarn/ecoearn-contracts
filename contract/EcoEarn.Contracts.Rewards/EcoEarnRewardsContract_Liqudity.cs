@@ -23,26 +23,21 @@ public partial class EcoEarnRewardsContract
         Assert(input.TokenAMin > 0, "Invalid token A min.");
         Assert(input.TokenBMin > 0, "Invalid token B min.");
         Assert(input.Deadline != null, "Invalid deadline.");
-        Assert(!input.Signature.IsNullOrEmpty(), "Invalid signature");
-
-        var signatureHash = HashHelper.ComputeFrom(input.Signature.ToByteArray());
-        Assert(!State.SignatureMap[signatureHash], "Signature used.");
-        State.SignatureMap[signatureHash] = true;
 
         var stakeInput = input!.StakeInput;
+
+        ValidateSignature(input.Signature, stakeInput.ExpirationTime);
 
         var stakeId = GetStakeId(stakeInput.PoolId);
 
         var dappInfo = State.DappInfoMap[stakeInput.DappId];
         Assert(dappInfo != null, "Dapp id not exists.");
 
-        Assert(Context.CurrentBlockTime.Seconds < stakeInput.ExpirationTime, "Signature expired.");
         Assert(
             RecoverAddressFromSignature(ComputeAddLiquidityAndStakeHash(input), input.Signature) ==
             dappInfo!.Config.UpdateAddress, "Signature not valid.");
 
         var claimInfo = GetClaimInfoFromClaimId(stakeInput.ClaimIds.FirstOrDefault());
-
         CheckMaximumAmount(State.TokenContract.Value, stakeInput.DappId, claimInfo.ClaimedSymbol, stakeInput.Amount);
 
         var poolInfo = State.EcoEarnTokensContract.GetPoolInfo.Call(stakeInput.PoolId).PoolInfo;
@@ -105,7 +100,10 @@ public partial class EcoEarnRewardsContract
             Amount = lpAmount,
             FromAddress = stakeInput.Account,
             Period = stakeInput.Period,
-            LongestReleaseTime = stakeInput.LongestReleaseTime,
+            LongestReleaseTime = new Timestamp
+            {
+                Seconds = stakeInput.LongestReleaseTime
+            },
             IsLiquidity = true
         });
 
@@ -133,8 +131,10 @@ public partial class EcoEarnRewardsContract
         Assert(input.LpAmount > 0, "Invalid lp amount.");
         Assert(input.TokenAMin > 0, "Invalid token A min.");
         Assert(input.TokenBMin > 0, "Invalid token B min.");
-        Assert(input.Deadline != null, "Invalid deadline.");
         Assert(IsHashValid(input.DappId), "Invalid dapp id.");
+        Assert(input.Deadline != null, "Invalid deadline.");
+
+        // ValidateSignature(input.Signature, input.ExpirationTime);
 
         var liquidityInfo = GetLiquidityInfoFromLiquidityId(input.LiquidityIds!.FirstOrDefault());
 
@@ -181,7 +181,9 @@ public partial class EcoEarnRewardsContract
             },
             LpAmount = input.LpAmount,
             TokenAAmount = amountA,
-            TokenBAmount = amountB
+            TokenBAmount = amountB,
+            // DappId = input.DappId,
+            // Seed = input.Seed
         });
 
         return new Empty();
@@ -195,7 +197,10 @@ public partial class EcoEarnRewardsContract
         Assert(input.LpAmount > 0, "Invalid lp amount.");
         Assert(input.Period > 0, "Invalid period.");
         Assert(IsHashValid(input.DappId), "Invalid dapp id.");
-        Assert(input.LongestReleaseTime != null, "Invalid longest release time.");
+        // Assert(input.LongestReleaseTime > 0, "Invalid longest release time.");
+        // Assert(IsHashValid(input.Seed), "Invalid seed.");
+
+        // ValidateSignature(input.Signature, input.ExpirationTime);
 
         var stakeId = GetStakeId(input.PoolId);
 
@@ -223,7 +228,10 @@ public partial class EcoEarnRewardsContract
             Amount = input.LpAmount,
             FromAddress = Context.Sender,
             Period = input.Period,
-            LongestReleaseTime = input.LongestReleaseTime
+            LongestReleaseTime = new Timestamp
+            {
+                Seconds = input.LongestReleaseTime.Seconds
+            }
         });
 
         Context.Fire(new LiquidityStaked
