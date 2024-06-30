@@ -12,6 +12,7 @@ public partial class EcoEarnRewardsContractTests
 {
     private const string PointsName = "point";
     private const string Symbol = "SGR-1";
+    private const string DefaultSymbol = "ELF";
     private readonly Hash _appId = HashHelper.ComputeFrom("dapp");
 
     [Fact]

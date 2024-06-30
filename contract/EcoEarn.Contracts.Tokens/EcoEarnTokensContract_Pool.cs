@@ -101,7 +101,8 @@ public partial class EcoEarnTokensContract
             RewardPerSecond = input.RewardPerSecond,
             UnlockWindowDuration = input.UnlockWindowDuration,
             ReleasePeriods = { input.ReleasePeriods.Distinct().OrderBy(n => n) },
-            MinimumAddLiquidityAmount = input.MinimumAddLiquidityAmount
+            MinimumAddLiquidityAmount = input.MinimumAddLiquidityAmount,
+            SwapContract = input.SwapContract
         };
 
         var poolInfo = new PoolInfo

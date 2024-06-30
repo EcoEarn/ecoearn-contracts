@@ -141,21 +141,27 @@ message AddLiquidityAndStakeInput {
 }
 
 message RemoveLiquidityInput {
-  repeated aelf.Hash liquidity_ids = 1;
-  int64 lp_amount = 2;
-  int64 token_a_min = 3;
-  int64 token_b_min = 4;
-  google.protobuf.Timestamp deadline = 5;
-  aelf.Hash dapp_id = 6;
+  LiquidityInput liquidity_input = 1;
+  int64 token_a_min = 2;
+  int64 token_b_min = 3;
+  google.protobuf.Timestamp deadline = 4;
+  bytes signature = 10000;
 }
 
 message StakeLiquidityInput {
-  repeated aelf.Hash liquidity_ids = 1;
+  LiquidityInput liquidity_input = 1;
   aelf.Hash pool_id = 2;
-  int64 lp_amount = 3;
-  int64 period = 4;
-  aelf.Hash dapp_id = 5;
-  google.protobuf.Timestamp longest_release_time = 6;
+  int64 period = 3;
+  int64 longest_release_time = 4;
+  bytes signature = 10000;
+}
+
+message LiquidityInput {
+  repeated aelf.Hash liquidity_ids = 1;
+  int64 lp_amount = 2;
+  aelf.Hash dapp_id = 3;
+  aelf.Hash seed = 4;
+  int64 expiration_time = 5;
 }
 
 message LiquidityInfo {
@@ -247,13 +253,16 @@ message LiquidityRemoved {
   int64 lp_amount = 2;
   int64 token_a_amount = 3;
   int64 token_b_amount = 4;
+  aelf.Hash dapp_id = 5;
+  aelf.Hash seed = 6;
 }
 
 message LiquidityStaked {
   option (aelf.is_event) = true;
   HashList liquidity_ids = 1;
   aelf.Hash pool_id = 2;
-  int64 amount = 3;
+  int64 lp_amount = 3;
   int64 period = 4;
   aelf.Hash stake_id = 5;
+  aelf.Hash seed = 6;
 }

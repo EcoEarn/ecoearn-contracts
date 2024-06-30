@@ -14,6 +14,7 @@ public partial class EcoEarnTokensContractTests
 {
     private readonly Hash _appId = HashHelper.ComputeFrom("dapp");
     private const string Symbol = "SGR-1";
+    private const string DefaultSymbol = "ELF";
     private const string PointsName = "point";
 
     [Fact]
@@ -298,7 +299,7 @@ public partial class EcoEarnTokensContractTests
     [InlineData(Symbol, 1, 1, 100, 1, 0, 0, 1, -1, 0, 0, 0, "", "Invalid minimum claim amount.")]
     [InlineData(Symbol, 1, 1, 100, 1, 0, 0, 1, 0, 0, 0, 0, "", "Invalid minimum stake duration.")]
     [InlineData(Symbol, 1, 1, 100, 1, 0, 0, 1, 0, 1, 0, 0, "", "Invalid unlock window duration.")]
-    [InlineData(Symbol, 1, 1, 100, 1, 0, 0, 1, 0, 1, 1, -1, "ELF", "Invalid release periods.")]
+    [InlineData(Symbol, 1, 1, 100, 1, 0, 0, 1, 0, 1, 1, -1, DefaultSymbol, "Invalid release periods.")]
     [InlineData(Symbol, 1, 1, 100, 1, 0, 0, 1, 0, 1, 1, 0, "", "Invalid staking token.")]
     [InlineData(Symbol, 1, 1, 100, 1, 0, 0, 1, 0, 1, 1, 0, "TEST", "TEST not exists.")]
     public async Task CreateTokensPoolTests_Config_Fail(string rewardToken, long startTime, long endTime,

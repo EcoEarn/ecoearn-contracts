@@ -170,14 +170,14 @@ public partial class EcoEarnRewardsContractTests
         var expirationTime = BlockTimeProvider.GetBlockTime().AddDays(1).Seconds;
 
         var poolId = await CreateTokensPool();
-        var stakeInfo = await Stake(poolId, tokenBalance);
+        _ = await Stake(poolId, tokenBalance);
 
         var balance = await GetTokenBalance(Symbol, UserAddress);
         balance.ShouldBe(0);
 
         SetBlockTime(10);
 
-        var claimIds = await Claim(poolId);
+        var claimIds = Claim(poolId).Result.Select(c => c.ClaimId).ToList();
 
         var input = new WithdrawInput
         {
@@ -201,181 +201,190 @@ public partial class EcoEarnRewardsContractTests
         balance.ShouldBe(1_00000000);
     }
 
-    // [Fact]
-    // public async Task WithdrawTests_Fail()
-    // {
-    //     const long tokenBalance = 5_00000000;
-    //     var seed = HashHelper.ComputeFrom("seed");
-    //     var expirationTime = BlockTimeProvider.GetBlockTime().AddDays(1).Seconds;
-    //
-    //     var poolId = await CreateTokensPool();
-    //     var stakeInfo = await Stake(poolId, tokenBalance);
-    //
-    //     SetBlockTime(10);
-    //     var claimIds = await Claim(poolId);
-    //
-    //     var result = await UserEcoEarnRewardsContractStub.Withdraw.SendWithExceptionAsync(new WithdrawInput());
-    //     result.TransactionResult.Error.ShouldContain("Invalid claim ids.");
-    //
-    //     result = await UserEcoEarnRewardsContractStub.Withdraw.SendWithExceptionAsync(new WithdrawInput
-    //     {
-    //         ClaimIds = { }
-    //     });
-    //     result.TransactionResult.Error.ShouldContain("Invalid claim ids.");
-    //
-    //     result = await UserEcoEarnRewardsContractStub.Withdraw.SendWithExceptionAsync(new WithdrawInput
-    //     {
-    //         ClaimIds = { new Hash() }
-    //     });
-    //     result.TransactionResult.Error.ShouldContain("Invalid account.");
-    //
-    //     result = await UserEcoEarnRewardsContractStub.Withdraw.SendWithExceptionAsync(new WithdrawInput
-    //     {
-    //         ClaimIds = { new Hash() },
-    //         Account = new Address()
-    //     });
-    //     result.TransactionResult.Error.ShouldContain("Invalid account.");
-    //
-    //     result = await UserEcoEarnRewardsContractStub.Withdraw.SendWithExceptionAsync(new WithdrawInput
-    //     {
-    //         ClaimIds = { new Hash() },
-    //         Account = DefaultAddress
-    //     });
-    //     result.TransactionResult.Error.ShouldContain("Invalid amount.");
-    //
-    //     result = await UserEcoEarnRewardsContractStub.Withdraw.SendWithExceptionAsync(new WithdrawInput
-    //     {
-    //         ClaimIds = { new Hash() },
-    //         Account = DefaultAddress,
-    //         Amount = 1
-    //     });
-    //     result.TransactionResult.Error.ShouldContain("Invalid seed.");
-    //
-    //     result = await UserEcoEarnRewardsContractStub.Withdraw.SendWithExceptionAsync(new WithdrawInput
-    //     {
-    //         ClaimIds = { new Hash() },
-    //         Account = DefaultAddress,
-    //         Amount = 1,
-    //         Seed = new Hash()
-    //     });
-    //     result.TransactionResult.Error.ShouldContain("Invalid seed.");
-    //     
-    //     result = await UserEcoEarnRewardsContractStub.Withdraw.SendWithExceptionAsync(new WithdrawInput
-    //     {
-    //         ClaimIds = { new Hash() },
-    //         Account = DefaultAddress,
-    //         Amount = 1,
-    //         Seed = seed
-    //     });
-    //     result.TransactionResult.Error.ShouldContain("Invalid dapp id.");
-    //     
-    //     result = await UserEcoEarnRewardsContractStub.Withdraw.SendWithExceptionAsync(new WithdrawInput
-    //     {
-    //         ClaimIds = { new Hash() },
-    //         Account = DefaultAddress,
-    //         Amount = 1,
-    //         Seed = seed,
-    //         DappId = new Hash()
-    //     });
-    //     result.TransactionResult.Error.ShouldContain("Invalid dapp id.");
-    //     
-    //     result = await UserEcoEarnRewardsContractStub.Withdraw.SendWithExceptionAsync(new WithdrawInput
-    //     {
-    //         ClaimIds = { new Hash() },
-    //         Account = DefaultAddress,
-    //         Amount = 1,
-    //         Seed = seed,
-    //         DappId = HashHelper.ComputeFrom("test")
-    //     });
-    //     result.TransactionResult.Error.ShouldContain("Invalid expiration time.");
-    //     
-    //     result = await UserEcoEarnRewardsContractStub.Withdraw.SendWithExceptionAsync(new WithdrawInput
-    //     {
-    //         ClaimIds = { new Hash() },
-    //         Account = DefaultAddress,
-    //         Amount = 1,
-    //         Seed = seed,
-    //         DappId = HashHelper.ComputeFrom("test"),
-    //         ExpirationTime = BlockTimeProvider.GetBlockTime().AddSeconds(-1).Seconds
-    //     });
-    //     result.TransactionResult.Error.ShouldContain("Invalid expiration time.");
-    //
-    //     result = await UserEcoEarnRewardsContractStub.Withdraw.SendWithExceptionAsync(new WithdrawInput
-    //     {
-    //         ClaimIds = { new Hash() },
-    //         Account = DefaultAddress,
-    //         Amount = 1,
-    //         Seed = seed,
-    //         DappId = _appId,
-    //         ExpirationTime = BlockTimeProvider.GetBlockTime().Seconds
-    //     });
-    //     result.TransactionResult.Error.ShouldContain("Invalid signature.");
-    //
-    //     result = await UserEcoEarnRewardsContractStub.Withdraw.SendWithExceptionAsync(new WithdrawInput
-    //     {
-    //         ClaimIds = { new Hash() },
-    //         Account = DefaultAddress,
-    //         Amount = 1,
-    //         Seed = seed,
-    //         DappId = _appId,
-    //         ExpirationTime = BlockTimeProvider.GetBlockTime().Seconds,
-    //         Signature = ByteString.Empty
-    //     });
-    //     result.TransactionResult.Error.ShouldContain("Invalid signature.");
-    //
-    //     result = await UserEcoEarnRewardsContractStub.Withdraw.SendWithExceptionAsync(new WithdrawInput
-    //     {
-    //         ClaimIds = { new Hash() },
-    //         Account = DefaultAddress,
-    //         Amount = 1,
-    //         Seed = seed,
-    //         ExpirationTime = BlockTimeProvider.GetBlockTime().AddDays(1).Seconds,
-    //         Signature = Hash.Empty.ToByteString(),
-    //         DappId = _appId
-    //     });
-    //     result.TransactionResult.Error.ShouldContain("Invalid signature.");
-    //
-    //     expirationTime = BlockTimeProvider.GetBlockTime().AddDays(1).Seconds;
-    //
-    //     result = await UserEcoEarnRewardsContractStub.Withdraw.SendWithExceptionAsync(new WithdrawInput
-    //     {
-    //         ClaimIds = { new Hash() },
-    //         Account = DefaultAddress,
-    //         Amount = 1,
-    //         Seed = seed,
-    //         ExpirationTime = expirationTime,
-    //         Signature = GenerateSignature(DefaultKeyPair.PrivateKey, new List<Hash> { new Hash() }, 1, DefaultAddress,
-    //             seed, expirationTime, _appId),
-    //         DappId = _appId
-    //     });
-    //     result.TransactionResult.Error.ShouldContain("Invalid claim id.");
-    //
-    //     result = await UserEcoEarnRewardsContractStub.Withdraw.SendWithExceptionAsync(new WithdrawInput
-    //     {
-    //         ClaimIds = { HashHelper.ComputeFrom("test") },
-    //         Account = DefaultAddress,
-    //         Amount = 1,
-    //         Seed = seed,
-    //         ExpirationTime = expirationTime,
-    //         Signature = GenerateSignature(DefaultKeyPair.PrivateKey, new List<Hash> { HashHelper.ComputeFrom("test") },
-    //             1, DefaultAddress, seed, expirationTime, _appId),
-    //         DappId = _appId
-    //     });
-    //     result.TransactionResult.Error.ShouldContain("Claim id not exists.");
-    //
-    //     result = await UserEcoEarnRewardsContractStub.Withdraw.SendWithExceptionAsync(new WithdrawInput
-    //     {
-    //         ClaimIds = { claimIds },
-    //         Account = DefaultAddress,
-    //         Amount = 10000_00000000,
-    //         Seed = seed,
-    //         ExpirationTime = expirationTime,
-    //         Signature = GenerateSignature(DefaultKeyPair.PrivateKey, claimIds, 10000_00000000, DefaultAddress,
-    //             seed, expirationTime, _appId),
-    //         DappId = _appId
-    //     });
-    //     result.TransactionResult.Error.ShouldContain("Amount too much.");
-    // }
+    [Fact]
+    public async Task WithdrawTests_Fail()
+    {
+        const long tokenBalance = 5_00000000;
+        var seed = HashHelper.ComputeFrom("seed");
+        var expirationTime = BlockTimeProvider.GetBlockTime().AddDays(1).Seconds;
+
+        var poolId = await CreateTokensPool();
+        _ = await Stake(poolId, tokenBalance);
+
+        SetBlockTime(10);
+        var claimIds = Claim(poolId).Result.Select(c => c.ClaimId).ToList();
+
+        var result = await UserEcoEarnRewardsContractStub.Withdraw.SendWithExceptionAsync(new WithdrawInput());
+        result.TransactionResult.Error.ShouldContain("Invalid claim ids.");
+
+        result = await UserEcoEarnRewardsContractStub.Withdraw.SendWithExceptionAsync(new WithdrawInput
+        {
+            ClaimIds = { }
+        });
+        result.TransactionResult.Error.ShouldContain("Invalid claim ids.");
+
+        result = await UserEcoEarnRewardsContractStub.Withdraw.SendWithExceptionAsync(new WithdrawInput
+        {
+            ClaimIds = { new Hash() }
+        });
+        result.TransactionResult.Error.ShouldContain("Invalid account.");
+
+        result = await UserEcoEarnRewardsContractStub.Withdraw.SendWithExceptionAsync(new WithdrawInput
+        {
+            ClaimIds = { new Hash() },
+            Account = new Address()
+        });
+        result.TransactionResult.Error.ShouldContain("Invalid account.");
+
+        result = await UserEcoEarnRewardsContractStub.Withdraw.SendWithExceptionAsync(new WithdrawInput
+        {
+            ClaimIds = { new Hash() },
+            Account = DefaultAddress
+        });
+        result.TransactionResult.Error.ShouldContain("Invalid amount.");
+
+        result = await UserEcoEarnRewardsContractStub.Withdraw.SendWithExceptionAsync(new WithdrawInput
+        {
+            ClaimIds = { new Hash() },
+            Account = DefaultAddress,
+            Amount = 1
+        });
+        result.TransactionResult.Error.ShouldContain("Invalid seed.");
+
+        result = await UserEcoEarnRewardsContractStub.Withdraw.SendWithExceptionAsync(new WithdrawInput
+        {
+            ClaimIds = { new Hash() },
+            Account = DefaultAddress,
+            Amount = 1,
+            Seed = new Hash()
+        });
+        result.TransactionResult.Error.ShouldContain("Invalid seed.");
+
+        result = await UserEcoEarnRewardsContractStub.Withdraw.SendWithExceptionAsync(new WithdrawInput
+        {
+            ClaimIds = { new Hash() },
+            Account = DefaultAddress,
+            Amount = 1,
+            Seed = seed
+        });
+        result.TransactionResult.Error.ShouldContain("Invalid dapp id.");
+
+        result = await UserEcoEarnRewardsContractStub.Withdraw.SendWithExceptionAsync(new WithdrawInput
+        {
+            ClaimIds = { new Hash() },
+            Account = DefaultAddress,
+            Amount = 1,
+            Seed = seed,
+            DappId = new Hash()
+        });
+        result.TransactionResult.Error.ShouldContain("Invalid dapp id.");
+
+        result = await UserEcoEarnRewardsContractStub.Withdraw.SendWithExceptionAsync(new WithdrawInput
+        {
+            ClaimIds = { new Hash() },
+            Account = DefaultAddress,
+            Amount = 1,
+            Seed = seed,
+            DappId = HashHelper.ComputeFrom("test")
+        });
+        result.TransactionResult.Error.ShouldContain("Dapp id not exists.");
+
+        result = await UserEcoEarnRewardsContractStub.Withdraw.SendWithExceptionAsync(new WithdrawInput
+        {
+            ClaimIds = { new Hash() },
+            Account = DefaultAddress,
+            Amount = 1,
+            Seed = seed,
+            DappId = _appId
+        });
+        result.TransactionResult.Error.ShouldContain("Invalid expiration time.");
+
+        result = await UserEcoEarnRewardsContractStub.Withdraw.SendWithExceptionAsync(new WithdrawInput
+        {
+            ClaimIds = { new Hash() },
+            Account = DefaultAddress,
+            Amount = 1,
+            Seed = seed,
+            DappId = _appId,
+            ExpirationTime = BlockTimeProvider.GetBlockTime().AddSeconds(-1).Seconds
+        });
+        result.TransactionResult.Error.ShouldContain("Invalid signature.");
+
+        result = await UserEcoEarnRewardsContractStub.Withdraw.SendWithExceptionAsync(new WithdrawInput
+        {
+            ClaimIds = { new Hash() },
+            Account = DefaultAddress,
+            Amount = 1,
+            Seed = seed,
+            DappId = _appId,
+            ExpirationTime = BlockTimeProvider.GetBlockTime().AddSeconds(-1).Seconds,
+            Signature = ByteString.Empty
+        });
+        result.TransactionResult.Error.ShouldContain("Invalid signature.");
+
+        result = await UserEcoEarnRewardsContractStub.Withdraw.SendWithExceptionAsync(new WithdrawInput
+        {
+            ClaimIds = { new Hash() },
+            Account = DefaultAddress,
+            Amount = 1,
+            Seed = seed,
+            DappId = _appId,
+            ExpirationTime = BlockTimeProvider.GetBlockTime().AddSeconds(-1).Seconds,
+            Signature = Hash.Empty.ToByteString()
+        });
+        result.TransactionResult.Error.ShouldContain("Signature expired.");
+
+        result = await UserEcoEarnRewardsContractStub.Withdraw.SendWithExceptionAsync(new WithdrawInput
+        {
+            ClaimIds = { new Hash() },
+            Account = DefaultAddress,
+            Amount = 1,
+            Seed = seed,
+            DappId = _appId,
+            ExpirationTime = expirationTime,
+            Signature = Hash.Empty.ToByteString()
+        });
+        result.TransactionResult.Error.ShouldContain("Invalid signature.");
+
+        result = await UserEcoEarnRewardsContractStub.Withdraw.SendWithExceptionAsync(new WithdrawInput
+        {
+            ClaimIds = { new Hash() },
+            Account = DefaultAddress,
+            Amount = 1,
+            Seed = seed,
+            ExpirationTime = expirationTime,
+            Signature = GenerateSignature(DefaultKeyPair.PrivateKey, new List<Hash> { new Hash() }, 1, DefaultAddress,
+                seed, expirationTime, _appId),
+            DappId = _appId
+        });
+        result.TransactionResult.Error.ShouldContain("Invalid claim id.");
+
+        result = await UserEcoEarnRewardsContractStub.Withdraw.SendWithExceptionAsync(new WithdrawInput
+        {
+            ClaimIds = { HashHelper.ComputeFrom("test") },
+            Account = DefaultAddress,
+            Amount = 1,
+            Seed = seed,
+            ExpirationTime = expirationTime,
+            Signature = GenerateSignature(DefaultKeyPair.PrivateKey, new List<Hash> { HashHelper.ComputeFrom("test") },
+                1, DefaultAddress, seed, expirationTime, _appId),
+            DappId = _appId
+        });
+        result.TransactionResult.Error.ShouldContain("Claim id not exists.");
+
+        result = await UserEcoEarnRewardsContractStub.Withdraw.SendWithExceptionAsync(new WithdrawInput
+        {
+            ClaimIds = { claimIds },
+            Account = DefaultAddress,
+            Amount = 10000_00000000,
+            Seed = seed,
+            ExpirationTime = expirationTime,
+            Signature = GenerateSignature(DefaultKeyPair.PrivateKey, claimIds, 10000_00000000, DefaultAddress,
+                seed, expirationTime, _appId),
+            DappId = _appId
+        });
+        result.TransactionResult.Error.ShouldContain("Amount too much.");
+    }
 
     [Fact]
     public async Task EarlyStakeTests()
@@ -389,7 +398,7 @@ public partial class EcoEarnRewardsContractTests
 
         SetBlockTime(10);
 
-        var claimIds = await Claim(poolId);
+        var claimIds = Claim(poolId).Result.Select(c => c.ClaimId).ToList();
 
         var stakeInput = new StakeInput
         {
@@ -430,6 +439,332 @@ public partial class EcoEarnRewardsContractTests
         var stakeInfo = await EcoEarnTokensContractStub.GetStakeInfo.CallAsync(log.StakeId);
         stakeInfo.IsInUnlockWindow.ShouldBeFalse();
         stakeInfo.StakeInfo.StakingPeriod.ShouldBe(110);
+    }
+
+    [Fact]
+    public async Task EarlyStakeTests_Fail()
+    {
+        const long tokenBalance = 5_00000000;
+        var seed = HashHelper.ComputeFrom("seed");
+        var expirationTime = BlockTimeProvider.GetBlockTime().AddDays(1).Seconds;
+
+        var poolId = await CreateTokensPool();
+        _ = await Stake(poolId, tokenBalance);
+        SetBlockTime(10);
+        var claimIds = Claim(poolId).Result.Select(c => c.ClaimId).ToList();
+
+        var result = await UserEcoEarnRewardsContractStub.EarlyStake.SendWithExceptionAsync(new EarlyStakeInput());
+        result.TransactionResult.Error.ShouldContain("Invalid stake input.");
+
+        result = await UserEcoEarnRewardsContractStub.EarlyStake.SendWithExceptionAsync(new EarlyStakeInput
+        {
+            StakeInput = new StakeInput()
+        });
+        result.TransactionResult.Error.ShouldContain("Invalid claim ids.");
+
+        result = await UserEcoEarnRewardsContractStub.EarlyStake.SendWithExceptionAsync(new EarlyStakeInput
+        {
+            StakeInput = new StakeInput
+            {
+                ClaimIds = { }
+            }
+        });
+        result.TransactionResult.Error.ShouldContain("Invalid claim ids.");
+
+        result = await UserEcoEarnRewardsContractStub.EarlyStake.SendWithExceptionAsync(new EarlyStakeInput
+        {
+            StakeInput = new StakeInput
+            {
+                ClaimIds = { new Hash() }
+            }
+        });
+        result.TransactionResult.Error.ShouldContain("Invalid account.");
+
+        result = await UserEcoEarnRewardsContractStub.EarlyStake.SendWithExceptionAsync(new EarlyStakeInput
+        {
+            StakeInput = new StakeInput
+            {
+                ClaimIds = { new Hash() },
+                Account = new Address()
+            }
+        });
+        result.TransactionResult.Error.ShouldContain("Invalid account.");
+
+        result = await UserEcoEarnRewardsContractStub.EarlyStake.SendWithExceptionAsync(new EarlyStakeInput
+        {
+            StakeInput = new StakeInput
+            {
+                ClaimIds = { new Hash() },
+                Account = DefaultAddress
+            }
+        });
+        result.TransactionResult.Error.ShouldContain("Invalid amount.");
+
+        result = await UserEcoEarnRewardsContractStub.EarlyStake.SendWithExceptionAsync(new EarlyStakeInput
+        {
+            StakeInput = new StakeInput
+            {
+                ClaimIds = { new Hash() },
+                Account = DefaultAddress,
+                Amount = 1000000_00000000
+            }
+        });
+        result.TransactionResult.Error.ShouldContain("Invalid seed.");
+
+        result = await UserEcoEarnRewardsContractStub.EarlyStake.SendWithExceptionAsync(new EarlyStakeInput
+        {
+            StakeInput = new StakeInput
+            {
+                ClaimIds = { new Hash() },
+                Account = DefaultAddress,
+                Amount = 1000000_00000000,
+                Seed = new Hash()
+            }
+        });
+        result.TransactionResult.Error.ShouldContain("Invalid seed.");
+
+        result = await UserEcoEarnRewardsContractStub.EarlyStake.SendWithExceptionAsync(new EarlyStakeInput
+        {
+            StakeInput = new StakeInput
+            {
+                ClaimIds = { new Hash() },
+                Account = DefaultAddress,
+                Amount = 1000000_00000000,
+                Seed = HashHelper.ComputeFrom("test")
+            }
+        });
+        result.TransactionResult.Error.ShouldContain("Invalid pool id.");
+
+        result = await UserEcoEarnRewardsContractStub.EarlyStake.SendWithExceptionAsync(new EarlyStakeInput
+        {
+            StakeInput = new StakeInput
+            {
+                ClaimIds = { new Hash() },
+                Account = DefaultAddress,
+                Amount = 1000000_00000000,
+                Seed = HashHelper.ComputeFrom("test"),
+                PoolId = new Hash()
+            }
+        });
+        result.TransactionResult.Error.ShouldContain("Invalid pool id.");
+
+        result = await UserEcoEarnRewardsContractStub.EarlyStake.SendWithExceptionAsync(new EarlyStakeInput
+        {
+            StakeInput = new StakeInput
+            {
+                ClaimIds = { new Hash() },
+                Account = DefaultAddress,
+                Amount = 1000000_00000000,
+                Seed = HashHelper.ComputeFrom("test"),
+                PoolId = HashHelper.ComputeFrom("test")
+            }
+        });
+        result.TransactionResult.Error.ShouldContain("Invalid period.");
+
+        result = await UserEcoEarnRewardsContractStub.EarlyStake.SendWithExceptionAsync(new EarlyStakeInput
+        {
+            StakeInput = new StakeInput
+            {
+                ClaimIds = { new Hash() },
+                Account = DefaultAddress,
+                Amount = 1000000_00000000,
+                Seed = HashHelper.ComputeFrom("test"),
+                PoolId = HashHelper.ComputeFrom("test"),
+                Period = 1
+            }
+        });
+        result.TransactionResult.Error.ShouldContain("Invalid dapp id.");
+
+        result = await UserEcoEarnRewardsContractStub.EarlyStake.SendWithExceptionAsync(new EarlyStakeInput
+        {
+            StakeInput = new StakeInput
+            {
+                ClaimIds = { new Hash() },
+                Account = DefaultAddress,
+                Amount = 1000000_00000000,
+                Seed = HashHelper.ComputeFrom("test"),
+                PoolId = HashHelper.ComputeFrom("test"),
+                Period = 1,
+                DappId = new Hash()
+            }
+        });
+        result.TransactionResult.Error.ShouldContain("Invalid dapp id.");
+
+        result = await UserEcoEarnRewardsContractStub.EarlyStake.SendWithExceptionAsync(new EarlyStakeInput
+        {
+            StakeInput = new StakeInput
+            {
+                ClaimIds = { new Hash() },
+                Account = DefaultAddress,
+                Amount = 1000000_00000000,
+                Seed = HashHelper.ComputeFrom("test"),
+                PoolId = HashHelper.ComputeFrom("test"),
+                Period = 1,
+                DappId = HashHelper.ComputeFrom("test")
+            }
+        });
+        result.TransactionResult.Error.ShouldContain("Invalid longest release time.");
+
+        result = await UserEcoEarnRewardsContractStub.EarlyStake.SendWithExceptionAsync(new EarlyStakeInput
+        {
+            StakeInput = new StakeInput
+            {
+                ClaimIds = { new Hash() },
+                Account = DefaultAddress,
+                Amount = 1000000_00000000,
+                Seed = HashHelper.ComputeFrom("test"),
+                PoolId = HashHelper.ComputeFrom("test"),
+                Period = 1,
+                DappId = HashHelper.ComputeFrom("test"),
+                LongestReleaseTime = 1
+            }
+        });
+        result.TransactionResult.Error.ShouldContain("No permission.");
+
+        result = await UserEcoEarnRewardsContractStub.EarlyStake.SendWithExceptionAsync(new EarlyStakeInput
+        {
+            StakeInput = new StakeInput
+            {
+                ClaimIds = { new Hash() },
+                Account = UserAddress,
+                Amount = 1000000_00000000,
+                Seed = HashHelper.ComputeFrom("test"),
+                PoolId = poolId,
+                Period = 1,
+                DappId = HashHelper.ComputeFrom("test"),
+                LongestReleaseTime = 1
+            }
+        });
+        result.TransactionResult.Error.ShouldContain("Dapp id not exists.");
+
+        result = await UserEcoEarnRewardsContractStub.EarlyStake.SendWithExceptionAsync(new EarlyStakeInput
+        {
+            StakeInput = new StakeInput
+            {
+                ClaimIds = { new Hash() },
+                Account = UserAddress,
+                Amount = 1000000_00000000,
+                Seed = HashHelper.ComputeFrom("test"),
+                PoolId = poolId,
+                Period = 1,
+                DappId = _appId,
+                LongestReleaseTime = 1
+            }
+        });
+        result.TransactionResult.Error.ShouldContain("Invalid expiration time.");
+
+        result = await UserEcoEarnRewardsContractStub.EarlyStake.SendWithExceptionAsync(new EarlyStakeInput
+        {
+            StakeInput = new StakeInput
+            {
+                ClaimIds = { new Hash() },
+                Account = UserAddress,
+                Amount = 1000000_00000000,
+                Seed = HashHelper.ComputeFrom("test"),
+                PoolId = poolId,
+                Period = 1,
+                DappId = _appId,
+                LongestReleaseTime = 1,
+                ExpirationTime = 1
+            }
+        });
+        result.TransactionResult.Error.ShouldContain("Invalid signature.");
+
+        result = await UserEcoEarnRewardsContractStub.EarlyStake.SendWithExceptionAsync(new EarlyStakeInput
+        {
+            StakeInput = new StakeInput
+            {
+                ClaimIds = { new Hash() },
+                Account = UserAddress,
+                Amount = 1000000_00000000,
+                Seed = HashHelper.ComputeFrom("test"),
+                PoolId = poolId,
+                Period = 1,
+                DappId = _appId,
+                LongestReleaseTime = 1,
+                ExpirationTime = 1
+            },
+            Signature = Hash.Empty.ToByteString()
+        });
+        result.TransactionResult.Error.ShouldContain("Signature expired.");
+
+        result = await UserEcoEarnRewardsContractStub.EarlyStake.SendWithExceptionAsync(new EarlyStakeInput
+        {
+            StakeInput = new StakeInput
+            {
+                ClaimIds = { new Hash() },
+                Account = UserAddress,
+                Amount = 1000000_00000000,
+                Seed = HashHelper.ComputeFrom("test"),
+                PoolId = poolId,
+                Period = 1,
+                DappId = _appId,
+                LongestReleaseTime = 1,
+                ExpirationTime = BlockTimeProvider.GetBlockTime().AddDays(1).Seconds
+            },
+            Signature = Hash.Empty.ToByteString()
+        });
+        result.TransactionResult.Error.ShouldContain("Invalid signature.");
+
+        var stakeInput = new StakeInput
+        {
+            ClaimIds = { new Hash() },
+            Account = UserAddress,
+            Amount = 1000000_00000000,
+            Seed = HashHelper.ComputeFrom("test"),
+            PoolId = poolId,
+            Period = 1,
+            DappId = _appId,
+            LongestReleaseTime = 1,
+            ExpirationTime = BlockTimeProvider.GetBlockTime().AddDays(1).Seconds
+        };
+        
+        result = await UserEcoEarnRewardsContractStub.EarlyStake.SendWithExceptionAsync(new EarlyStakeInput
+        {
+            StakeInput = stakeInput,
+            Signature = GenerateSignature(DefaultKeyPair.PrivateKey, new EarlyStakeInput { StakeInput = stakeInput })
+        });
+        result.TransactionResult.Error.ShouldContain("Invalid claim id.");
+        
+        stakeInput = new StakeInput
+        {
+            ClaimIds = { HashHelper.ComputeFrom("test") },
+            Account = UserAddress,
+            Amount = 1000000_00000000,
+            Seed = HashHelper.ComputeFrom("test"),
+            PoolId = poolId,
+            Period = 1,
+            DappId = _appId,
+            LongestReleaseTime = 1,
+            ExpirationTime = BlockTimeProvider.GetBlockTime().AddDays(1).Seconds
+        };
+        
+        result = await UserEcoEarnRewardsContractStub.EarlyStake.SendWithExceptionAsync(new EarlyStakeInput
+        {
+            StakeInput = stakeInput,
+            Signature = GenerateSignature(DefaultKeyPair.PrivateKey, new EarlyStakeInput { StakeInput = stakeInput })
+        });
+        result.TransactionResult.Error.ShouldContain("Claim id not exists.");
+        
+        stakeInput = new StakeInput
+        {
+            ClaimIds = { claimIds },
+            Account = UserAddress,
+            Amount = 1000000_00000000,
+            Seed = HashHelper.ComputeFrom("test"),
+            PoolId = poolId,
+            Period = 1,
+            DappId = _appId,
+            LongestReleaseTime = 1,
+            ExpirationTime = BlockTimeProvider.GetBlockTime().AddDays(1).Seconds
+        };
+        
+        result = await UserEcoEarnRewardsContractStub.EarlyStake.SendWithExceptionAsync(new EarlyStakeInput
+        {
+            StakeInput = stakeInput,
+            Signature = GenerateSignature(DefaultKeyPair.PrivateKey, new EarlyStakeInput { StakeInput = stakeInput })
+        });
+        result.TransactionResult.Error.ShouldContain("Amount too much.");
     }
 
     private async Task<Hash> CreateTokensPool()
@@ -499,12 +834,12 @@ public partial class EcoEarnRewardsContractTests
         return GetLogEvent<Staked>(result.TransactionResult).StakeInfo;
     }
 
-    private async Task<List<Hash>> Claim(Hash poolId)
+    private async Task<List<ClaimInfo>> Claim(Hash poolId)
     {
         var result = await UserEcoEarnTokensContractStub.Claim.SendAsync(poolId);
         result.TransactionResult.Status.ShouldBe(TransactionResultStatus.Mined);
 
-        return GetLogEvent<Claimed>(result.TransactionResult, 1).ClaimInfos.Data.Select(c => c.ClaimId).ToList();
+        return GetLogEvent<Claimed>(result.TransactionResult, 1).ClaimInfos.Data.ToList();
     }
 
     private ByteString GenerateSignature(byte[] privateKey, List<Hash> claimIds, long amount, Address account,

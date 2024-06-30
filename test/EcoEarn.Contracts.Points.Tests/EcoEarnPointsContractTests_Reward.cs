@@ -363,7 +363,7 @@ public partial class EcoEarnPointsContractTests
         result = await EcoEarnPointsContractStub.RecoverToken.SendWithExceptionAsync(new RecoverTokenInput
         {
             PoolId = poolId,
-            Token = "ELF"
+            Token = DefaultSymbol
         });
         result.TransactionResult.Error.ShouldContain("Invalid token.");
 

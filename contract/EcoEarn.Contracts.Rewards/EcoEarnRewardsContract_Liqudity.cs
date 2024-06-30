@@ -7,6 +7,7 @@ using AElf.Sdk.CSharp;
 using AElf.Types;
 using Awaken.Contracts.Swap;
 using EcoEarn.Contracts.Tokens;
+using Google.Protobuf;
 using Google.Protobuf.WellKnownTypes;
 using StringList = Awaken.Contracts.Swap.StringList;
 
@@ -19,7 +20,7 @@ public partial class EcoEarnRewardsContract
     public override Empty AddLiquidityAndStake(AddLiquidityAndStakeInput input)
     {
         Assert(input != null, "Invalid input.");
-        ValidateEarlyStakeInput(input!.StakeInput);
+        ValidateStakeInput(input!.StakeInput);
         Assert(input.TokenAMin > 0, "Invalid token A min.");
         Assert(input.TokenBMin > 0, "Invalid token B min.");
         Assert(input.Deadline != null, "Invalid deadline.");
@@ -127,22 +128,27 @@ public partial class EcoEarnRewardsContract
     public override Empty RemoveLiquidity(RemoveLiquidityInput input)
     {
         Assert(input != null, "Invalid input.");
-        Assert(input!.LiquidityIds != null && input.LiquidityIds.Count > 0, "Invalid liquidity ids.");
-        Assert(input.LpAmount > 0, "Invalid lp amount.");
+        ValidateLiquidityInput(input!.LiquidityInput);
         Assert(input.TokenAMin > 0, "Invalid token A min.");
         Assert(input.TokenBMin > 0, "Invalid token B min.");
-        Assert(IsHashValid(input.DappId), "Invalid dapp id.");
         Assert(input.Deadline != null, "Invalid deadline.");
 
-        // ValidateSignature(input.Signature, input.ExpirationTime);
+        var liquidityInput = input.LiquidityInput;
 
-        var liquidityInfo = GetLiquidityInfoFromLiquidityId(input.LiquidityIds!.FirstOrDefault());
+        ValidateSignature(input.Signature, liquidityInput.ExpirationTime);
 
+        var liquidityInfo = GetLiquidityInfoFromLiquidityId(liquidityInput.LiquidityIds.FirstOrDefault());
         CheckMaximumAmount(liquidityInfo.TokenAddress, liquidityInfo.DappId, liquidityInfo.RewardSymbol,
-            input.LpAmount);
+            liquidityInput.LpAmount);
 
-        PrepareRemoveLiquidity(liquidityInfo.LpSymbol, input.LpAmount,
-            CalculateUserAddressHash(input.DappId, Context.Sender),
+        var dappInfo = State.DappInfoMap[liquidityInput.DappId];
+        Assert(dappInfo != null, "Dapp id not exists.");
+        Assert(
+            RecoverAddressFromSignature(ComputeRemoveLiquidityHash(input), input.Signature) ==
+            dappInfo!.Config.UpdateAddress, "Signature not valid.");
+
+        PrepareRemoveLiquidity(liquidityInfo.LpSymbol, liquidityInput.LpAmount,
+            CalculateUserAddressHash(liquidityInput.DappId, Context.Sender),
             liquidityInfo.TokenAddress, liquidityInfo.SwapAddress, out var symbolA, out var symbolB, out var amountA,
             out var amountB);
 
@@ -156,12 +162,12 @@ public partial class EcoEarnRewardsContract
                 AmountBMin = symbolA == liquidityInfo.TokenASymbol ? input.TokenBMin : input.TokenAMin,
                 Deadline = input.Deadline,
                 To = Context.Self,
-                LiquidityRemove = input.LpAmount
+                LiquidityRemove = liquidityInput.LpAmount
             });
 
         State.TokenContract.Transfer.Send(new TransferInput
         {
-            To = CalculateUserAddress(input.DappId, Context.Sender),
+            To = CalculateUserAddress(liquidityInput.DappId, Context.Sender),
             Symbol = liquidityInfo.RewardSymbol,
             Amount = liquidityInfo.RewardSymbol == symbolA ? amountA : amountB
         });
@@ -177,13 +183,13 @@ public partial class EcoEarnRewardsContract
         {
             LiquidityIds = new HashList
             {
-                Data = { input.LiquidityIds }
+                Data = { liquidityInput.LiquidityIds }
             },
-            LpAmount = input.LpAmount,
+            LpAmount = liquidityInput.LpAmount,
             TokenAAmount = amountA,
             TokenBAmount = amountB,
-            // DappId = input.DappId,
-            // Seed = input.Seed
+            DappId = liquidityInput.DappId,
+            Seed = liquidityInput.Seed
         });
 
         return new Empty();
@@ -192,25 +198,32 @@ public partial class EcoEarnRewardsContract
     public override Empty StakeLiquidity(StakeLiquidityInput input)
     {
         Assert(input != null, "Invalid input.");
-        Assert(input!.LiquidityIds != null && input.LiquidityIds.Count > 0, "Invalid liquidity ids.");
+        ValidateLiquidityInput(input!.LiquidityInput);
         Assert(IsHashValid(input.PoolId), "Invalid pool id.");
-        Assert(input.LpAmount > 0, "Invalid lp amount.");
         Assert(input.Period > 0, "Invalid period.");
-        Assert(IsHashValid(input.DappId), "Invalid dapp id.");
-        // Assert(input.LongestReleaseTime > 0, "Invalid longest release time.");
-        // Assert(IsHashValid(input.Seed), "Invalid seed.");
+        Assert(input.LongestReleaseTime > 0, "Invalid longest release time.");
 
-        // ValidateSignature(input.Signature, input.ExpirationTime);
+        var liquidityInput = input.LiquidityInput;
+
+        ValidateSignature(input.Signature, liquidityInput.ExpirationTime);
+
+        var dappInfo = State.DappInfoMap[liquidityInput.DappId];
+        Assert(dappInfo != null, "Dapp id not exists.");
+        Assert(
+            RecoverAddressFromSignature(ComputeStakeLiquidityHash(input), input.Signature) ==
+            dappInfo!.Config.UpdateAddress, "Signature not valid.");
 
         var stakeId = GetStakeId(input.PoolId);
 
-        var liquidityInfo = GetLiquidityInfoFromLiquidityId(input.LiquidityIds!.FirstOrDefault());
-        CheckMaximumAmount(liquidityInfo.TokenAddress, input.DappId, liquidityInfo.LpSymbol, input.LpAmount);
+        var liquidityInfo = GetLiquidityInfoFromLiquidityId(liquidityInput.LiquidityIds.FirstOrDefault());
+        CheckMaximumAmount(liquidityInfo.TokenAddress, liquidityInput.DappId, liquidityInfo.LpSymbol,
+            liquidityInput.LpAmount);
 
-        Context.SendVirtualInline(CalculateUserAddressHash(input.DappId, Context.Sender), liquidityInfo.TokenAddress,
+        Context.SendVirtualInline(CalculateUserAddressHash(liquidityInput.DappId, Context.Sender),
+            liquidityInfo.TokenAddress,
             nameof(State.TokenContract.Transfer), new TransferInput
             {
-                Amount = input.LpAmount,
+                Amount = liquidityInput.LpAmount,
                 Symbol = liquidityInfo.LpSymbol,
                 To = Context.Self
             });
@@ -219,18 +232,18 @@ public partial class EcoEarnRewardsContract
         {
             Spender = State.EcoEarnTokensContract.Value,
             Symbol = liquidityInfo.LpSymbol,
-            Amount = input.LpAmount
+            Amount = liquidityInput.LpAmount
         });
 
         State.EcoEarnTokensContract.StakeFor.Send(new StakeForInput
         {
             PoolId = input.PoolId,
-            Amount = input.LpAmount,
+            Amount = liquidityInput.LpAmount,
             FromAddress = Context.Sender,
             Period = input.Period,
             LongestReleaseTime = new Timestamp
             {
-                Seconds = input.LongestReleaseTime.Seconds
+                Seconds = input.LongestReleaseTime
             }
         });
 
@@ -238,12 +251,13 @@ public partial class EcoEarnRewardsContract
         {
             LiquidityIds = new HashList
             {
-                Data = { input.LiquidityIds }
+                Data = { liquidityInput.LiquidityIds }
             },
-            Amount = input.LpAmount,
+            LpAmount = liquidityInput.LpAmount,
             PoolId = input.PoolId,
             Period = input.Period,
-            StakeId = stakeId
+            StakeId = stakeId,
+            Seed = liquidityInput.Seed
         });
 
         return new Empty();
@@ -489,6 +503,46 @@ public partial class EcoEarnRewardsContract
             Symbol = lpSymbol,
             Amount = amount
         });
+    }
+
+    private Hash ComputeAddLiquidityAndStakeHash(AddLiquidityAndStakeInput input)
+    {
+        return HashHelper.ComputeFrom(new AddLiquidityAndStakeInput
+        {
+            StakeInput = input.StakeInput,
+            TokenAMin = input.TokenAMin,
+            TokenBMin = input.TokenBMin
+        }.ToByteArray());
+    }
+
+    private Hash ComputeRemoveLiquidityHash(RemoveLiquidityInput input)
+    {
+        return HashHelper.ComputeFrom(new RemoveLiquidityInput
+        {
+            LiquidityInput = input.LiquidityInput,
+            TokenAMin = input.TokenAMin,
+            TokenBMin = input.TokenBMin
+        }.ToByteArray());
+    }
+
+    private Hash ComputeStakeLiquidityHash(StakeLiquidityInput input)
+    {
+        return HashHelper.ComputeFrom(new StakeLiquidityInput
+        {
+            LiquidityInput = input.LiquidityInput,
+            PoolId = input.PoolId,
+            Period = input.Period,
+            LongestReleaseTime = input.LongestReleaseTime
+        }.ToByteArray());
+    }
+
+    private void ValidateLiquidityInput(LiquidityInput input)
+    {
+        Assert(input != null, "Invalid liquidity input.");
+        Assert(input!.LiquidityIds != null && input.LiquidityIds.Count > 0, "Invalid liquidity ids.");
+        Assert(input.LpAmount > 0, "Invalid lp amount.");
+        Assert(IsHashValid(input.DappId), "Invalid dapp id.");
+        Assert(IsHashValid(input.Seed), "Invalid seed.");
     }
 
     #endregion

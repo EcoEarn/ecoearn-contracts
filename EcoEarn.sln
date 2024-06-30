@@ -31,6 +31,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "EcoEarn.Contracts.Rewards",
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "EcoEarn.Contracts.Rewards.Tests", "test\EcoEarn.Contracts.Rewards.Tests\EcoEarn.Contracts.Rewards.Tests.csproj", "{AA404DAF-5669-4194-99D9-78A0F9DA2E70}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "EcoEarn.Contracts.TestAwakenContract", "test\EcoEarn.Contracts.TestAwakenContract\EcoEarn.Contracts.TestAwakenContract.csproj", "{39E05755-A7C1-4933-B46B-2CE8A0936413}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -77,6 +79,10 @@ Global
 		{AA404DAF-5669-4194-99D9-78A0F9DA2E70}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{AA404DAF-5669-4194-99D9-78A0F9DA2E70}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{AA404DAF-5669-4194-99D9-78A0F9DA2E70}.Release|Any CPU.Build.0 = Release|Any CPU
+		{39E05755-A7C1-4933-B46B-2CE8A0936413}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{39E05755-A7C1-4933-B46B-2CE8A0936413}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{39E05755-A7C1-4933-B46B-2CE8A0936413}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{39E05755-A7C1-4933-B46B-2CE8A0936413}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -93,6 +99,7 @@ Global
 		{BB546D6D-A710-4BBC-83EE-ECAAFF536C96} = {DBC47323-E6A2-42A2-A624-CE2EE6139567}
 		{0175A035-1D32-4196-AA03-FB510ABFEC93} = {83F5DA0A-BC4D-4B34-859D-EB0E3FE0AD2A}
 		{AA404DAF-5669-4194-99D9-78A0F9DA2E70} = {DBC47323-E6A2-42A2-A624-CE2EE6139567}
+		{39E05755-A7C1-4933-B46B-2CE8A0936413} = {DBC47323-E6A2-42A2-A624-CE2EE6139567}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {D7426B41-E959-40E4-9ED8-ED8D9C50F133}

@@ -52,17 +52,16 @@ public partial class EcoEarnRewardsContract
     public override Empty Withdraw(WithdrawInput input)
     {
         ValidateWithdrawInput(input);
-        ValidateSignature(input.Signature, input.ExpirationTime);
-
+        
         var dappInfo = State.DappInfoMap[input.DappId];
         Assert(dappInfo != null, "Dapp id not exists.");
 
+        ValidateSignature(input.Signature, input.ExpirationTime);
         Assert(
             RecoverAddressFromSignature(ComputeWithdrawInputHash(input), input.Signature) ==
             dappInfo!.Config.UpdateAddress, "Signature not valid.");
 
         var claimInfo = GetClaimInfoFromClaimId(input.ClaimIds.FirstOrDefault());
-
         CheckMaximumAmount(State.TokenContract.Value, input.DappId, claimInfo.ClaimedSymbol, input.Amount);
 
         State.TokenContract.Transfer.VirtualSend(CalculateUserAddressHash(dappInfo.DappId, Context.Sender),
@@ -91,23 +90,23 @@ public partial class EcoEarnRewardsContract
     public override Empty EarlyStake(EarlyStakeInput input)
     {
         Assert(input != null, "Invalid input.");
-        ValidateEarlyStakeInput(input!.StakeInput);
+        ValidateStakeInput(input!.StakeInput);
 
         var stakeInput = input!.StakeInput;
-
-        ValidateSignature(input.Signature, stakeInput.ExpirationTime);
-
+        
         var stakeId = GetStakeId(stakeInput.PoolId);
 
         var dappInfo = State.DappInfoMap[stakeInput.DappId];
         Assert(dappInfo != null, "Dapp id not exists.");
 
+        ValidateSignature(input.Signature, stakeInput.ExpirationTime);
         Assert(
             RecoverAddressFromSignature(ComputeEarlyStakeInputHash(input), input.Signature) ==
             dappInfo!.Config.UpdateAddress, "Signature not valid.");
 
         var claimInfo = GetClaimInfoFromClaimId(stakeInput.ClaimIds.FirstOrDefault());
-        CheckMaximumAmount(State.TokenContract.Value, stakeInput.DappId, claimInfo.ClaimedSymbol, stakeInput.Amount);
+        CheckMaximumAmount(State.TokenContract.Value, stakeInput.DappId, claimInfo.ClaimedSymbol,
+            stakeInput.Amount);
 
         State.TokenContract.Transfer.VirtualSend(CalculateUserAddressHash(dappInfo.DappId, Context.Sender),
             new TransferInput
@@ -233,7 +232,7 @@ public partial class EcoEarnRewardsContract
         Assert(IsHashValid(input.DappId), "Invalid dapp id.");
     }
 
-    private void ValidateEarlyStakeInput(StakeInput input)
+    private void ValidateStakeInput(StakeInput input)
     {
         Assert(input != null, "Invalid stake input.");
         Assert(input!.ClaimIds != null && input.ClaimIds.Count > 0, "Invalid claim ids.");
@@ -242,6 +241,7 @@ public partial class EcoEarnRewardsContract
         Assert(IsHashValid(input.Seed), "Invalid seed.");
         Assert(IsHashValid(input.PoolId), "Invalid pool id.");
         Assert(input.Period > 0, "Invalid period.");
+        Assert(IsHashValid(input.DappId), "Invalid dapp id.");
         Assert(input.LongestReleaseTime > 0, "Invalid longest release time.");
         Assert(Context.Sender == input.Account, "No permission.");
     }
@@ -275,16 +275,6 @@ public partial class EcoEarnRewardsContract
         }.ToByteArray());
     }
 
-    private Hash ComputeAddLiquidityAndStakeHash(AddLiquidityAndStakeInput input)
-    {
-        return HashHelper.ComputeFrom(new AddLiquidityAndStakeInput
-        {
-            StakeInput = input.StakeInput,
-            TokenAMin = input.TokenAMin,
-            TokenBMin = input.TokenBMin
-        }.ToByteArray());
-    }
-
     private Hash GetStakeId(Hash poolId)
     {
         var stakeId = State.EcoEarnTokensContract.GetUserStakeId.Call(new GetUserStakeIdInput
@@ -293,9 +283,11 @@ public partial class EcoEarnRewardsContract
             Account = Context.Sender
         });
 
-        var output = State.EcoEarnTokensContract.GetStakeInfo.Call(stakeId);
-
-        if (IsHashValid(stakeId) && output.StakeInfo.UnlockTime == null) return stakeId;
+        if (IsHashValid(stakeId))
+        {
+            var output = State.EcoEarnTokensContract.GetStakeInfo.Call(stakeId);
+            if (output.StakeInfo.UnlockTime == null) return stakeId;
+        }
 
         var count = State.EcoEarnTokensContract.GetUserStakeCount.Call(new GetUserStakeCountInput
         {

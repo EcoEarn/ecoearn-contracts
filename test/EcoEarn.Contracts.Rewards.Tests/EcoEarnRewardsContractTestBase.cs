@@ -8,6 +8,7 @@ using AElf.Kernel;
 using AElf.Standards.ACS0;
 using AElf.Types;
 using EcoEarn.Contracts.Points;
+using EcoEarn.Contracts.TestAwakenContract;
 using EcoEarn.Contracts.TestPointsContract;
 using EcoEarn.Contracts.Tokens;
 using Google.Protobuf;
@@ -21,6 +22,7 @@ public class EcoEarnRewardsContractTestBase : DAppContractTestBase<EcoEarnReward
     internal TokenContractContainer.TokenContractStub TokenContractStub { get; set; }
     internal TokenContractContainer.TokenContractStub UserTokenContractStub { get; set; }
     internal Address PointsContractAddress { get; set; }
+    internal Address AwakenContractAddress { get; set; }
     internal Address EcoEarnTokensContractAddress { get; set; }
     internal Address EcoEarnPointsContractAddress { get; set; }
     internal Address EcoEarnRewardsContractAddress { get; set; }
@@ -32,6 +34,7 @@ public class EcoEarnRewardsContractTestBase : DAppContractTestBase<EcoEarnReward
 
 
     internal TestPointsContractContainer.TestPointsContractStub PointsContractStub { get; set; }
+    internal TestAwakenContractContainer.TestAwakenContractStub AwakenContractStub { get; set; }
 
     protected ECKeyPair DefaultKeyPair => Accounts[0].KeyPair;
     protected Address DefaultAddress => Accounts[0].Address;
@@ -105,6 +108,18 @@ public class EcoEarnRewardsContractTestBase : DAppContractTestBase<EcoEarnReward
         PointsContractAddress = Address.Parser.ParseFrom(result.TransactionResult.ReturnValue);
         PointsContractStub =
             GetContractStub<TestPointsContractContainer.TestPointsContractStub>(PointsContractAddress, DefaultKeyPair);
+        
+        result = AsyncHelper.RunSync(async () => await ZeroContractStub.DeploySmartContract.SendAsync(
+            new ContractDeploymentInput
+            {
+                Category = KernelConstants.CodeCoverageRunnerCategory,
+                Code = ByteString.CopyFrom(
+                    File.ReadAllBytes(typeof(TestAwakenContract.TestAwakenContract).Assembly.Location))
+            }));
+
+        AwakenContractAddress = Address.Parser.ParseFrom(result.TransactionResult.ReturnValue);
+        AwakenContractStub =
+            GetContractStub<TestAwakenContractContainer.TestAwakenContractStub>(PointsContractAddress, DefaultKeyPair);
     }
 
     internal T GetContractStub<T>(Address contractAddress, ECKeyPair senderKeyPair) where T : ContractStubBase, new()
