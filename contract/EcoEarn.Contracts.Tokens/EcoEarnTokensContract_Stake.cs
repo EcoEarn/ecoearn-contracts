@@ -270,7 +270,7 @@ public partial class EcoEarnTokensContract
     {
         if (accTokenPerShare == null) return 0;
         long.TryParse(accTokenPerShare.Mul(amount).Div(precisionFactor).Value, out var result);
-        return result < 0 ? 0 : result;
+        return result;
     }
 
     private void ProcessStake(PoolInfo poolInfo, StakeInfo stakeInfo, long stakedAmount, long earlyStakedAmount,
@@ -442,7 +442,7 @@ public partial class EcoEarnTokensContract
         // add position
         else
         {
-            Assert(stakeInfo.SubStakeInfos.Count < State.Config.Value.MaximumPositionAmount,
+            Assert(stakeInfo.SubStakeInfos.Count < State.Config.Value.MaximumPositionCount,
                 "Position exceed maximum.");
 
             boostedAmount = CalculateBoostedAmount(poolInfo.Config, amount, period);

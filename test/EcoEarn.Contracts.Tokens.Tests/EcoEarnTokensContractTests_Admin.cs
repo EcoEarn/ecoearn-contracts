@@ -19,7 +19,7 @@ public partial class EcoEarnTokensContractTests : EcoEarnTokensContractTestBase
             Admin = UserAddress,
             EcoearnPointsContract = DefaultAddress,
             EcoearnRewardsContract = DefaultAddress,
-            MaximumPositionAmount = 100
+            MaximumPositionCount = 100
         };
 
         var result = await EcoEarnTokensContractStub.Initialize.SendAsync(input);
@@ -31,7 +31,7 @@ public partial class EcoEarnTokensContractTests : EcoEarnTokensContractTestBase
         var config = await EcoEarnTokensContractStub.GetConfig.CallAsync(new Empty());
         config.CommissionRate.ShouldBe(100);
         config.Recipient.ShouldBe(User2Address);
-        config.MaximumPositionAmount.ShouldBe(100);
+        config.MaximumPositionCount.ShouldBe(100);
         config.IsRegisterRestricted.ShouldBeFalse();
 
         // initialize twice
@@ -48,7 +48,7 @@ public partial class EcoEarnTokensContractTests : EcoEarnTokensContractTestBase
             CommissionRate = 100,
             EcoearnPointsContract = DefaultAddress,
             EcoearnRewardsContract = DefaultAddress,
-            MaximumPositionAmount = 1
+            MaximumPositionCount = 1
         };
 
         var result = await EcoEarnTokensContractStub.Initialize.SendAsync(input);
@@ -243,7 +243,7 @@ public partial class EcoEarnTokensContractTests : EcoEarnTokensContractTestBase
             EcoearnPointsContract = EcoEarnPointsContractAddress,
             EcoearnRewardsContract = EcoEarnRewardsContractAddress,
             IsRegisterRestricted = true,
-            MaximumPositionAmount = 100
+            MaximumPositionCount = 100
         });
     }
 }

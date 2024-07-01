@@ -238,14 +238,14 @@ message InitializeInput {
   int64 commission_rate = 4;
   aelf.Address recipient = 5;
   bool is_register_restricted = 6;
-  int64 maximum_position_amount = 7;
+  int64 maximum_position_count = 7;
 }
 
 message Config {
   int64 commission_rate = 1;
   aelf.Address recipient = 2;
   bool is_register_restricted = 3;
-  int64 maximum_position_amount = 4;
+  int64 maximum_position_count = 4;
 }
 
 message SetDappAdminInput {

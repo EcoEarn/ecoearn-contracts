@@ -113,7 +113,7 @@ public partial class EcoEarnRewardsContractTests : EcoEarnRewardsContractTestBas
             EcoearnPointsContract = EcoEarnPointsContractAddress,
             EcoearnRewardsContract = EcoEarnRewardsContractAddress,
             IsRegisterRestricted = true,
-            MaximumPositionAmount = 100
+            MaximumPositionCount = 100
         });
         await PointsContractStub.Initialize.SendAsync(new TestPointsContract.InitializeInput
         {
