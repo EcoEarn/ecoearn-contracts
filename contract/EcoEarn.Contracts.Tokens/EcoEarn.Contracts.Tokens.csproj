@@ -23,6 +23,9 @@
         <ContractReference Include="..\..\protobuf\ecoearn_points.proto">
             <Link>Protobuf\Proto\ecoearn_points.proto</Link>
         </ContractReference>
+        <ContractReference Include="..\..\protobuf\ecoearn_rewards.proto">
+            <Link>Protobuf\Proto\ecoearn_rewards.proto</Link>
+        </ContractReference>
     </ItemGroup>
     <ItemGroup>
         <ContractBase Include="..\..\protobuf\acs12.proto">
