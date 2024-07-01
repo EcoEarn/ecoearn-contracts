@@ -117,7 +117,7 @@ public partial class EcoEarnTokensContractTests : EcoEarnTokensContractTestBase
             CommissionRate = 0,
             Recipient = DefaultAddress
         });
-        result.TransactionResult.Error.ShouldContain("Invalid maximum position amount.");
+        result.TransactionResult.Error.ShouldContain("Invalid maximum position count.");
 
         // sender != author
         result = await EcoEarnTokensContractUserStub.Initialize.SendWithExceptionAsync(new InitializeInput
