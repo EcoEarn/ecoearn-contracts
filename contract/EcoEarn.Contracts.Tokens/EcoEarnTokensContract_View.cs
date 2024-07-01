@@ -123,6 +123,12 @@ public partial class EcoEarnTokensContract
 
         rewardInfo.Symbol = poolInfo.Config.RewardToken;
 
+        if (stakeInfo.UnlockTime != null)
+        {
+            rewardInfo.Amount = 0;
+            return rewardInfo;
+        }
+
         var blockTime = Context.CurrentBlockTime;
 
         if (blockTime >= poolData.LastRewardTime && poolData.TotalStakedAmount != 0)

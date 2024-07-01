@@ -179,11 +179,12 @@ public partial class EcoEarnTokensContract
         var stakeInfo = existId == null ? null : State.StakeInfoMap[existId];
 
         var remainTime = CalculateRemainTime(stakeInfo, poolInfo.Config.UnlockWindowDuration);
+        Assert(Context.CurrentBlockTime.AddSeconds(remainTime.Add(input.Period)) > input.LongestReleaseTime,
+            "Period not enough.");
+        
         if (stakeInfo != null && stakeInfo.UnlockTime == null)
         {
             Assert(!IsInUnlockWindow(stakeInfo, remainTime), "Cannot stake during unlock window.");
-            Assert(Context.CurrentBlockTime.AddSeconds(remainTime.Add(input.Period)) > input.LongestReleaseTime,
-                "Period not enough.");
         }
 
         Context.SendInline(poolInfo.Config.StakeTokenContract, nameof(State.TokenContract.TransferFrom),
@@ -365,6 +366,7 @@ public partial class EcoEarnTokensContract
 
             subStakeInfo.StakedAmount = 0;
             subStakeInfo.EarlyStakedAmount = 0;
+            subStakeInfo.BoostedAmount = 0;
         }
 
         var poolData = State.PoolDataMap[stakeInfo.PoolId];
