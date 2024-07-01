@@ -138,7 +138,7 @@ public partial class EcoEarnRewardsContract
         ValidateSignature(input.Signature, liquidityInput.ExpirationTime);
 
         var liquidityInfo = GetLiquidityInfoFromLiquidityId(liquidityInput.LiquidityIds.FirstOrDefault());
-        CheckMaximumAmount(liquidityInfo.TokenAddress, liquidityInfo.DappId, liquidityInfo.RewardSymbol,
+        CheckMaximumAmount(liquidityInfo.TokenAddress, liquidityInfo.DappId, liquidityInfo.LpSymbol,
             liquidityInput.LpAmount);
 
         var dappInfo = State.DappInfoMap[liquidityInput.DappId];
@@ -186,8 +186,8 @@ public partial class EcoEarnRewardsContract
                 Data = { liquidityInput.LiquidityIds }
             },
             LpAmount = liquidityInput.LpAmount,
-            TokenAAmount = amountA,
-            TokenBAmount = amountB,
+            TokenAAmount = symbolA == liquidityInfo.TokenASymbol ? amountA : amountB,
+            TokenBAmount = symbolA == liquidityInfo.TokenASymbol ? amountB : amountA,
             DappId = liquidityInput.DappId,
             Seed = liquidityInput.Seed
         });
