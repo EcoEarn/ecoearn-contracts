@@ -1,0 +1,144 @@
+// the version of the language, use proto3 for contracts
+syntax = "proto3";
+
+import "aelf/core.proto";
+import "aelf/options.proto";
+import "acs12.proto";
+import "google/protobuf/timestamp.proto";
+
+option csharp_namespace = "EcoEarn.Contracts.TestAwakenContract";
+
+service TestAwakenContract {
+  option (aelf.base) = "acs12.proto";
+  option (aelf.csharp_state) = "EcoEarn.Contracts.TestAwakenContract.TestAwakenContractState";
+
+  rpc GetTokenInfo (GetTokenInfoInput) returns (TokenInfo) {option (aelf.is_view) = true;}
+  rpc Approve (ApproveInput) returns (google.protobuf.Empty) {}
+  rpc Transfer (TransferInput) returns (google.protobuf.Empty) {}
+  rpc TransferFrom (TransferFromInput) returns (google.protobuf.Empty) {}
+  rpc GetBalance (GetBalanceInput) returns (GetBalanceOutput) {option (aelf.is_view) = true;}
+
+  rpc AddLiquidity (AddLiquidityInput) returns (AddLiquidityOutput) {}
+  rpc RemoveLiquidity (RemoveLiquidityInput) returns (RemoveLiquidityOutput) {}
+  rpc GetReserves (GetReservesInput) returns (GetReservesOutput) {option (aelf.is_view) = true;}
+  rpc GetTotalSupply (StringList) returns (GetTotalSupplyOutput) {option (aelf.is_view) = true;}
+  rpc Quote (QuoteInput) returns (google.protobuf.Int64Value) {option (aelf.is_view) = true;}
+}
+
+message InitializeInput {
+  string points_name = 1;
+}
+
+message GetTokenInfoInput {
+  string symbol = 1;
+}
+
+message TokenInfo {
+  string symbol = 1;
+  int32 decimals = 2;
+}
+
+message AddLiquidityInput {
+  string symbol_a = 1;
+  string symbol_b = 2;
+  int64 amount_a_desired = 3;
+  int64 amount_b_desired = 4;
+  int64 amount_a_min = 5;
+  int64 amount_b_min = 6;
+  aelf.Address to = 7;
+  google.protobuf.Timestamp deadline = 8;
+  string channel = 9;
+}
+
+message RemoveLiquidityInput {
+  string symbol_a = 1;
+  string symbol_b = 2;
+  int64 amount_a_min = 3;
+  int64 amount_b_min = 4;
+  int64 liquidity_remove = 5;
+  aelf.Address to = 6;
+  google.protobuf.Timestamp deadline = 7;
+}
+
+message AddLiquidityOutput {
+  string symbol_a = 1;
+  string symbol_b = 2;
+  int64 amount_a = 3;
+  int64 amount_b = 4;
+  int64 liquidity_token = 5;
+}
+
+message RemoveLiquidityOutput {
+  int64 amount_a = 1;
+  int64 amount_b = 2;
+  string symbol_a = 3;
+  string symbol_b = 4;
+}
+
+message GetReservesInput {
+  repeated string symbol_pair =1;
+}
+
+message StringList {
+  repeated string value = 1;
+}
+
+message QuoteInput {
+  string symbol_a = 1;
+  string symbol_b = 2;
+  int64 amount_a = 3;
+}
+
+message GetReservesOutput {
+  repeated ReservePairResult results=1;
+}
+
+message ReservePairResult {
+  string symbol_pair=1;
+  string symbol_a=2;
+  string symbol_b=3;
+  int64 reserve_a =4;
+  int64 reserve_b=5;
+  int64 block_timestamp_last=6;
+}
+
+message GetTotalSupplyOutput {
+  repeated TotalSupplyResult results=1;
+}
+
+message TotalSupplyResult{
+  string symbol_pair = 1;
+  int64 total_supply = 2;
+}
+
+message ApproveInput {
+  aelf.Address spender = 1;
+  string symbol = 2;
+  int64 amount = 3;
+}
+
+message TransferInput {
+  aelf.Address to = 1;
+  string symbol = 2;
+  int64 amount = 3;
+  string memo = 4;
+}
+
+message TransferFromInput {
+  aelf.Address from = 1;
+  aelf.Address to = 2;
+  string symbol = 3;
+  int64 amount = 4;
+  string memo = 5;
+}
+
+message GetBalanceInput {
+  string symbol = 1;
+  aelf.Address owner = 2;
+}
+
+message GetBalanceOutput {
+  string symbol = 1;
+  aelf.Address owner = 2;
+  int64 balance = 3;
+}
