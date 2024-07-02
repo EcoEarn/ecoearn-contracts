@@ -215,7 +215,9 @@ public partial class EcoEarnTokensContractTests
             StakeTokenContract = TokenContractAddress,
             MinimumStakeDuration = 1,
             UnlockWindowDuration = 100,
-            ReleasePeriods = { 10, 20, 30 }
+            ReleasePeriods = { 10, 20, 30 },
+            MergeInterval = 180,
+            SwapContract = DefaultAddress
         };
 
         var result = await EcoEarnTokensContractStub.CreateTokensPool.SendAsync(input);
@@ -226,6 +228,8 @@ public partial class EcoEarnTokensContractTests
         log.Amount.ShouldBe(1000_00000000);
         log.PoolId.ShouldBe(HashHelper.ConcatAndCompute(HashHelper.ComputeFrom(poolCount.Value),
             HashHelper.ComputeFrom(input)));
+        log.Config.SwapContract.ShouldBe(DefaultAddress);
+        log.Config.MergeInterval.ShouldBe(180);
 
         poolCount = await EcoEarnTokensContractStub.GetPoolCount.CallAsync(_appId);
         poolCount.Value.ShouldBe(1);
@@ -892,7 +896,7 @@ public partial class EcoEarnTokensContractTests
         var poolId = await CreateTokensPool();
 
         var output = await EcoEarnTokensContractStub.GetPoolInfo.CallAsync(poolId);
-        output.PoolInfo.Config.MergeInterval.ShouldBe(0);
+        output.PoolInfo.Config.MergeInterval.ShouldBe(5);
 
         var input = new SetTokensPoolMergeIntervalInput
         {
