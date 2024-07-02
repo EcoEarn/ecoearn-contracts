@@ -14,20 +14,22 @@ public partial class EcoEarnTokensContract : EcoEarnTokensContractContainer.EcoE
         Assert(State.GenesisContract.GetContractAuthor.Call(Context.Self) == Context.Sender, "No permission.");
         Assert(input.Admin == null || !input.Admin.Value.IsNullOrEmpty(), "Invalid admin.");
         Assert(IsAddressValid(input.EcoearnPointsContract), "Invalid ecoearn points contract.");
+        Assert(IsAddressValid(input.EcoearnRewardsContract), "Invalid ecoearn rewards contract.");
 
         State.Admin.Value = input.Admin ?? Context.Sender;
         State.EcoEarnPointsContract.Value = input.EcoearnPointsContract;
+        State.EcoEarnRewardsContract.Value = input.EcoearnRewardsContract;
 
         Assert(input.CommissionRate >= 0, "Invalid commission rate.");
         Assert(input.Recipient == null || !input.Recipient.Value.IsNullOrEmpty(), "Invalid recipient.");
-        Assert(input.BatchLimitation >= 0, "Invalid batch limitation.");
+        Assert(input.MaximumPositionCount > 0, "Invalid maximum position count.");
 
         State.Config.Value = new Config
         {
             CommissionRate = input.CommissionRate,
             Recipient = input.Recipient ?? Context.Sender,
             IsRegisterRestricted = input.IsRegisterRestricted,
-            BatchLimitation = input.BatchLimitation
+            MaximumPositionCount = input.MaximumPositionCount
         };
 
         State.TokenContract.Value = Context.GetContractAddressByName(SmartContractConstants.TokenContractSystemName);
@@ -61,7 +63,6 @@ public partial class EcoEarnTokensContract : EcoEarnTokensContractContainer.EcoE
         Assert(input != null, "Invalid input.");
         Assert(input!.CommissionRate >= 0, "Invalid commission rate.");
         Assert(IsAddressValid(input.Recipient), "Invalid recipient.");
-        Assert(input.BatchLimitation >= 0, "Invalid batch limitation.");
 
         if (input.Equals(State.Config.Value)) return new Empty();
 

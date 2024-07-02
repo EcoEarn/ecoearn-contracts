@@ -28,18 +28,16 @@ service EcoEarnPointsContract {
   rpc SetPointsPoolEndTime (SetPointsPoolEndTimeInput) returns (google.protobuf.Empty) {}
   rpc RestartPointsPool (RestartPointsPoolInput) returns (google.protobuf.Empty) {}
   rpc SetPointsPoolUpdateAddress (SetPointsPoolUpdateAddressInput) returns (google.protobuf.Empty) {}
-  rpc SetPointsPoolRewardReleasePeriod (SetPointsPoolRewardReleasePeriodInput) returns (google.protobuf.Empty) {}
+  rpc SetPointsPoolRewardConfig (SetPointsPoolRewardConfigInput) returns (google.protobuf.Empty) {}
   rpc SetPointsPoolRewardPerSecond (SetPointsPoolRewardPerSecondInput) returns (google.protobuf.Empty) {}
   rpc GetPoolInfo (aelf.Hash) returns (GetPoolInfoOutput) {option (aelf.is_view) = true;}
+  rpc GetPoolData (aelf.Hash) returns (PoolData) {option (aelf.is_view) = true;}
   rpc GetPoolAddress (aelf.Hash) returns (aelf.Address) {option (aelf.is_view) = true;}
 
   // reward
   rpc UpdateSnapshot (UpdateSnapshotInput) returns (google.protobuf.Empty) {}
   rpc GetSnapshot (GetSnapshotInput) returns (Snapshot) {option (aelf.is_view) = true;}
   rpc Claim (ClaimInput) returns (google.protobuf.Empty) {}
-  rpc GetClaimInfo (aelf.Hash) returns (ClaimInfo) {option (aelf.is_view) = true;}
-  rpc Withdraw (WithdrawInput) returns (google.protobuf.Empty) {}
-  rpc EarlyStake (EarlyStakeInput) returns (google.protobuf.Empty) {}
   rpc RecoverToken (RecoverTokenInput) returns (google.protobuf.Empty) {}
 }
 
@@ -47,15 +45,14 @@ message InitializeInput {
   aelf.Address admin = 1;
   aelf.Address points_contract = 2;
   aelf.Address ecoearn_tokens_contract = 3;
-  int64 commission_rate = 4;
-  aelf.Address recipient = 5;
-  int64 batch_limitation = 6;
+  aelf.Address ecoearn_rewards_contract = 4;
+  int64 commission_rate = 5;
+  aelf.Address recipient = 6;
 }
 
 message Config {
   int64 commission_rate = 1;
   aelf.Address recipient = 2;
-  int64 batch_limitation = 3;
 }
 
 message RegisterInput {
@@ -76,7 +73,8 @@ message CreatePointsPoolInput {
   int64 end_time = 5;
   int64 reward_per_second = 6;
   aelf.Address update_address = 7;
-  int64 release_period = 8;
+  repeated int64 release_periods = 8;
+  int64 claim_interval = 9;
 }
 
 message PointsPoolConfig {
@@ -85,7 +83,8 @@ message PointsPoolConfig {
   google.protobuf.Timestamp end_time = 3;
   int64 reward_per_second = 4;
   aelf.Address update_address = 5;
-  int64 release_period = 6;
+  repeated int64 release_periods = 6;
+  int64 claim_interval = 7;
 }
 
 message SetPointsPoolConfigInput {
@@ -130,31 +129,6 @@ message ClaimInput {
   bytes signature = 10000;
 }
 
-message ClaimInfo {
-  aelf.Hash claim_id = 1;
-  aelf.Hash pool_id = 2;
-  int64 claimed_amount = 3;
-  string claimed_symbol = 4;
-  int64 claimed_block_number = 5;
-  google.protobuf.Timestamp claimed_time = 6;
-  google.protobuf.Timestamp unlock_time = 7;
-  google.protobuf.Timestamp withdraw_time = 8;
-  aelf.Address account = 9;
-  google.protobuf.Timestamp early_stake_time = 10;
-  aelf.Hash stake_id = 11;
-  aelf.Hash seed = 12;
-}
-
-message EarlyStakeInput {
-  aelf.Hash pool_id = 1;
-  int64 period = 2;
-  repeated aelf.Hash claim_ids = 3;
-}
-
-message ClaimInfos {
-  repeated ClaimInfo data = 1;
-}
-
 message RecoverTokenInput {
   aelf.Hash pool_id = 1;
   string token = 2;
@@ -173,7 +147,8 @@ message RestartPointsPoolInput {
   int64 end_time = 4;
   int64 reward_per_second = 5;
   aelf.Address update_address = 6;
-  int64 release_period = 7;
+  repeated int64 release_periods = 7;
+  int64 claim_interval = 8;
 }
 
 message SetPointsPoolUpdateAddressInput {
@@ -181,9 +156,14 @@ message SetPointsPoolUpdateAddressInput {
   aelf.Address update_address = 2;
 }
 
-message SetPointsPoolRewardReleasePeriodInput {
+message SetPointsPoolRewardConfigInput {
   aelf.Hash pool_id = 1;
-  int64 release_period = 2;
+  repeated int64 release_periods = 2;
+  int64 claim_interval = 3;
+}
+
+message LongList {
+  repeated int64 data = 1;
 }
 
 message SetPointsPoolRewardPerSecondInput {
@@ -196,8 +176,11 @@ message SetDappAdminInput {
   aelf.Address admin = 2;
 }
 
-message WithdrawInput {
-  repeated aelf.Hash claim_ids = 1;
+message PoolData {
+  aelf.Hash pool_id = 1;
+  google.protobuf.Timestamp last_rewards_update_time = 2;
+  int64 calculated_rewards = 3;
+  int64 claimed_rewards = 4;
 }
 
 // log event
@@ -236,20 +219,10 @@ message SnapshotUpdated {
 
 message Claimed {
   option (aelf.is_event) = true;
-  ClaimInfo claim_info = 1;
-}
-
-message Withdrawn {
-  option (aelf.is_event) = true;
-  ClaimInfos claim_infos = 1;
-}
-
-message EarlyStaked {
-  option (aelf.is_event) = true;
   aelf.Hash pool_id = 1;
-  int64 amount = 2;
-  int64 period = 3;
-  ClaimInfos claim_infos = 4;
+  aelf.Address account = 2;
+  int64 amount = 3;
+  aelf.Hash seed = 4;
 }
 
 message TokenRecovered {
@@ -280,10 +253,11 @@ message PointsPoolUpdateAddressSet {
   aelf.Address update_address = 2;
 }
 
-message PointsPoolRewardReleasePeriodSet {
+message PointsPoolRewardConfigSet {
   option (aelf.is_event) = true;
   aelf.Hash pool_id = 1;
-  int64 release_period = 2;
+  LongList release_periods = 2;
+  int64 claim_interval = 3;
 }
 
 message PointsPoolRewardPerSecondSet {

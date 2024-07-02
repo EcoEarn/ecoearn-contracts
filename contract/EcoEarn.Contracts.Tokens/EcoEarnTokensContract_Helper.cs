@@ -11,11 +11,6 @@ public partial class EcoEarnTokensContract
         Assert(Context.Sender == State.Admin.Value, "No permission.");
     }
 
-    private void CheckEcoEarnPointsPermission()
-    {
-        Assert(Context.Sender == State.EcoEarnPointsContract.Value, "No permission.");
-    }
-
     private void CheckInitialized()
     {
         Assert(State.Initialized.Value, "Not initialized.");
