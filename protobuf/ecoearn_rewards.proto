@@ -152,7 +152,6 @@ message StakeLiquidityInput {
   LiquidityInput liquidity_input = 1;
   aelf.Hash pool_id = 2;
   int64 period = 3;
-  int64 longest_release_time = 4;
   bytes signature = 10000;
 }
 
