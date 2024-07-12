@@ -2,6 +2,7 @@ using System.Linq;
 using System.Threading.Tasks;
 using AElf;
 using AElf.Contracts.MultiToken;
+using AElf.CSharp.Core.Extension;
 using AElf.Types;
 using Shouldly;
 using Xunit;
@@ -289,7 +290,7 @@ public partial class EcoEarnRewardsContractTests
         });
 
         var seedOwnedSymbol = "SGR" + "-0";
-        var seedExpTime = "1720590467";
+        var seedExpTime = BlockTimeProvider.GetBlockTime().AddDays(365);
         await TokenContractStub.Create.SendAsync(new CreateInput
         {
             Symbol = "SEED-1",
@@ -310,7 +311,7 @@ public partial class EcoEarnRewardsContractTests
                     },
                     {
                         "__seed_exp_time",
-                        seedExpTime
+                        seedExpTime.Seconds.ToString()
                     }
                 }
             }
