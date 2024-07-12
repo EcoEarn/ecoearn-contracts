@@ -1015,7 +1015,7 @@ public partial class EcoEarnTokensContractTests
         });
 
         var seedOwnedSymbol = "SGR" + "-0";
-        var seedExpTime = "1720590467";
+        var seedExpTime = BlockTimeProvider.GetBlockTime().AddDays(365);
         await TokenContractStub.Create.SendAsync(new CreateInput
         {
             Symbol = "SEED-1",
@@ -1036,7 +1036,7 @@ public partial class EcoEarnTokensContractTests
                     },
                     {
                         "__seed_exp_time",
-                        seedExpTime
+                        seedExpTime.Seconds.ToString()
                     }
                 }
             }
