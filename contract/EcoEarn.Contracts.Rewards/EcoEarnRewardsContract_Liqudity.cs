@@ -201,7 +201,6 @@ public partial class EcoEarnRewardsContract
         ValidateLiquidityInput(input!.LiquidityInput);
         Assert(IsHashValid(input.PoolId), "Invalid pool id.");
         Assert(input.Period > 0, "Invalid period.");
-        Assert(input.LongestReleaseTime > 0, "Invalid longest release time.");
 
         var liquidityInput = input.LiquidityInput;
 
@@ -241,10 +240,7 @@ public partial class EcoEarnRewardsContract
             Amount = liquidityInput.LpAmount,
             FromAddress = Context.Sender,
             Period = input.Period,
-            LongestReleaseTime = new Timestamp
-            {
-                Seconds = input.LongestReleaseTime
-            }
+            LongestReleaseTime = new Timestamp()
         });
 
         Context.Fire(new LiquidityStaked
@@ -531,8 +527,7 @@ public partial class EcoEarnRewardsContract
         {
             LiquidityInput = input.LiquidityInput,
             PoolId = input.PoolId,
-            Period = input.Period,
-            LongestReleaseTime = input.LongestReleaseTime
+            Period = input.Period
         }.ToByteArray());
     }
 

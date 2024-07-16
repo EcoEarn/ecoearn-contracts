@@ -160,8 +160,7 @@ public partial class EcoEarnRewardsContractTests
                 Seed = seed
             },
             PoolId = poolId,
-            Period = 100,
-            LongestReleaseTime = BlockTimeProvider.GetBlockTime().Seconds
+            Period = 100
         };
 
         stakeLiquidityInput.Signature = GenerateSignature(DefaultKeyPair.PrivateKey, stakeLiquidityInput);
@@ -209,8 +208,7 @@ public partial class EcoEarnRewardsContractTests
         {
             LiquidityInput = input.LiquidityInput,
             PoolId = input.PoolId,
-            Period = input.Period,
-            LongestReleaseTime = input.LongestReleaseTime
+            Period = input.Period
         };
         var dataHash = HashHelper.ComputeFrom(data);
         var signature = CryptoHelper.SignWithPrivateKey(privateKey, dataHash.ToByteArray());
