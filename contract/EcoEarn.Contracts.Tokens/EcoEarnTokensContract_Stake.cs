@@ -110,13 +110,8 @@ public partial class EcoEarnTokensContract
         stakeInfo.UnlockTime = Context.CurrentBlockTime;
         stakeInfo.LastOperationTime = Context.CurrentBlockTime;
 
-        var rewards = UpdateRewards(poolInfo, stakeInfo);
+        var rewards = ProcessRewards(poolInfo, stakeInfo);
         ProcessStakeInfo(stakeInfo, out var stakedAmount, out var earlyStakedAmount);
-
-        if (rewards > 0)
-        {
-            rewards = ProcessCommissionFee(rewards, poolInfo);
-        }
 
         if (stakedAmount > 0)
         {

@@ -40,10 +40,8 @@ public partial class EcoEarnTokensContract
 
         if (stakeInfo!.UnlockTime == null)
         {
-            rewards = UpdateRewards(poolInfo, stakeInfo);
+            rewards = ProcessRewards(poolInfo, stakeInfo);
             Assert(rewards > 0, "Nothing to claim.");
-
-            rewards = ProcessCommissionFee(rewards, poolInfo);
         }
 
         CallRewardsContractClaim(poolInfo, rewards);
@@ -132,9 +130,10 @@ public partial class EcoEarnTokensContract
         return amount;
     }
 
-    private long UpdateRewards(PoolInfo poolInfo, StakeInfo stakeInfo)
+    private long ProcessRewards(PoolInfo poolInfo, StakeInfo stakeInfo)
     {
         var rewards = 0L;
+        var pendingAmount = 0L;
 
         var config = State.Config.Value;
 
@@ -146,6 +145,8 @@ public partial class EcoEarnTokensContract
             var pending = CalculatePending(subStakeInfo.BoostedAmount, poolData.AccTokenPerShare,
                 subStakeInfo.RewardDebt, poolInfo.PrecisionFactor);
 
+            pendingAmount = pendingAmount.Add(pending);
+
             var actualReward = pending.Sub(CalculateCommissionFee(pending, config.CommissionRate))
                 .Add(subStakeInfo.RewardAmount);
 
@@ -154,8 +155,10 @@ public partial class EcoEarnTokensContract
 
             subStakeInfo.RewardDebt = subStakeInfo.RewardDebt.Add(pending);
 
-            rewards = rewards.Add(pending);
+            rewards = rewards.Add(actualReward);
         }
+
+        ProcessCommissionFee(pendingAmount, poolInfo);
 
         return rewards;
     }
