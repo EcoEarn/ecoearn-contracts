@@ -1,11 +1,7 @@
 using System.Linq;
 using System.Threading.Tasks;
 using AElf;
-using AElf.Cryptography;
-using AElf.CSharp.Core.Extension;
 using AElf.Types;
-using Google.Protobuf;
-using Google.Protobuf.WellKnownTypes;
 using Shouldly;
 using Xunit;
 
@@ -17,69 +13,69 @@ public partial class EcoEarnTokensContractTests
     public async Task ClaimTests()
     {
         const long tokenBalance = 5_00000000;
-    
+
         var poolId = await CreateTokensPool();
         var stakeInfo = await Stake(poolId, tokenBalance);
         stakeInfo.SubStakeInfos.First().RewardAmount.ShouldBe(0);
-    
+
         SetBlockTime(500);
-    
+
         var reward = await EcoEarnTokensContractStub.GetReward.CallAsync(new GetRewardInput
         {
             StakeIds = { stakeInfo.StakeId }
         });
-        reward.RewardInfos.First().Amount.ShouldBe(100_00000000 * 500 - 500_00000000);
-    
+        reward.RewardInfos.First().Amount.ShouldBe(100_00000000 * 500 - 100_00000000 * 500 / 100);
+
         var addressInfo = await EcoEarnTokensContractStub.GetPoolAddressInfo.CallAsync(poolId);
         var balance = await GetTokenBalance(Symbol, addressInfo.RewardAddress);
-        
+
         var result = await EcoEarnTokensContractUserStub.Claim.SendAsync(poolId);
         result.TransactionResult.Status.ShouldBe(TransactionResultStatus.Mined);
-    
+
         var log = GetLogEvent<Claimed>(result.TransactionResult);
         log.PoolId.ShouldBe(poolId);
         log.Account.ShouldBe(UserAddress);
         log.Amount.ShouldBe(reward.RewardInfos.First().Amount);
-        
+
         var stakeOutput = await EcoEarnTokensContractStub.GetStakeInfo.CallAsync(stakeInfo.StakeId);
         stakeOutput.StakeInfo.SubStakeInfos.First().RewardAmount.ShouldBe(0);
-    
+
         SetBlockTime(500);
-    
+
         var newReward = await EcoEarnTokensContractStub.GetReward.CallAsync(new GetRewardInput
         {
             StakeIds = { stakeOutput.StakeInfo.StakeId }
         });
         newReward.RewardInfos.First().Amount.ShouldBe(reward.RewardInfos.First().Amount);
-    
+
         var balance2 = await GetTokenBalance(Symbol, addressInfo.RewardAddress);
         balance2.ShouldBe(balance - 100_00000000 * 500);
     }
-    
+
     [Fact]
     public async Task ClaimTests_Fail()
     {
         const long tokenBalance = 5_00000000;
-    
+
         var poolId = await CreateTokensPool();
         _ = await Stake(poolId, tokenBalance);
-    
+
         var result = await EcoEarnTokensContractStub.Claim.SendWithExceptionAsync(new Hash());
         result.TransactionResult.Error.ShouldContain("Invalid input.");
-        
+
         result = await EcoEarnTokensContractStub.Claim.SendWithExceptionAsync(poolId);
         result.TransactionResult.Error.ShouldContain("Not staked before.");
-        
+
         result = await EcoEarnTokensContractUserStub.Claim.SendWithExceptionAsync(poolId);
         result.TransactionResult.Error.ShouldContain("Not in unlock window.");
-        
+
         SetBlockTime(500);
         await EcoEarnTokensContractUserStub.Claim.SendAsync(poolId);
         result = await EcoEarnTokensContractUserStub.Claim.SendWithExceptionAsync(poolId);
         result.TransactionResult.Error.ShouldContain("Already claimed during this window.");
-        
+
         SetBlockTime(-501);
-        
+
         result = await EcoEarnTokensContractUserStub.Claim.SendWithExceptionAsync(poolId);
         result.TransactionResult.Error.ShouldContain("Pool not start.");
     }

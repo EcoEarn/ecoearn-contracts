@@ -693,6 +693,46 @@ public partial class EcoEarnTokensContractTests
             output.StakeInfo.ShouldBeNull();
         }
     }
+    
+    [Fact]
+    public async Task UnlockTests_AfterStake()
+    {
+        const long tokenBalance = 5_00000000;
+    
+        var poolId = await CreateTokensPool();
+        var stakeInfo = await Stake(poolId, tokenBalance);
+        stakeInfo.SubStakeInfos.First().StakedAmount.ShouldBe(tokenBalance);
+    
+        SetBlockTime(1500);
+        
+        stakeInfo = await Stake(poolId, tokenBalance);
+        
+        var rewardOutput = await EcoEarnTokensContractStub.GetReward.CallAsync(new GetRewardInput
+        {
+            StakeIds = { stakeInfo.StakeId }
+        });
+        rewardOutput.RewardInfos.First().Amount.ShouldNotBe(0);
+    
+        SetBlockTime(700);
+        
+        rewardOutput = await EcoEarnTokensContractStub.GetReward.CallAsync(new GetRewardInput
+        {
+            StakeIds = { stakeInfo.StakeId }
+        });
+        
+        var result = await EcoEarnTokensContractUserStub.Unlock.SendAsync(poolId);
+        result.TransactionResult.Status.ShouldBe(TransactionResultStatus.Mined);
+    
+        var log = GetLogEvent<Unlocked>(result.TransactionResult);
+        log.StakeInfo.StakeId.ShouldBe(stakeInfo.StakeId);
+        log.StakeInfo.SubStakeInfos.First().StakedAmount.ShouldBe(0);
+        log.PoolData.TotalStakedAmount.ShouldBe(0);
+        
+        var log2 = GetLogEvent<Rewards.Claimed>(result.TransactionResult);
+        var res = log2.ClaimInfos.Data.Select(c => c.ClaimedAmount).Sum();
+        
+        rewardOutput.RewardInfos.First().Amount.ShouldBe(res);
+    }
 
     private async Task<StakeInfo> Stake(Hash poolId, long tokenBalance)
     {
