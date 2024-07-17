@@ -24,7 +24,7 @@ public partial class EcoEarnRewardsContract : EcoEarnRewardsContractContainer.Ec
 
         State.Initialized.Value = true;
 
-        return new Empty();
+        return new Empty(); 
     }
 
     public override Empty SetAdmin(Address input)

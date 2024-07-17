@@ -51,7 +51,7 @@ public partial class EcoEarnPointsContract : EcoEarnPointsContractContainer.EcoE
             Admin = input
         });
 
-        return new Empty();
+        return new Empty(); 
     }
 
     public override Empty SetConfig(Config input)
