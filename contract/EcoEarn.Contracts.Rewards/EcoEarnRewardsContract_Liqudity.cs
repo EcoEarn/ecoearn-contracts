@@ -472,8 +472,12 @@ public partial class EcoEarnRewardsContract
 
         var totalSupplyResult = getTotalSupplyOutput!.Results!.First();
 
-        var valueA = new BigIntValue(amount).Mul(reservePairResult.ReserveA).Div(totalSupplyResult.TotalSupply).Value;
-        var valueB = new BigIntValue(amount).Mul(reservePairResult.ReserveB).Div(totalSupplyResult.TotalSupply).Value;
+        var valueA = new BigIntValue(amount)
+            .Mul(reservePairResult.SymbolA == symbolA ? reservePairResult.ReserveA : reservePairResult.ReserveB)
+            .Div(totalSupplyResult.TotalSupply).Value;
+        var valueB = new BigIntValue(amount)
+            .Mul(reservePairResult.SymbolA == symbolA ? reservePairResult.ReserveB : reservePairResult.ReserveA)
+            .Div(totalSupplyResult.TotalSupply).Value;
 
         if (!long.TryParse(valueA, out amountA))
         {

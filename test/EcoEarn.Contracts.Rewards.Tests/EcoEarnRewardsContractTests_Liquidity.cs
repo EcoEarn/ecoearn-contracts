@@ -15,7 +15,7 @@ namespace EcoEarn.Contracts.Rewards;
 
 public partial class EcoEarnRewardsContractTests
 {
-    private const string LpSymbol = "ALP SGR-1-ELF";
+    private const string LpSymbol = "ALP ELF-SGR-1";
     
     [Fact]
     public async Task AddLiquidityAndStakeTests()
