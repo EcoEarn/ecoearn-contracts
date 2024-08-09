@@ -70,7 +70,8 @@ public partial class EcoEarnRewardsContractTests
         await EcoEarnRewardsContractStub.Initialize.SendAsync(new InitializeInput
         {
             EcoearnPointsContract = DefaultAddress,
-            EcoearnTokensContract = DefaultAddress
+            EcoearnTokensContract = DefaultAddress,
+            UpdateAddress = DefaultAddress
         });
 
         result = await EcoEarnRewardsContractStub.Claim.SendWithExceptionAsync(new ClaimInput());
@@ -772,8 +773,7 @@ public partial class EcoEarnRewardsContractTests
         await Initialize();
         await EcoEarnRewardsContractStub.Register.SendAsync(new RegisterInput
         {
-            DappId = _appId,
-            UpdateAddress = DefaultAddress
+            DappId = _appId
         });
         await CreateToken();
 

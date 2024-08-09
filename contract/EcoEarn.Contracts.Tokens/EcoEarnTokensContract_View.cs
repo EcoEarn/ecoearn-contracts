@@ -7,6 +7,8 @@ namespace EcoEarn.Contracts.Tokens;
 
 public partial class EcoEarnTokensContract
 {
+    #region public
+
     public override Address GetAdmin(Empty input)
     {
         return State.Admin.Value;
@@ -104,6 +106,30 @@ public partial class EcoEarnTokensContract
         };
     }
 
+    public override BoolValue IsInUnlockWindow(IsInUnlockWindowInput input)
+    {
+        var poolInfo = State.PoolInfoMap[input.PoolId];
+        if (poolInfo?.PoolId == null) return new BoolValue();
+        
+        var stakeId = State.UserStakeIdMap[input.PoolId][input.Account];
+        if (stakeId == null) return new BoolValue();
+
+        var stakeInfo = State.StakeInfoMap[stakeId];
+        
+        var remainTime = CalculateRemainTime(stakeInfo, poolInfo.Config.UnlockWindowDuration);
+        if (stakeInfo != null && stakeInfo.UnlockTime == null && IsInUnlockWindow(stakeInfo, remainTime))
+            return new BoolValue
+            {
+                Value = true
+            };
+
+        return new BoolValue();
+    }
+
+    #endregion
+
+    #region private
+
     private RewardInfo ProcessGetReward(Hash stakeId)
     {
         var rewardInfo = new RewardInfo();
@@ -145,4 +171,6 @@ public partial class EcoEarnTokensContract
 
         return rewardInfo;
     }
+
+    #endregion
 }

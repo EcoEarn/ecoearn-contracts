@@ -16,21 +16,23 @@ public partial class EcoEarnRewardsContract
         Assert(input != null, "Invalid input.");
         Assert(IsHashValid(input!.DappId), "Invalid dapp id.");
         Assert(input.Admin == null || !input.Admin.Value.IsNullOrEmpty(), "Invalid admin.");
-        Assert(IsAddressValid(input.UpdateAddress), "Invalid update address.");
+        Assert(input.UpdateAddress == null || !input.UpdateAddress.Value.IsNullOrEmpty(), "Invalid update address.");
         Assert(State.DappInfoMap[input.DappId] == null, "Dapp registered.");
 
         var dappInfo = State.EcoEarnPointsContract.GetDappInfo.Call(input.DappId);
         Assert(dappInfo.DappId != null, "Dapp id not exists.");
         if (dappInfo.DappId != null) Assert(dappInfo.Admin == Context.Sender, "No permission to register.");
 
+        var config = new DappConfig
+        {
+            UpdateAddress = input.UpdateAddress ?? State.Config.Value.DefaultUpdateAddress
+        };
+        
         var info = new DappInfo
         {
             DappId = input.DappId,
             Admin = input.Admin ?? Context.Sender,
-            Config = new DappConfig
-            {
-                UpdateAddress = input.UpdateAddress
-            }
+            Config = config
         };
 
         State.DappInfoMap[input.DappId] = info;
@@ -38,7 +40,8 @@ public partial class EcoEarnRewardsContract
         Context.Fire(new Registered
         {
             DappId = info.DappId,
-            Admin = info.Admin
+            Admin = info.Admin,
+            Config = config
         });
 
         return new Empty();
@@ -74,11 +77,11 @@ public partial class EcoEarnRewardsContract
         Assert(IsHashValid(input!.DappId), "Invalid dapp id.");
         Assert(input.Config != null && IsAddressValid(input.Config.UpdateAddress), "Invalid update address.");
 
-        CheckDAppAdminPermission(input.DappId);
+        var dappInfo = GetAndCheckDAppAdminPermission(input.DappId);
 
-        if (input.Config!.Equals(State.DappInfoMap[input.DappId].Config)) return new Empty();
+        if (input.Config!.Equals(dappInfo.Config)) return new Empty();
 
-        State.DappInfoMap[input.DappId].Config = input.Config;
+        dappInfo.Config = input.Config;
 
         Context.Fire(new DappConfigSet
         {

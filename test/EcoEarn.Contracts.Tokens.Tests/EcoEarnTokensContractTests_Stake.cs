@@ -734,6 +734,357 @@ public partial class EcoEarnTokensContractTests
         rewardOutput.RewardInfos.First().Amount.ShouldBe(res);
     }
 
+    [Fact]
+    public async Task StakeOnBehalfTests()
+    {
+        const long tokenBalance = 5_00000000;
+
+        var poolId = await CreateTokensPool();
+        await EcoEarnTokensContractStub.SetDappConfig.SendAsync(new SetDappConfigInput
+        {
+            DappId = _appId,
+            Config = new DappConfig
+            {
+                PaymentAddress = UserAddress
+            }
+        });
+
+        await TokenContractStub.Transfer.SendAsync(new TransferInput
+        {
+            To = UserAddress,
+            Amount = tokenBalance * 2,
+            Symbol = Symbol
+        });
+        await TokenContractUserStub.Approve.SendAsync(new ApproveInput
+        {
+            Spender = EcoEarnTokensContractAddress,
+            Symbol = Symbol,
+            Amount = tokenBalance * 2
+        });
+
+        var balance = await GetTokenBalance(Symbol, UserAddress);
+        balance.ShouldBe(tokenBalance * 2);
+
+        var addressInfo = await EcoEarnTokensContractStub.GetPoolAddressInfo.CallAsync(poolId);
+
+        balance = await GetTokenBalance(Symbol, addressInfo.StakeAddress);
+        balance.ShouldBe(0);
+
+        var poolData = await EcoEarnTokensContractStub.GetPoolData.CallAsync(poolId);
+        poolData.TotalStakedAmount.ShouldBe(0);
+        poolData.AccTokenPerShare.ShouldBeNull();
+        var userStakeId = await EcoEarnTokensContractStub.GetUserStakeId.CallAsync(new GetUserStakeIdInput
+        {
+            Account = DefaultAddress,
+            PoolId = poolId
+        });
+        userStakeId.ShouldBe(new Hash());
+        
+        // create position
+        {
+            var result = await EcoEarnTokensContractUserStub.StakeOnBehalf.SendAsync(new StakeOnBehalfInput
+            {
+                PoolId = poolId,
+                Amount = tokenBalance,
+                Period = 86400,
+                Account = DefaultAddress
+            });
+            result.TransactionResult.Status.ShouldBe(TransactionResultStatus.Mined);
+
+            var log = GetLogEvent<StakedOnBehalf>(result.TransactionResult);
+            log.PoolData.TotalStakedAmount.ShouldBe(tokenBalance * 2);
+            log.PoolData.PoolId.ShouldBe(poolId);
+            log.PoolData.LastRewardTime.ShouldBe(BlockTimeProvider.GetBlockTime());
+            log.PoolData.AccTokenPerShare.ShouldBeNull();
+            log.Payer.ShouldBe(UserAddress);
+
+            var stakeInfo = log.StakeInfo;
+            stakeInfo.PoolId.ShouldBe(poolId);
+            stakeInfo.StakingPeriod.ShouldBe(86400);
+            stakeInfo.Account.ShouldBe(DefaultAddress);
+            stakeInfo.StakingToken.ShouldBe(Symbol);
+            stakeInfo.LastOperationTime.ShouldBe(BlockTimeProvider.GetBlockTime());
+            stakeInfo.UnlockTime.ShouldBeNull();
+
+            stakeInfo.SubStakeInfos.Count.ShouldBe(1);
+            stakeInfo.SubStakeInfos.First().BoostedAmount.ShouldBe(tokenBalance * 2);
+            stakeInfo.SubStakeInfos.First().RewardAmount.ShouldBe(0);
+            stakeInfo.SubStakeInfos.First().StakedAmount.ShouldBe(tokenBalance);
+            stakeInfo.SubStakeInfos.First().RewardDebt.ShouldBe(0);
+            stakeInfo.SubStakeInfos.First().StakedTime.ShouldBe(BlockTimeProvider.GetBlockTime());
+            stakeInfo.SubStakeInfos.First().StakedBlockNumber.ShouldBe(result.TransactionResult.BlockNumber);
+
+            userStakeId = await EcoEarnTokensContractStub.GetUserStakeId.CallAsync(new GetUserStakeIdInput
+            {
+                Account = DefaultAddress,
+                PoolId = poolId
+            });
+            userStakeId.ShouldBe(log.StakeInfo.StakeId);
+
+            poolData = await EcoEarnTokensContractStub.GetPoolData.CallAsync(poolId);
+            poolData.ShouldBe(log.PoolData);
+
+            balance = await GetTokenBalance(Symbol, UserAddress);
+            balance.ShouldBe(tokenBalance);
+
+            balance = await GetTokenBalance(Symbol, addressInfo.StakeAddress);
+            balance.ShouldBe(tokenBalance);
+
+            SetBlockTime(1);
+
+            var reward = await EcoEarnTokensContractStub.GetReward.CallAsync(new GetRewardInput
+            {
+                StakeIds = { stakeInfo.StakeId }
+            });
+            reward.RewardInfos.First().Symbol.ShouldBe(Symbol);
+            reward.RewardInfos.First().Account.ShouldBe(DefaultAddress);
+            reward.RewardInfos.First().StakeId.ShouldBe(stakeInfo.StakeId);
+            reward.RewardInfos.First().Amount.ShouldBe(100_00000000 - 100_00000000 * 100 / 10000);
+        }
+
+        // add position
+        {
+            SetBlockTime(9);
+            
+            var result = await EcoEarnTokensContractUserStub.StakeOnBehalf.SendAsync(new StakeOnBehalfInput
+            {
+                PoolId = poolId,
+                Amount = tokenBalance,
+                Period = 86400,
+                Account = DefaultAddress
+            });
+            result.TransactionResult.Status.ShouldBe(TransactionResultStatus.Mined);
+
+            var log = GetLogEvent<StakedOnBehalf>(result.TransactionResult);
+            log.PoolData.TotalStakedAmount.ShouldBe(tokenBalance * 2 + tokenBalance * 3);
+            log.PoolData.LastRewardTime.ShouldBe(BlockTimeProvider.GetBlockTime());
+            
+            var acc = new BigIntValue(100_00000000).Mul(10).Mul(1000000000000000000).Div(poolData.TotalStakedAmount);
+            log.PoolData.AccTokenPerShare.ShouldBe(acc);
+
+            var stakeInfo = log.StakeInfo;
+            stakeInfo.StakingPeriod.ShouldBe(86400 * 2 - 10);
+            stakeInfo.SubStakeInfos.Count.ShouldBe(2);
+            stakeInfo.SubStakeInfos.First().Period.ShouldBe(172800);
+            stakeInfo.SubStakeInfos.First().BoostedAmount.ShouldBe(tokenBalance * 3);
+            stakeInfo.SubStakeInfos.First().StakedAmount.ShouldBe(tokenBalance);
+            stakeInfo.SubStakeInfos.First().RewardAmount
+                .ShouldBe(100_00000000 * 10 - 100_00000000 * 10 / 100); // minus commission fee
+            stakeInfo.SubStakeInfos.Last().Period.ShouldBe(172800 - 10);
+            stakeInfo.SubStakeInfos.Last().BoostedAmount.ShouldBe(tokenBalance * 2);
+
+            long.TryParse(new BigIntValue(acc.Mul(tokenBalance).Mul(3).Div(1000000000000000000)).Value, out var value);
+
+            stakeInfo.SubStakeInfos.First().RewardDebt.ShouldBe(value);
+            
+            long.TryParse(new BigIntValue(acc.Mul(tokenBalance).Mul(2).Div(1000000000000000000)).Value, out value);
+            
+            stakeInfo.SubStakeInfos.Last().RewardDebt.ShouldBe(value);
+            stakeInfo.LastOperationTime.ShouldBe(BlockTimeProvider.GetBlockTime());
+
+            userStakeId = await EcoEarnTokensContractStub.GetUserStakeId.CallAsync(new GetUserStakeIdInput
+            {
+                Account = DefaultAddress,
+                PoolId = poolId
+            });
+            userStakeId.ShouldBe(log.StakeInfo.StakeId);
+
+            poolData = await EcoEarnTokensContractStub.GetPoolData.CallAsync(poolId);
+            poolData.ShouldBe(log.PoolData);
+
+            balance = await GetTokenBalance(Symbol, UserAddress);
+            balance.ShouldBe(0);
+
+            balance = await GetTokenBalance(Symbol, addressInfo.StakeAddress);
+            balance.ShouldBe(tokenBalance * 2);
+
+            var reward = await EcoEarnTokensContractStub.GetReward.CallAsync(new GetRewardInput
+            {
+                StakeIds = { stakeInfo.StakeId }
+            });
+            reward.RewardInfos.First().Amount.ShouldBe(100_00000000 * 10 - 100_00000000 * 10 * 100 / 10000);
+        }
+    }
+
+    [Fact]
+    public async Task StakeOnBehalfTests_Fail()
+    {
+        var poolId = await CreateTokensPool();
+
+        var result = await EcoEarnTokensContractStub.StakeOnBehalf.SendWithExceptionAsync(new StakeOnBehalfInput());
+        result.TransactionResult.Error.ShouldContain("Invalid pool id.");
+
+        result = await EcoEarnTokensContractStub.StakeOnBehalf.SendWithExceptionAsync(new StakeOnBehalfInput
+        {
+            PoolId = new Hash()
+        });
+        result.TransactionResult.Error.ShouldContain("Invalid pool id.");
+
+        result = await EcoEarnTokensContractStub.StakeOnBehalf.SendWithExceptionAsync(new StakeOnBehalfInput
+        {
+            PoolId = HashHelper.ComputeFrom("test")
+        });
+        result.TransactionResult.Error.ShouldContain("Pool not exists.");
+        
+        result = await EcoEarnTokensContractStub.StakeOnBehalf.SendWithExceptionAsync(new StakeOnBehalfInput
+        {
+            PoolId = poolId
+        });
+        result.TransactionResult.Error.ShouldContain("Invalid account.");
+        
+        result = await EcoEarnTokensContractStub.StakeOnBehalf.SendWithExceptionAsync(new StakeOnBehalfInput
+        {
+            PoolId = poolId,
+            Account = new Address()
+        });
+        result.TransactionResult.Error.ShouldContain("Invalid account.");
+
+        result = await EcoEarnTokensContractStub.StakeOnBehalf.SendWithExceptionAsync(new StakeOnBehalfInput
+        {
+            PoolId = poolId,
+            Account = UserAddress
+        });
+        result.TransactionResult.Error.ShouldContain("Payment address not set.");
+
+        await EcoEarnTokensContractStub.SetDappConfig.SendAsync(new SetDappConfigInput
+        {
+            DappId = _appId,
+            Config = new DappConfig
+            {
+                PaymentAddress = DefaultAddress
+            }
+        });
+        
+        result = await EcoEarnTokensContractStub.StakeOnBehalf.SendWithExceptionAsync(new StakeOnBehalfInput
+        {
+            PoolId = poolId,
+            Account = UserAddress
+        });
+        result.TransactionResult.Error.ShouldContain("Invalid amount.");
+        
+        await TokenContractStub.Approve.SendAsync(new ApproveInput
+        {
+            Symbol = Symbol,
+            Amount = 2_00000000,
+            Spender = EcoEarnTokensContractAddress
+        });
+        
+        result = await EcoEarnTokensContractStub.StakeOnBehalf.SendWithExceptionAsync(new StakeOnBehalfInput
+        {
+            PoolId = poolId,
+            Account = UserAddress,
+            Amount = 1
+        });
+        result.TransactionResult.Error.ShouldContain("Amount not enough.");
+
+        result = await EcoEarnTokensContractStub.StakeOnBehalf.SendWithExceptionAsync(new StakeOnBehalfInput
+        {
+            PoolId = poolId,
+            Account = UserAddress,
+            Amount = 1_00000000,
+            Period = 0
+        });
+        result.TransactionResult.Error.ShouldContain("Period too short.");
+
+        result = await EcoEarnTokensContractStub.StakeOnBehalf.SendWithExceptionAsync(new StakeOnBehalfInput
+        {
+            PoolId = poolId,
+            Account = UserAddress,
+            Amount = 1_00000000,
+            Period = 500001
+        });
+        result.TransactionResult.Error.ShouldContain("Period too long.");
+
+        await EcoEarnTokensContractStub.StakeOnBehalf.SendAsync(new StakeOnBehalfInput
+        {
+            PoolId = poolId,
+            Account = UserAddress,
+            Amount = 1_00000000,
+            Period = 86400
+        });
+
+        SetBlockTime(80000);
+
+        result = await EcoEarnTokensContractStub.StakeOnBehalf.SendWithExceptionAsync(new StakeOnBehalfInput
+        {
+            PoolId = poolId,
+            Account = UserAddress,
+            Amount = 1_00000000,
+            Period = 500000 - 6400 + 1
+        });
+        result.TransactionResult.Error.ShouldContain("Period too long.");
+
+        SetBlockTime(6400);
+
+        result = await EcoEarnTokensContractStub.StakeOnBehalf.SendWithExceptionAsync(new StakeOnBehalfInput
+        {
+            PoolId = poolId,
+            Account = UserAddress,
+            Amount = 1_00000000,
+            Period = 86400
+        });
+        result.TransactionResult.Error.ShouldContain("Cannot stake during unlock window.");
+
+        SetBlockTime(100000);
+
+        result = await EcoEarnTokensContractStub.StakeOnBehalf.SendWithExceptionAsync(new StakeOnBehalfInput
+        {
+            PoolId = poolId,
+            Account = UserAddress,
+            Amount = 1_00000000,
+            Period = 86400
+        });
+        result.TransactionResult.Error.ShouldContain("Pool closed.");
+    }
+
+    [Fact]
+    public async Task IsInUnlockWindowTests()
+    {
+        const long tokenBalance = 5_00000000;
+
+        var output = await EcoEarnTokensContractStub.IsInUnlockWindow.CallAsync(new IsInUnlockWindowInput
+        {
+            PoolId = HashHelper.ComputeFrom("test"),
+            Account = UserAddress
+        });
+        output.Value.ShouldBeFalse();
+
+        var poolId = await CreateTokensPool();
+        _ = await Stake(poolId, tokenBalance);
+        
+        output = await EcoEarnTokensContractStub.IsInUnlockWindow.CallAsync(new IsInUnlockWindowInput
+        {
+            PoolId = poolId,
+            Account = DefaultAddress
+        });
+        output.Value.ShouldBeFalse();
+        
+        output = await EcoEarnTokensContractStub.IsInUnlockWindow.CallAsync(new IsInUnlockWindowInput
+        {
+            PoolId = poolId,
+            Account = UserAddress
+        });
+        output.Value.ShouldBeFalse();
+        
+        SetBlockTime(500);
+        
+        output = await EcoEarnTokensContractStub.IsInUnlockWindow.CallAsync(new IsInUnlockWindowInput
+        {
+            PoolId = poolId,
+            Account = UserAddress
+        });
+        output.Value.ShouldBeTrue();
+        
+        SetBlockTime(100);
+        
+        output = await EcoEarnTokensContractStub.IsInUnlockWindow.CallAsync(new IsInUnlockWindowInput
+        {
+            PoolId = poolId,
+            Account = UserAddress
+        });
+        output.Value.ShouldBeFalse();
+    }
+
     private async Task<StakeInfo> Stake(Hash poolId, long tokenBalance)
     {
         await TokenContractStub.Transfer.SendAsync(new TransferInput

@@ -36,7 +36,7 @@ public partial class EcoEarnRewardsContract
 
         Assert(
             RecoverAddressFromSignature(ComputeAddLiquidityAndStakeHash(input), input.Signature) ==
-            dappInfo!.Config.UpdateAddress, "Signature not valid.");
+            GetUpdateAddress(dappInfo), "Signature not valid.");
 
         var claimInfo = GetClaimInfoFromClaimId(stakeInput.ClaimIds.FirstOrDefault());
         CheckMaximumAmount(State.TokenContract.Value, stakeInput.DappId, claimInfo.ClaimedSymbol, stakeInput.Amount);
@@ -145,7 +145,7 @@ public partial class EcoEarnRewardsContract
         Assert(dappInfo != null, "Dapp id not exists.");
         Assert(
             RecoverAddressFromSignature(ComputeRemoveLiquidityHash(input), input.Signature) ==
-            dappInfo!.Config.UpdateAddress, "Signature not valid.");
+            GetUpdateAddress(dappInfo), "Signature not valid.");
 
         PrepareRemoveLiquidity(liquidityInfo.LpSymbol, liquidityInput.LpAmount,
             CalculateUserAddressHash(liquidityInput.DappId, Context.Sender),
@@ -210,7 +210,7 @@ public partial class EcoEarnRewardsContract
         Assert(dappInfo != null, "Dapp id not exists.");
         Assert(
             RecoverAddressFromSignature(ComputeStakeLiquidityHash(input), input.Signature) ==
-            dappInfo!.Config.UpdateAddress, "Signature not valid.");
+            GetUpdateAddress(dappInfo), "Signature not valid.");
 
         var stakeId = GetStakeId(input.PoolId);
 

@@ -7,6 +7,7 @@ public partial class EcoEarnRewardsContractState : ContractState
 {
     public SingletonState<bool> Initialized { get; set; }
     public SingletonState<Address> Admin { get; set; }
+    public SingletonState<Config> Config { get; set; }
 
     // <DappId, DappInfo>
     public MappedState<Hash, DappInfo> DappInfoMap { get; set; }

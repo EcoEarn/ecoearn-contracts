@@ -64,7 +64,7 @@ public partial class EcoEarnTokensContract
         Assert(input.Recipient == null || !input.Recipient.Value.IsNullOrEmpty(), "Invalid recipient.");
 
         var poolInfo = GetPool(input.PoolId);
-        CheckDAppAdminPermission(poolInfo.DappId);
+        GetAndCheckDAppAdminPermission(poolInfo.DappId);
 
         Assert(!CheckPoolEnabled(poolInfo.Config.EndTime), "Pool not closed.");
 
