@@ -172,7 +172,7 @@ public partial class EcoEarnPointsContract
 
         var poolInfo = GetPool(input!.PoolId);
         Assert(!CheckPoolEnabled(poolInfo.Config.EndTime), "Can not restart yet.");
-        GetAndCheckDAppAdminPermission(poolInfo.DappId);
+        var dappInfo = GetAndCheckDAppAdminPermission(poolInfo.DappId);
 
         poolInfo.Config = new PointsPoolConfig
         {
@@ -187,7 +187,8 @@ public partial class EcoEarnPointsContract
             EndTime = new Timestamp
             {
                 Seconds = input.EndTime
-            }
+            },
+            UpdateAddress = dappInfo.Config.UpdateAddress
         };
 
         var totalReward = CalculateTotalRewardAmount(input.StartTime, input.EndTime, input.RewardPerSecond);
