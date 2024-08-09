@@ -37,4 +37,9 @@ public partial class EcoEarnRewardsContract
 
         return dappInfo;
     }
+    
+    private Address GetUpdateAddress(DappInfo dappInfo)
+    {
+        return dappInfo.Config?.UpdateAddress == null ? State.Config.Value.DefaultUpdateAddress : dappInfo.Config.UpdateAddress;
+    }
 }

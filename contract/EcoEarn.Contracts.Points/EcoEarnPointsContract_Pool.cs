@@ -81,7 +81,7 @@ public partial class EcoEarnPointsContract
     {
         Assert(input != null, "Invalid input.");
         Assert(IsHashValid(input!.DappId), "Invalid dapp id.");
-        var dappInfo = GetAndCheckDAppAdminPermission(input.DappId);
+        GetAndCheckDAppAdminPermission(input.DappId);
         ValidatePointsPoolConfig(input);
         CheckPointExists(input.DappId, input.PointsName);
 
@@ -105,7 +105,7 @@ public partial class EcoEarnPointsContract
             {
                 Seconds = input.EndTime
             },
-            UpdateAddress = dappInfo.Config.UpdateAddress
+            UpdateAddress = GetUpdateAddress(input.DappId)
         };
 
         State.PoolInfoMap[poolId] = new PoolInfo
@@ -120,7 +120,10 @@ public partial class EcoEarnPointsContract
 
         State.PoolDataMap[poolId] = new PoolData
         {
-            LastRewardsUpdateTime = Context.CurrentBlockTime,
+            LastRewardsUpdateTime = new Timestamp
+            {
+                Seconds = input.StartTime
+            },
             PoolId = poolId
         };
 
@@ -172,7 +175,7 @@ public partial class EcoEarnPointsContract
 
         var poolInfo = GetPool(input!.PoolId);
         Assert(!CheckPoolEnabled(poolInfo.Config.EndTime), "Can not restart yet.");
-        var dappInfo = GetAndCheckDAppAdminPermission(poolInfo.DappId);
+        GetAndCheckDAppAdminPermission(poolInfo.DappId);
 
         poolInfo.Config = new PointsPoolConfig
         {
@@ -188,14 +191,17 @@ public partial class EcoEarnPointsContract
             {
                 Seconds = input.EndTime
             },
-            UpdateAddress = dappInfo.Config.UpdateAddress
+            UpdateAddress = GetUpdateAddress(poolInfo.DappId)
         };
 
         var totalReward = CalculateTotalRewardAmount(input.StartTime, input.EndTime, input.RewardPerSecond);
 
         State.PoolDataMap[poolInfo.PoolId] = new PoolData
         {
-            LastRewardsUpdateTime = Context.CurrentBlockTime,
+            LastRewardsUpdateTime = new Timestamp
+            {
+                Seconds = input.StartTime
+            },
             PoolId = poolInfo.PoolId
         };
 

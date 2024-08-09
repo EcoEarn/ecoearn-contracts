@@ -59,7 +59,7 @@ public partial class EcoEarnRewardsContract
         ValidateSignature(input.Signature, input.ExpirationTime);
         Assert(
             RecoverAddressFromSignature(ComputeWithdrawInputHash(input), input.Signature) ==
-            dappInfo!.Config.UpdateAddress, "Signature not valid.");
+            GetUpdateAddress(dappInfo), "Signature not valid.");
 
         var claimInfo = GetClaimInfoFromClaimId(input.ClaimIds.FirstOrDefault());
         CheckMaximumAmount(State.TokenContract.Value, input.DappId, claimInfo.ClaimedSymbol, input.Amount);
@@ -102,7 +102,7 @@ public partial class EcoEarnRewardsContract
         ValidateSignature(input.Signature, stakeInput.ExpirationTime);
         Assert(
             RecoverAddressFromSignature(ComputeEarlyStakeInputHash(input), input.Signature) ==
-            dappInfo!.Config.UpdateAddress, "Signature not valid.");
+            GetUpdateAddress(dappInfo), "Signature not valid.");
 
         var claimInfo = GetClaimInfoFromClaimId(stakeInput.ClaimIds.FirstOrDefault());
         CheckMaximumAmount(State.TokenContract.Value, stakeInput.DappId, claimInfo.ClaimedSymbol,

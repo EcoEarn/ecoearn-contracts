@@ -26,8 +26,7 @@ public partial class EcoEarnPointsContract
 
         var info = State.PoolInfoMap[input];
 
-        var dappInfo = State.DappInfoMap[info.DappId];
-        info.Config.UpdateAddress = dappInfo.Config.UpdateAddress;
+        info.Config.UpdateAddress = GetUpdateAddress(info.DappId);
         var output = new GetPoolInfoOutput
         {
             PoolInfo = info,

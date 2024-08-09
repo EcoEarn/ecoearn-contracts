@@ -43,4 +43,10 @@ public partial class EcoEarnPointsContract
     {
         return Context.CurrentBlockTime < endTime;
     }
+    
+    private Address GetUpdateAddress(Hash dappId)
+    {
+        var dappInfo = State.DappInfoMap[dappId];
+        return dappInfo.Config?.UpdateAddress == null ? State.Config.Value.DefaultUpdateAddress : dappInfo.Config.UpdateAddress;
+    }
 }

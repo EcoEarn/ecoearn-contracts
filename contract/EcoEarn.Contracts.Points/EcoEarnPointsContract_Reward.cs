@@ -18,9 +18,8 @@ public partial class EcoEarnPointsContract
         Assert(input != null, "Invalid input.");
         var poolInfo = GetPool(input!.PoolId);
         Assert(CheckPoolEnabled(poolInfo.Config.EndTime), "Pool disabled.");
-
-        var dappInfo = State.DappInfoMap[poolInfo.DappId];
-        Assert(dappInfo.Config.UpdateAddress == Context.Sender, "No permission.");
+        
+        Assert(GetUpdateAddress(poolInfo.DappId) == Context.Sender, "No permission.");
 
         var currentHeight = Context.CurrentHeight;
         Assert(State.SnapshotMap[input.PoolId][currentHeight] == null, "Duplicate Snapshot.");
@@ -53,9 +52,9 @@ public partial class EcoEarnPointsContract
         Assert(Context.CurrentBlockTime.Seconds < input.ExpirationTime, "Signature expired.");
 
         CheckClaimLimitation(poolInfo, input.Amount);
-
-        var dappInfo = State.DappInfoMap[poolInfo.DappId];
-        ValidateSignature(input, dappInfo.Config.UpdateAddress);
+        UpdatePoolData(input.PoolId, input.Amount);
+        
+        ValidateSignature(input, GetUpdateAddress(poolInfo.DappId));
 
         ChargeCommissionFee(poolInfo, input.Amount, out var claimedAmount);
 
@@ -168,8 +167,6 @@ public partial class EcoEarnPointsContract
             .Mul(poolInfo.Config.RewardPerSecond)
             .Add(poolData.CalculatedRewards).Sub(poolData.ClaimedRewards);
         Assert(amount <= maximumReward, "Amount too much.");
-
-        poolData.ClaimedRewards = poolData.ClaimedRewards.Add(amount);
     }
 
     private void ValidateSignature(ClaimInput input, Address updateAddress)
@@ -225,6 +222,12 @@ public partial class EcoEarnPointsContract
             DappId = poolInfo.DappId,
             Seed = seed
         });
+    }
+
+    private void UpdatePoolData(Hash poolId, long amount)
+    {
+        var poolData = State.PoolDataMap[poolId];
+        poolData.ClaimedRewards = poolData.ClaimedRewards.Add(amount);
     }
 
     #endregion
