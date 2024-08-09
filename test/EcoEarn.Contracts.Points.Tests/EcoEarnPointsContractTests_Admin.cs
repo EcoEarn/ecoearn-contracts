@@ -19,7 +19,8 @@ public partial class EcoEarnPointsContractTests : EcoEarnPointsContractTestBase
             Recipient = User2Address,
             Admin = UserAddress,
             EcoearnTokensContract = EcoEarnTokensContractAddress,
-            EcoearnRewardsContract = EcoEarnRewardsContractAddress
+            EcoearnRewardsContract = EcoEarnRewardsContractAddress,
+            UpdateAddress = DefaultAddress
         };
 
         var result = await EcoEarnPointsContractStub.Initialize.SendAsync(input);
@@ -45,7 +46,8 @@ public partial class EcoEarnPointsContractTests : EcoEarnPointsContractTestBase
             PointsContract = PointsContractAddress,
             CommissionRate = 100,
             EcoearnTokensContract = DefaultAddress,
-            EcoearnRewardsContract = DefaultAddress
+            EcoearnRewardsContract = DefaultAddress,
+            UpdateAddress = DefaultAddress
         };
 
         var result = await EcoEarnPointsContractStub.Initialize.SendAsync(input);
@@ -123,6 +125,27 @@ public partial class EcoEarnPointsContractTests : EcoEarnPointsContractTestBase
             Recipient = new Address()
         });
         result.TransactionResult.Error.ShouldContain("Invalid recipient.");
+        
+        result = await EcoEarnPointsContractStub.Initialize.SendWithExceptionAsync(new InitializeInput
+        {
+            PointsContract = DefaultAddress,
+            EcoearnTokensContract = DefaultAddress,
+            EcoearnRewardsContract = DefaultAddress,
+            CommissionRate = 0,
+            Recipient = DefaultAddress
+        });
+        result.TransactionResult.Error.ShouldContain("Invalid update address.");
+        
+        result = await EcoEarnPointsContractStub.Initialize.SendWithExceptionAsync(new InitializeInput
+        {
+            PointsContract = DefaultAddress,
+            EcoearnTokensContract = DefaultAddress,
+            EcoearnRewardsContract = DefaultAddress,
+            CommissionRate = 0,
+            Recipient = DefaultAddress,
+            UpdateAddress = new Address()
+        });
+        result.TransactionResult.Error.ShouldContain("Invalid update address.");
 
         // sender != author
         result = await EcoEarnPointsContractUserStub.Initialize.SendWithExceptionAsync(new InitializeInput
@@ -171,11 +194,13 @@ public partial class EcoEarnPointsContractTests : EcoEarnPointsContractTestBase
         var config = await EcoEarnPointsContractStub.GetConfig.CallAsync(new Empty());
         config.CommissionRate.ShouldBe(1000);
         config.Recipient.ShouldBe(User2Address);
+        
 
         var input = new Config
         {
             CommissionRate = 50,
-            Recipient = DefaultAddress
+            Recipient = DefaultAddress,
+            DefaultUpdateAddress = DefaultAddress
         };
         var result = await EcoEarnPointsContractStub.SetConfig.SendAsync(input);
         result.TransactionResult.Status.ShouldBe(TransactionResultStatus.Mined);
@@ -227,6 +252,23 @@ public partial class EcoEarnPointsContractTests : EcoEarnPointsContractTestBase
             });
             result.TransactionResult.Error.ShouldContain("Invalid recipient.");
         }
+        {
+            var result = await EcoEarnPointsContractStub.SetConfig.SendWithExceptionAsync(new Config
+            {
+                CommissionRate = 50,
+                Recipient = DefaultAddress
+            });
+            result.TransactionResult.Error.ShouldContain("Invalid update address.");
+        }
+        {
+            var result = await EcoEarnPointsContractStub.SetConfig.SendWithExceptionAsync(new Config
+            {
+                CommissionRate = 50,
+                Recipient = DefaultAddress,
+                DefaultUpdateAddress = new Address()
+            });
+            result.TransactionResult.Error.ShouldContain("Invalid update address.");
+        }
     }
 
     private async Task Initialize()
@@ -237,12 +279,14 @@ public partial class EcoEarnPointsContractTests : EcoEarnPointsContractTestBase
             CommissionRate = 1000,
             Recipient = User2Address,
             EcoearnTokensContract = EcoEarnTokensContractAddress,
-            EcoearnRewardsContract = EcoEarnRewardsContractAddress
+            EcoearnRewardsContract = EcoEarnRewardsContractAddress,
+            UpdateAddress = DefaultAddress
         });
         await EcoEarnRewardsContractStub.Initialize.SendAsync(new Rewards.InitializeInput
         {
             EcoearnTokensContract = EcoEarnTokensContractAddress,
-            EcoearnPointsContract = EcoEarnPointsContractAddress
+            EcoearnPointsContract = EcoEarnPointsContractAddress,
+            UpdateAddress = DefaultAddress
         });
         await PointsContractStub.Initialize.SendAsync(new TestPointsContract.InitializeInput
         {

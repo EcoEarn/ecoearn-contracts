@@ -24,10 +24,10 @@ service EcoEarnPointsContract {
   rpc Register (RegisterInput) returns (google.protobuf.Empty) {}
   rpc SetDappAdmin (SetDappAdminInput) returns (google.protobuf.Empty) {}
   rpc GetDappInfo (aelf.Hash) returns (DappInfo) {option (aelf.is_view) = true;}
+  rpc SetDappConfig (SetDappConfigInput) returns (google.protobuf.Empty) {}
   rpc CreatePointsPool (CreatePointsPoolInput) returns (google.protobuf.Empty) {}
   rpc SetPointsPoolEndTime (SetPointsPoolEndTimeInput) returns (google.protobuf.Empty) {}
   rpc RestartPointsPool (RestartPointsPoolInput) returns (google.protobuf.Empty) {}
-  rpc SetPointsPoolUpdateAddress (SetPointsPoolUpdateAddressInput) returns (google.protobuf.Empty) {}
   rpc SetPointsPoolRewardConfig (SetPointsPoolRewardConfigInput) returns (google.protobuf.Empty) {}
   rpc SetPointsPoolRewardPerSecond (SetPointsPoolRewardPerSecondInput) returns (google.protobuf.Empty) {}
   rpc GetPoolInfo (aelf.Hash) returns (GetPoolInfoOutput) {option (aelf.is_view) = true;}
@@ -48,21 +48,34 @@ message InitializeInput {
   aelf.Address ecoearn_rewards_contract = 4;
   int64 commission_rate = 5;
   aelf.Address recipient = 6;
+  aelf.Address update_address = 7;
 }
 
 message Config {
   int64 commission_rate = 1;
   aelf.Address recipient = 2;
+  aelf.Address default_update_address = 3;
 }
 
 message RegisterInput {
   aelf.Hash dapp_id = 1;
   aelf.Address admin = 2;
+  aelf.Address update_address = 3;
 }
 
 message DappInfo {
   aelf.Hash dapp_id = 1;
   aelf.Address admin = 2;
+  DappConfig config = 3;
+}
+
+message DappConfig {
+  aelf.Address update_address = 1;
+}
+
+message SetDappConfigInput {
+  aelf.Hash dapp_id = 1;
+  DappConfig config = 2;
 }
 
 message CreatePointsPoolInput {
@@ -72,9 +85,8 @@ message CreatePointsPoolInput {
   int64 start_time = 4;
   int64 end_time = 5;
   int64 reward_per_second = 6;
-  aelf.Address update_address = 7;
-  repeated int64 release_periods = 8;
-  int64 claim_interval = 9;
+  repeated int64 release_periods = 7;
+  int64 claim_interval = 8;
 }
 
 message PointsPoolConfig {
@@ -151,11 +163,6 @@ message RestartPointsPoolInput {
   int64 claim_interval = 8;
 }
 
-message SetPointsPoolUpdateAddressInput {
-  aelf.Hash pool_id = 1;
-  aelf.Address update_address = 2;
-}
-
 message SetPointsPoolRewardConfigInput {
   aelf.Hash pool_id = 1;
   repeated int64 release_periods = 2;
@@ -198,6 +205,13 @@ message Registered {
   option (aelf.is_event) = true;
   aelf.Hash dapp_id = 1;
   aelf.Address admin = 2;
+  DappConfig config = 3;
+}
+
+message DappConfigSet {
+  option (aelf.is_event) = true;
+  aelf.Hash dapp_id = 1;
+  DappConfig config = 2;
 }
 
 message PointsPoolCreated {
@@ -245,12 +259,6 @@ message PointsPoolRestarted {
   aelf.Hash pool_id = 1;
   PointsPoolConfig config = 2;
   int64 amount = 3;
-}
-
-message PointsPoolUpdateAddressSet {
-  option (aelf.is_event) = true;
-  aelf.Hash pool_id = 1;
-  aelf.Address update_address = 2;
 }
 
 message PointsPoolRewardConfigSet {

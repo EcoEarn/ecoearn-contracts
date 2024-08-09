@@ -25,6 +25,9 @@ public partial class EcoEarnPointsContract
         if (!IsHashValid(input) || State.PoolInfoMap[input]?.PoolId == null) return new GetPoolInfoOutput();
 
         var info = State.PoolInfoMap[input];
+
+        var dappInfo = State.DappInfoMap[info.DappId];
+        info.Config.UpdateAddress = dappInfo.Config.UpdateAddress;
         var output = new GetPoolInfoOutput
         {
             PoolInfo = info,

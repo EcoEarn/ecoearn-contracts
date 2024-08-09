@@ -19,16 +19,25 @@ public partial class EcoEarnTokensContract
         Assert(input != null, "Invalid input.");
         Assert(IsHashValid(input!.DappId), "Invalid dapp id.");
         Assert(input.Admin == null || !input.Admin.Value.IsNullOrEmpty(), "Invalid admin.");
+        Assert(input.PaymentAddress == null || !input.PaymentAddress.Value.IsNullOrEmpty(), "Invalid payment address.");
         Assert(State.DappInfoMap[input.DappId] == null, "Dapp registered.");
 
         var dappInfo = State.EcoEarnPointsContract.GetDappInfo.Call(input.DappId);
         if (State.Config.Value.IsRegisterRestricted) Assert(dappInfo.DappId != null, "Dapp id not exists.");
         if (dappInfo.DappId != null) Assert(dappInfo.Admin == Context.Sender, "No permission to register.");
 
+        var config = input.PaymentAddress == null
+            ? null
+            : new DappConfig
+            {
+                PaymentAddress = input.PaymentAddress
+            };
+        
         var info = new DappInfo
         {
             DappId = input.DappId,
-            Admin = input.Admin ?? Context.Sender
+            Admin = input.Admin ?? Context.Sender,
+            Config = config
         };
 
         State.DappInfoMap[input.DappId] = info;
@@ -36,7 +45,8 @@ public partial class EcoEarnTokensContract
         Context.Fire(new Registered
         {
             DappId = info.DappId,
-            Admin = info.Admin
+            Admin = info.Admin,
+            Config = config
         });
 
         return new Empty();
@@ -70,7 +80,7 @@ public partial class EcoEarnTokensContract
     {
         Assert(input != null, "Invalid input.");
         Assert(IsHashValid(input!.DappId), "Invalid dapp id.");
-        CheckDAppAdminPermission(input.DappId);
+        GetAndCheckDAppAdminPermission(input.DappId);
         ValidateTokensPoolConfig(input);
         Assert(IsStringValid(input.StakingToken), "Invalid staking token.");
         CheckTokenExists(input.StakingToken, input.StakeTokenContract ?? State.TokenContract.Value,
@@ -146,7 +156,7 @@ public partial class EcoEarnTokensContract
 
         var poolInfo = GetPool(input!.PoolId);
 
-        CheckDAppAdminPermission(poolInfo.DappId);
+        GetAndCheckDAppAdminPermission(poolInfo.DappId);
 
         Assert(input.EndTime > poolInfo.Config.EndTime.Seconds, "Invalid end time.");
 
@@ -176,7 +186,7 @@ public partial class EcoEarnTokensContract
         Assert(input!.ReleasePeriods != null && input.ReleasePeriods.Count > 0 && input.ReleasePeriods.All(p => p >= 0),
             "Invalid release periods.");
 
-        CheckDAppAdminPermission(poolInfo.DappId);
+        GetAndCheckDAppAdminPermission(poolInfo.DappId);
 
         if (poolInfo.Config.ReleasePeriods.Equals(input.ReleasePeriods)) return new Empty();
 
@@ -201,7 +211,7 @@ public partial class EcoEarnTokensContract
 
         var poolInfo = GetPool(input!.PoolId);
 
-        CheckDAppAdminPermission(poolInfo.DappId);
+        GetAndCheckDAppAdminPermission(poolInfo.DappId);
 
         Assert(input.MinimumAmount > 0, "Invalid minimum amount.");
         Assert(input.MaximumStakeDuration > 0, "Invalid maximum stake duration.");
@@ -244,7 +254,7 @@ public partial class EcoEarnTokensContract
 
         var poolInfo = GetPool(input.PoolId);
 
-        CheckDAppAdminPermission(poolInfo.DappId);
+        GetAndCheckDAppAdminPermission(poolInfo.DappId);
 
         if (poolInfo.Config.FixedBoostFactor == input.FixedBoostFactor) return new Empty();
 
@@ -268,7 +278,7 @@ public partial class EcoEarnTokensContract
         var poolData = State.PoolDataMap[poolInfo.PoolId];
         UpdatePool(poolInfo, poolData);
 
-        CheckDAppAdminPermission(poolInfo.DappId);
+        GetAndCheckDAppAdminPermission(poolInfo.DappId);
 
         if (poolInfo.Config.RewardPerSecond == input.RewardPerSecond) return new Empty();
 
@@ -291,7 +301,7 @@ public partial class EcoEarnTokensContract
 
         var poolInfo = GetPool(input.PoolId);
 
-        CheckDAppAdminPermission(poolInfo.DappId);
+        GetAndCheckDAppAdminPermission(poolInfo.DappId);
 
         if (poolInfo.Config.UnlockWindowDuration == input.UnlockWindowDuration) return new Empty();
 
@@ -313,7 +323,7 @@ public partial class EcoEarnTokensContract
 
         var poolInfo = GetPool(input.PoolId);
 
-        CheckDAppAdminPermission(poolInfo.DappId);
+        GetAndCheckDAppAdminPermission(poolInfo.DappId);
 
         if (poolInfo.Config.MergeInterval == input.MergeInterval) return new Empty();
 
@@ -323,6 +333,27 @@ public partial class EcoEarnTokensContract
         {
             PoolId = input.PoolId,
             MergeInterval = input.MergeInterval
+        });
+
+        return new Empty();
+    }
+    
+    public override Empty SetDappConfig(SetDappConfigInput input)
+    {
+        Assert(input != null, "Invalid input.");
+        Assert(IsHashValid(input!.DappId), "Invalid dapp id.");
+        Assert(input.Config != null && IsAddressValid(input.Config.PaymentAddress), "Invalid payment address.");
+
+        var dappInfo = GetAndCheckDAppAdminPermission(input.DappId);
+
+        if (input.Config!.Equals(dappInfo.Config)) return new Empty();
+
+        dappInfo.Config = input.Config;
+
+        Context.Fire(new DappConfigSet
+        {
+            DappId = input.DappId,
+            Config = input.Config
         });
 
         return new Empty();

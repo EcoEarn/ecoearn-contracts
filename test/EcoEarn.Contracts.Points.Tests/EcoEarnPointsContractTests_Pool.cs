@@ -30,10 +30,12 @@ public partial class EcoEarnPointsContractTests
         var log = GetLogEvent<Registered>(result.TransactionResult);
         log.DappId.ShouldBe(_appId);
         log.Admin.ShouldBe(DefaultAddress);
+        log.Config.UpdateAddress.ShouldBe(DefaultAddress);
 
         var output = await EcoEarnPointsContractStub.GetDappInfo.CallAsync(_appId);
         output.DappId.ShouldBe(_appId);
         output.Admin.ShouldBe(DefaultAddress);
+        output.Config.UpdateAddress.ShouldBe(DefaultAddress);
 
         output = await EcoEarnPointsContractStub.GetDappInfo.CallAsync(new Hash());
         output.DappId.ShouldBeNull();
@@ -199,7 +201,6 @@ public partial class EcoEarnPointsContractTests
             EndTime = blockTime.Seconds + 100,
             RewardPerSecond = 10,
             RewardToken = Symbol,
-            UpdateAddress = DefaultAddress,
             ReleasePeriods = { 10, 20, 30 },
             ClaimInterval = 10
         };
@@ -213,12 +214,12 @@ public partial class EcoEarnPointsContractTests
         log.Config.StartTime.Seconds.ShouldBe(blockTime.Seconds);
         log.Config.EndTime.Seconds.ShouldBe(blockTime.Seconds + 100);
         log.Config.ReleasePeriods.Count.ShouldBe(3);
-        log.Config.UpdateAddress.ShouldBe(DefaultAddress);
         log.Config.RewardPerSecond.ShouldBe(10);
         log.Config.ReleasePeriods.Count.ShouldBe(3);
         log.Config.ClaimInterval.ShouldBe(10);
         log.Amount.ShouldBe(1000);
         log.PoolId.ShouldBe(HashHelper.ComputeFrom(input));
+        log.Config.UpdateAddress = DefaultAddress;
 
         var output = await EcoEarnPointsContractStub.GetPoolInfo.CallAsync(log.PoolId);
         output.Status.ShouldBe(true);
@@ -256,23 +257,7 @@ public partial class EcoEarnPointsContractTests
         result =
             await EcoEarnPointsContractStub.CreatePointsPool.SendWithExceptionAsync(new CreatePointsPoolInput
             {
-                DappId = _appId
-            });
-        result.TransactionResult.Error.ShouldContain("Invalid update address.");
-
-        result =
-            await EcoEarnPointsContractStub.CreatePointsPool.SendWithExceptionAsync(new CreatePointsPoolInput
-            {
                 DappId = _appId,
-                UpdateAddress = new Address()
-            });
-        result.TransactionResult.Error.ShouldContain("Invalid update address.");
-
-        result =
-            await EcoEarnPointsContractStub.CreatePointsPool.SendWithExceptionAsync(new CreatePointsPoolInput
-            {
-                DappId = _appId,
-                UpdateAddress = DefaultAddress,
                 StartTime = BlockTimeProvider.GetBlockTime().Seconds,
                 EndTime = BlockTimeProvider.GetBlockTime().Seconds + 100,
                 RewardToken = Symbol,
@@ -285,7 +270,6 @@ public partial class EcoEarnPointsContractTests
             await EcoEarnPointsContractStub.CreatePointsPool.SendWithExceptionAsync(new CreatePointsPoolInput
             {
                 DappId = _appId,
-                UpdateAddress = DefaultAddress,
                 StartTime = BlockTimeProvider.GetBlockTime().Seconds,
                 EndTime = BlockTimeProvider.GetBlockTime().Seconds + 100,
                 ReleasePeriods = { 0 },
@@ -298,7 +282,6 @@ public partial class EcoEarnPointsContractTests
             await EcoEarnPointsContractStub.CreatePointsPool.SendWithExceptionAsync(new CreatePointsPoolInput
             {
                 DappId = _appId,
-                UpdateAddress = DefaultAddress,
                 StartTime = BlockTimeProvider.GetBlockTime().Seconds,
                 EndTime = BlockTimeProvider.GetBlockTime().Seconds + 100,
                 ReleasePeriods = { 0 },
@@ -323,7 +306,6 @@ public partial class EcoEarnPointsContractTests
             EndTime = BlockTimeProvider.GetBlockTime().Seconds + 100,
             RewardPerSecond = 10,
             RewardToken = Symbol,
-            UpdateAddress = DefaultAddress,
             ReleasePeriods = { 0 },
         };
 
@@ -369,7 +351,6 @@ public partial class EcoEarnPointsContractTests
                 EndTime = endTime == 1 ? BlockTimeProvider.GetBlockTime().Seconds + endTime : 0,
                 RewardPerSecond = rewardPerSecond,
                 ReleasePeriods = { releasePeriod },
-                UpdateAddress = UserAddress,
                 ClaimInterval = claimInterval
             });
         result.TransactionResult.Error.ShouldContain(error);
@@ -622,93 +603,6 @@ public partial class EcoEarnPointsContractTests
     }
 
     [Fact]
-    public async Task SetPointsPoolUpdateAddressTests()
-    {
-        await Initialize();
-
-        await Register();
-        var poolId = await CreatePointsPool();
-
-        var output = await EcoEarnPointsContractStub.GetPoolInfo.CallAsync(poolId);
-        output.PoolInfo.Config.UpdateAddress.ShouldBe(DefaultAddress);
-
-        var result = await EcoEarnPointsContractStub.SetPointsPoolUpdateAddress.SendAsync(
-            new SetPointsPoolUpdateAddressInput
-            {
-                PoolId = poolId,
-                UpdateAddress = UserAddress
-            });
-        result.TransactionResult.Status.ShouldBe(TransactionResultStatus.Mined);
-
-        var log = GetLogEvent<PointsPoolUpdateAddressSet>(result.TransactionResult);
-        log.PoolId.ShouldBe(poolId);
-        log.UpdateAddress.ShouldBe(UserAddress);
-
-        output = await EcoEarnPointsContractStub.GetPoolInfo.CallAsync(poolId);
-        output.PoolInfo.Config.UpdateAddress.ShouldBe(UserAddress);
-
-        result = await EcoEarnPointsContractStub.SetPointsPoolUpdateAddress.SendAsync(
-            new SetPointsPoolUpdateAddressInput
-            {
-                PoolId = poolId,
-                UpdateAddress = UserAddress
-            });
-        result.TransactionResult.Logs.FirstOrDefault(l => l.Name.Contains(nameof(PointsPoolUpdateAddressSet)))
-            .ShouldBeNull();
-    }
-
-    [Fact]
-    public async Task SetPointsPoolUpdateAddressTests_Fail()
-    {
-        await Initialize();
-
-        await Register();
-        var poolId = await CreatePointsPool();
-
-        var result = await EcoEarnPointsContractStub.SetPointsPoolUpdateAddress.SendWithExceptionAsync(
-            new SetPointsPoolUpdateAddressInput());
-        result.TransactionResult.Error.ShouldContain("Invalid update address.");
-
-        result = await EcoEarnPointsContractStub.SetPointsPoolUpdateAddress.SendWithExceptionAsync(
-            new SetPointsPoolUpdateAddressInput
-            {
-                UpdateAddress = new Address()
-            });
-        result.TransactionResult.Error.ShouldContain("Invalid update address.");
-
-        result = await EcoEarnPointsContractStub.SetPointsPoolUpdateAddress.SendWithExceptionAsync(
-            new SetPointsPoolUpdateAddressInput
-            {
-                UpdateAddress = UserAddress
-            });
-        result.TransactionResult.Error.ShouldContain("Invalid pool id.");
-
-        result = await EcoEarnPointsContractStub.SetPointsPoolUpdateAddress.SendWithExceptionAsync(
-            new SetPointsPoolUpdateAddressInput
-            {
-                UpdateAddress = UserAddress,
-                PoolId = new Hash()
-            });
-        result.TransactionResult.Error.ShouldContain("Invalid pool id.");
-
-        result = await EcoEarnPointsContractStub.SetPointsPoolUpdateAddress.SendWithExceptionAsync(
-            new SetPointsPoolUpdateAddressInput
-            {
-                UpdateAddress = UserAddress,
-                PoolId = HashHelper.ComputeFrom(1)
-            });
-        result.TransactionResult.Error.ShouldContain("Pool not exists.");
-
-        result = await EcoEarnPointsContractUserStub.SetPointsPoolUpdateAddress.SendWithExceptionAsync(
-            new SetPointsPoolUpdateAddressInput
-            {
-                PoolId = poolId,
-                UpdateAddress = DefaultAddress
-            });
-        result.TransactionResult.Error.ShouldContain("No permission.");
-    }
-
-    [Fact]
     public async Task SetPointsPoolRewardPerSecondTests()
     {
         await Initialize();
@@ -884,6 +778,99 @@ public partial class EcoEarnPointsContractTests
             });
         result.TransactionResult.Error.ShouldContain("No permission.");
     }
+    
+    [Fact]
+    public async Task SetDappConfigTests()
+    {
+        await Initialize();
+        await Register();
+
+        var output = await EcoEarnPointsContractStub.GetDappInfo.CallAsync(_appId);
+        output.Config.UpdateAddress.ShouldBe(DefaultAddress);
+
+        var result = await EcoEarnPointsContractStub.SetDappConfig.SendAsync(new SetDappConfigInput
+        {
+            DappId = _appId,
+            Config = new DappConfig
+            {
+                UpdateAddress = DefaultAddress
+            }
+        });
+        result.TransactionResult.Status.ShouldBe(TransactionResultStatus.Mined);
+        result.TransactionResult.Logs.FirstOrDefault(l => l.Name == nameof(DappConfigSet)).ShouldBeNull();
+
+        result = await EcoEarnPointsContractStub.SetDappConfig.SendAsync(new SetDappConfigInput
+        {
+            DappId = _appId,
+            Config = new DappConfig
+            {
+                UpdateAddress = UserAddress
+            }
+        });
+        var log = GetLogEvent<DappConfigSet>(result.TransactionResult);
+        log.Config.UpdateAddress.ShouldBe(UserAddress);
+        output = await EcoEarnPointsContractStub.GetDappInfo.CallAsync(_appId);
+        output.Config.UpdateAddress.ShouldBe(UserAddress);
+    }
+    
+    [Fact]
+    public async Task SetDappConfigTests_Fail()
+    {
+        await Initialize();
+        await Register();
+
+        var result = await EcoEarnPointsContractStub.SetDappConfig.SendWithExceptionAsync(new SetDappConfigInput());
+        result.TransactionResult.Error.ShouldContain("Invalid dapp id.");
+
+        result = await EcoEarnPointsContractStub.SetDappConfig.SendWithExceptionAsync(new SetDappConfigInput
+        {
+            DappId = new Hash()
+        });
+        result.TransactionResult.Error.ShouldContain("Invalid dapp id.");
+
+        result = await EcoEarnPointsContractStub.SetDappConfig.SendWithExceptionAsync(new SetDappConfigInput
+        {
+            DappId = HashHelper.ComputeFrom("test")
+        });
+        result.TransactionResult.Error.ShouldContain("Invalid update address.");
+
+        result = await EcoEarnPointsContractStub.SetDappConfig.SendWithExceptionAsync(new SetDappConfigInput
+        {
+            DappId = HashHelper.ComputeFrom("test"),
+            Config = new DappConfig()
+        });
+        result.TransactionResult.Error.ShouldContain("Invalid update address.");
+
+        result = await EcoEarnPointsContractStub.SetDappConfig.SendWithExceptionAsync(new SetDappConfigInput
+        {
+            DappId = HashHelper.ComputeFrom("test"),
+            Config = new DappConfig
+            {
+                UpdateAddress = new Address()
+            }
+        });
+        result.TransactionResult.Error.ShouldContain("Invalid update address.");
+
+        result = await EcoEarnPointsContractStub.SetDappConfig.SendWithExceptionAsync(new SetDappConfigInput
+        {
+            DappId = HashHelper.ComputeFrom("test"),
+            Config = new DappConfig
+            {
+                UpdateAddress = UserAddress
+            }
+        });
+        result.TransactionResult.Error.ShouldContain("No permission.");
+        
+        result = await EcoEarnPointsContractUserStub.SetDappConfig.SendWithExceptionAsync(new SetDappConfigInput
+        {
+            DappId = _appId,
+            Config = new DappConfig
+            {
+                UpdateAddress = UserAddress
+            }
+        });
+        result.TransactionResult.Error.ShouldContain("No permission.");
+    }
 
     private async Task Register()
     {
@@ -908,7 +895,6 @@ public partial class EcoEarnPointsContractTests
             EndTime = blockTime + 100,
             RewardPerSecond = 10,
             RewardToken = Symbol,
-            UpdateAddress = DefaultAddress,
             ReleasePeriods = { 0 },
             ClaimInterval = 100
         });
