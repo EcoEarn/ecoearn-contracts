@@ -46,16 +46,26 @@ service EcoEarnTokensContract {
   rpc GetConfig (google.protobuf.Empty) returns (Config) {option (aelf.is_view) = true;}
   rpc SetAdmin (aelf.Address) returns (google.protobuf.Empty) {}
   rpc GetAdmin (google.protobuf.Empty) returns (aelf.Address) {option (aelf.is_view) = true;}
+  
+  rpc StakeOnBehalf (StakeOnBehalfInput) returns (google.protobuf.Empty) {}
+  rpc IsInUnlockWindow (IsInUnlockWindowInput) returns (google.protobuf.BoolValue) {option (aelf.is_view) = true;}
+  rpc SetDappConfig (SetDappConfigInput) returns (google.protobuf.Empty) {}
 }
 
 message RegisterInput {
   aelf.Hash dapp_id = 1;
   aelf.Address admin = 2;
+  aelf.Address payment_address = 3;
 }
 
 message DappInfo {
   aelf.Hash dapp_id = 1;
   aelf.Address admin = 2;
+  DappConfig config = 3;
+}
+
+message DappConfig {
+  aelf.Address payment_address = 1;
 }
 
 message CreateTokensPoolInput {
@@ -67,10 +77,10 @@ message CreateTokensPoolInput {
   string staking_token = 6;
   int64 fixed_boost_factor = 7;
   int64 minimum_amount = 8;
-  int64 maximum_stake_duration = 9;
-  int64 minimum_claim_amount = 10;
-  int64 minimum_add_liquidity_amount = 11;
-  int64 minimum_stake_duration = 12;
+  int64 minimum_stake_duration = 9;
+  int64 maximum_stake_duration = 10;
+  int64 minimum_claim_amount = 11;
+  int64 minimum_add_liquidity_amount = 12;
   aelf.Address reward_token_contract = 13;
   aelf.Address stake_token_contract = 14;
   aelf.Address swap_contract = 15;
@@ -268,11 +278,29 @@ message PoolAddressInfo {
   aelf.Address reward_address = 2;
 }
 
+message StakeOnBehalfInput {
+  aelf.Hash pool_id = 1;
+  int64 amount = 2;
+  int64 period = 3;
+  aelf.Address account = 4;
+}
+
+message IsInUnlockWindowInput {
+  aelf.Hash pool_id = 1;
+  aelf.Address account = 2;
+}
+
+message SetDappConfigInput {
+  aelf.Hash dapp_id = 1;
+  DappConfig config = 2;
+}
+
 // log event
 message Registered {
   option (aelf.is_event) = true;
   aelf.Hash dapp_id = 1;
   aelf.Address admin = 2;
+  DappConfig config = 3;
 }
 
 message TokensPoolCreated {
@@ -381,4 +409,17 @@ message Renewed {
   option (aelf.is_event) = true;
   StakeInfo stake_info = 1;
   PoolData pool_data = 2;
+}
+
+message StakedOnBehalf {
+  option (aelf.is_event) = true;
+  StakeInfo stake_info = 1;
+  PoolData pool_data = 2;
+  aelf.Address payer = 3;
+}
+
+message DappConfigSet {
+  option (aelf.is_event) = true;
+  aelf.Hash dapp_id = 1;
+  DappConfig config = 2;
 }

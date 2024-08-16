@@ -10,6 +10,11 @@ public partial class EcoEarnRewardsContract
         return State.Admin.Value;
     }
 
+    public override Config GetConfig(Empty input)
+    {
+        return State.Config.Value;
+    }
+
     public override DappInfo GetDappInfo(Hash input)
     {
         return IsHashValid(input) ? State.DappInfoMap[input] : new DappInfo();

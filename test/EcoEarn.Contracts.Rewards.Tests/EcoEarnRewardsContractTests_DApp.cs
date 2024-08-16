@@ -67,12 +67,6 @@ public partial class EcoEarnRewardsContractTests
 
         result = await EcoEarnRewardsContractStub.Register.SendWithExceptionAsync(new RegisterInput
         {
-            DappId = HashHelper.ComputeFrom("test")
-        });
-        result.TransactionResult.Error.ShouldContain("Invalid update address.");
-
-        result = await EcoEarnRewardsContractStub.Register.SendWithExceptionAsync(new RegisterInput
-        {
             DappId = HashHelper.ComputeFrom("test"),
             UpdateAddress = new Address()
         });

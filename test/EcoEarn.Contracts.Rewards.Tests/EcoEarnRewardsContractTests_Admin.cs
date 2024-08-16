@@ -16,7 +16,8 @@ public partial class EcoEarnRewardsContractTests : EcoEarnRewardsContractTestBas
         {
             Admin = UserAddress,
             EcoearnPointsContract = EcoEarnPointsContractAddress,
-            EcoearnTokensContract = EcoEarnTokensContractAddress
+            EcoearnTokensContract = EcoEarnTokensContractAddress,
+            UpdateAddress = DefaultAddress
         };
 
         var result = await EcoEarnRewardsContractStub.Initialize.SendAsync(input);
@@ -49,6 +50,34 @@ public partial class EcoEarnRewardsContractTests : EcoEarnRewardsContractTestBas
             EcoearnPointsContract = new Address()
         });
         result.TransactionResult.Error.ShouldContain("Invalid ecoearn points contract.");
+        
+        result = await EcoEarnRewardsContractStub.Initialize.SendWithExceptionAsync(new InitializeInput
+        {
+            EcoearnPointsContract = DefaultAddress
+        });
+        result.TransactionResult.Error.ShouldContain("Invalid ecoearn tokens contract.");
+        
+        result = await EcoEarnRewardsContractStub.Initialize.SendWithExceptionAsync(new InitializeInput
+        {
+            EcoearnPointsContract = DefaultAddress,
+            EcoearnTokensContract = new Address()
+        });
+        result.TransactionResult.Error.ShouldContain("Invalid ecoearn tokens contract.");
+        
+        result = await EcoEarnRewardsContractStub.Initialize.SendWithExceptionAsync(new InitializeInput
+        {
+            EcoearnPointsContract = DefaultAddress,
+            EcoearnTokensContract = DefaultAddress
+        });
+        result.TransactionResult.Error.ShouldContain("Invalid update address.");
+        
+        result = await EcoEarnRewardsContractStub.Initialize.SendWithExceptionAsync(new InitializeInput
+        {
+            EcoearnPointsContract = DefaultAddress,
+            EcoearnTokensContract = DefaultAddress,
+            UpdateAddress = new Address()
+        });
+        result.TransactionResult.Error.ShouldContain("Invalid update address.");
 
         // sender != author
         result = await UserEcoEarnRewardsContractStub.Initialize.SendWithExceptionAsync(new InitializeInput
@@ -96,7 +125,8 @@ public partial class EcoEarnRewardsContractTests : EcoEarnRewardsContractTestBas
         await EcoEarnRewardsContractStub.Initialize.SendAsync(new InitializeInput
         {
             EcoearnPointsContract = EcoEarnPointsContractAddress,
-            EcoearnTokensContract = EcoEarnTokensContractAddress
+            EcoearnTokensContract = EcoEarnTokensContractAddress,
+            UpdateAddress = DefaultAddress
         });
         await EcoEarnPointsContractStub.Initialize.SendAsync(new Points.InitializeInput
         {
@@ -104,7 +134,8 @@ public partial class EcoEarnRewardsContractTests : EcoEarnRewardsContractTestBas
             CommissionRate = 1000,
             Recipient = User2Address,
             EcoearnTokensContract = EcoEarnTokensContractAddress,
-            EcoearnRewardsContract = EcoEarnRewardsContractAddress
+            EcoearnRewardsContract = EcoEarnRewardsContractAddress,
+            UpdateAddress = DefaultAddress
         });
         await EcoEarnTokensContractStub.Initialize.SendAsync(new Tokens.InitializeInput
         {

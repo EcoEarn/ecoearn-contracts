@@ -30,7 +30,8 @@ public partial class EcoEarnTokensContractTests
         {
             EcoearnTokensContract = EcoEarnTokensContractAddress,
             PointsContract = PointsContractAddress,
-            EcoearnRewardsContract = EcoEarnRewardsContractAddress
+            EcoearnRewardsContract = EcoEarnRewardsContractAddress,
+            UpdateAddress = DefaultAddress
         });
         await EcoEarnPointsContractStub.Register.SendAsync(new Points.RegisterInput
         {
@@ -67,7 +68,8 @@ public partial class EcoEarnTokensContractTests
         {
             EcoearnTokensContract = EcoEarnTokensContractAddress,
             PointsContract = PointsContractAddress,
-            EcoearnRewardsContract = EcoEarnRewardsContractAddress
+            EcoearnRewardsContract = EcoEarnRewardsContractAddress,
+            UpdateAddress = DefaultAddress
         });
         await EcoEarnPointsContractStub.Register.SendAsync(new Points.RegisterInput
         {
@@ -96,6 +98,14 @@ public partial class EcoEarnTokensContractTests
             Admin = DefaultAddress
         });
         result.TransactionResult.Error.ShouldContain("Dapp id not exists.");
+        
+        result = await EcoEarnTokensContractStub.Register.SendWithExceptionAsync(new RegisterInput
+        {
+            DappId = _appId,
+            Admin = DefaultAddress,
+            PaymentAddress = new Address()
+        });
+        result.TransactionResult.Error.ShouldContain("Invalid payment address.");
 
         result = await EcoEarnTokensContractUserStub.Register.SendWithExceptionAsync(new RegisterInput
         {
@@ -726,12 +736,14 @@ public partial class EcoEarnTokensContractTests
         {
             EcoearnTokensContract = EcoEarnTokensContractAddress,
             EcoearnRewardsContract = EcoEarnRewardsContractAddress,
-            PointsContract = PointsContractAddress
+            PointsContract = PointsContractAddress,
+            UpdateAddress = DefaultAddress
         });
         await EcoEarnRewardsContractStub.Initialize.SendAsync(new Rewards.InitializeInput
         {
             EcoearnTokensContract = EcoEarnTokensContractAddress,
-            EcoearnPointsContract = EcoEarnPointsContractAddress
+            EcoearnPointsContract = EcoEarnPointsContractAddress,
+            UpdateAddress = DefaultAddress
         });
         await EcoEarnPointsContractStub.Register.SendAsync(new Points.RegisterInput
         {
@@ -954,6 +966,110 @@ public partial class EcoEarnTokensContractTests
             {
                 PoolId = poolId
             });
+        result.TransactionResult.Error.ShouldContain("No permission.");
+    }
+    
+    [Fact]
+    public async Task SetDappConfigTests()
+    {
+        await Register();
+
+        var output = await EcoEarnTokensContractStub.GetDappInfo.CallAsync(_appId);
+        output.Config.ShouldBeNull();
+        
+        var result = await EcoEarnTokensContractStub.SetDappConfig.SendAsync(new SetDappConfigInput
+        {
+            DappId = _appId,
+            Config = new DappConfig
+            {
+                PaymentAddress = DefaultAddress
+            }
+        });
+        result.TransactionResult.Status.ShouldBe(TransactionResultStatus.Mined);
+        var log = GetLogEvent<DappConfigSet>(result.TransactionResult);
+        log.DappId.ShouldBe(_appId);
+        log.Config.PaymentAddress.ShouldBe(DefaultAddress);
+
+        result = await EcoEarnTokensContractStub.SetDappConfig.SendAsync(new SetDappConfigInput
+        {
+            DappId = _appId,
+            Config = new DappConfig
+            {
+                PaymentAddress = DefaultAddress
+            }
+        });
+        result.TransactionResult.Status.ShouldBe(TransactionResultStatus.Mined);
+        result.TransactionResult.Logs.FirstOrDefault(l => l.Name == nameof(DappConfigSet)).ShouldBeNull();
+
+        result = await EcoEarnTokensContractStub.SetDappConfig.SendAsync(new SetDappConfigInput
+        {
+            DappId = _appId,
+            Config = new DappConfig
+            {
+                PaymentAddress = UserAddress
+            }
+        });
+        log = GetLogEvent<DappConfigSet>(result.TransactionResult);
+        log.Config.PaymentAddress.ShouldBe(UserAddress);
+        output = await EcoEarnTokensContractStub.GetDappInfo.CallAsync(_appId);
+        output.Config.PaymentAddress.ShouldBe(UserAddress);
+    }
+    
+    [Fact]
+    public async Task SetDappConfigTests_Fail()
+    {
+        await Register();
+
+        var result = await EcoEarnTokensContractStub.SetDappConfig.SendWithExceptionAsync(new SetDappConfigInput());
+        result.TransactionResult.Error.ShouldContain("Invalid dapp id.");
+
+        result = await EcoEarnTokensContractStub.SetDappConfig.SendWithExceptionAsync(new SetDappConfigInput
+        {
+            DappId = new Hash()
+        });
+        result.TransactionResult.Error.ShouldContain("Invalid dapp id.");
+
+        result = await EcoEarnTokensContractStub.SetDappConfig.SendWithExceptionAsync(new SetDappConfigInput
+        {
+            DappId = HashHelper.ComputeFrom("test")
+        });
+        result.TransactionResult.Error.ShouldContain("Invalid payment address.");
+
+        result = await EcoEarnTokensContractStub.SetDappConfig.SendWithExceptionAsync(new SetDappConfigInput
+        {
+            DappId = HashHelper.ComputeFrom("test"),
+            Config = new DappConfig()
+        });
+        result.TransactionResult.Error.ShouldContain("Invalid payment address.");
+
+        result = await EcoEarnTokensContractStub.SetDappConfig.SendWithExceptionAsync(new SetDappConfigInput
+        {
+            DappId = HashHelper.ComputeFrom("test"),
+            Config = new DappConfig
+            {
+                PaymentAddress = new Address()
+            }
+        });
+        result.TransactionResult.Error.ShouldContain("Invalid payment address.");
+
+        result = await EcoEarnTokensContractStub.SetDappConfig.SendWithExceptionAsync(new SetDappConfigInput
+        {
+            DappId = HashHelper.ComputeFrom("test"),
+            Config = new DappConfig
+            {
+                PaymentAddress = UserAddress
+            }
+        });
+        result.TransactionResult.Error.ShouldContain("No permission.");
+        
+        result = await EcoEarnTokensContractUserStub.SetDappConfig.SendWithExceptionAsync(new SetDappConfigInput
+        {
+            DappId = _appId,
+            Config = new DappConfig
+            {
+                PaymentAddress = UserAddress
+            }
+        });
         result.TransactionResult.Error.ShouldContain("No permission.");
     }
 

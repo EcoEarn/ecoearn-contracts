@@ -31,10 +31,12 @@ public partial class EcoEarnTokensContract
         return input != null && !input.Value.IsNullOrEmpty();
     }
 
-    private void CheckDAppAdminPermission(Hash id)
+    private DappInfo GetAndCheckDAppAdminPermission(Hash id)
     {
         var info = State.DappInfoMap[id];
         Assert(info != null && info.Admin == Context.Sender, "No permission.");
+
+        return info;
     }
 
     private bool CheckPoolEnabled(Timestamp endBlockNumber)

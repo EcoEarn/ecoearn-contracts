@@ -19,6 +19,13 @@ public partial class EcoEarnRewardsContract : EcoEarnRewardsContractContainer.Ec
         State.Admin.Value = input.Admin ?? Context.Sender;
         State.EcoEarnPointsContract.Value = input.EcoearnPointsContract;
         State.EcoEarnTokensContract.Value = input.EcoearnTokensContract;
+        
+        Assert(IsAddressValid(input.UpdateAddress), "Invalid update address.");
+
+        State.Config.Value = new Config
+        {
+            DefaultUpdateAddress = input.UpdateAddress
+        };
 
         State.TokenContract.Value = Context.GetContractAddressByName(SmartContractConstants.TokenContractSystemName);
 
@@ -39,6 +46,25 @@ public partial class EcoEarnRewardsContract : EcoEarnRewardsContractContainer.Ec
         Context.Fire(new AdminSet
         {
             Admin = input
+        });
+
+        return new Empty();
+    }
+
+    public override Empty SetConfig(Config input)
+    {
+        CheckAdminPermission();
+
+        Assert(input != null, "Invalid input.");
+        Assert(IsAddressValid(input.DefaultUpdateAddress), "Invalid update address.");
+
+        if (input.Equals(State.Config.Value)) return new Empty();
+
+        State.Config.Value = input;
+
+        Context.Fire(new ConfigSet
+        {
+            Config = input
         });
 
         return new Empty();

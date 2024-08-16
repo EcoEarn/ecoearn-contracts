@@ -30,9 +30,16 @@ public partial class EcoEarnRewardsContract
         return input != null && !input.Value.IsNullOrEmpty();
     }
 
-    private void CheckDAppAdminPermission(Hash id)
+    private DappInfo GetAndCheckDAppAdminPermission(Hash id)
     {
         var dappInfo = State.DappInfoMap[id];
         Assert(dappInfo != null && dappInfo.Admin == Context.Sender, "No permission.");
+
+        return dappInfo;
+    }
+    
+    private Address GetUpdateAddress(DappInfo dappInfo)
+    {
+        return dappInfo.Config?.UpdateAddress == null ? State.Config.Value.DefaultUpdateAddress : dappInfo.Config.UpdateAddress;
     }
 }
