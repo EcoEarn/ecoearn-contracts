@@ -14,6 +14,11 @@ public partial class EcoEarnRewardsContractState : ContractState
 
     // <ClaimId, ClaimInfo>
     public MappedState<Hash, ClaimInfo> ClaimInfoMap { get; set; }
+    // SignatureHash
     public MappedState<Hash, bool> SignatureMap { get; set; }
+    // <LiquidityId, LiquidityInfo>
     public MappedState<Hash, LiquidityInfo> LiquidityInfoMap { get; set; }
+    
+    public MappedState<Address, bool> JoinRecord { get; set; }
+    public SingletonState<PointsContractConfig> PointsContractConfig { get; set; }
 }

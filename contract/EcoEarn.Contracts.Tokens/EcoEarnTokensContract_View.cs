@@ -110,12 +110,12 @@ public partial class EcoEarnTokensContract
     {
         var poolInfo = State.PoolInfoMap[input.PoolId];
         if (poolInfo?.PoolId == null) return new BoolValue();
-        
+
         var stakeId = State.UserStakeIdMap[input.PoolId][input.Account];
         if (stakeId == null) return new BoolValue();
 
         var stakeInfo = State.StakeInfoMap[stakeId];
-        
+
         var remainTime = CalculateRemainTime(stakeInfo, poolInfo.Config.UnlockWindowDuration);
         if (stakeInfo != null && stakeInfo.UnlockTime == null && IsInUnlockWindow(stakeInfo, remainTime))
             return new BoolValue
@@ -124,6 +124,11 @@ public partial class EcoEarnTokensContract
             };
 
         return new BoolValue();
+    }
+
+    public override BoolValue GetStakeOnBehalfPermission(Hash input)
+    {
+        return IsHashValid(input) ? new BoolValue { Value = State.StakeOnBehalfPermissionMap[input] } : new BoolValue();
     }
 
     #endregion

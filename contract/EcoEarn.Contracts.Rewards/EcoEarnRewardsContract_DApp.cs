@@ -37,6 +37,8 @@ public partial class EcoEarnRewardsContract
 
         State.DappInfoMap[input.DappId] = info;
 
+        Join(Context.Sender);
+
         Context.Fire(new Registered
         {
             DappId = info.DappId,

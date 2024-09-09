@@ -51,6 +51,8 @@ public partial class EcoEarnTokensContract
                 });
         }
         
+        Join(Context.Sender);
+        
         Context.Fire(new Staked
         {
             StakeInfo = stakeInfo,
@@ -215,6 +217,7 @@ public partial class EcoEarnTokensContract
         Assert(input != null, "Invalid input.");
 
         var poolInfo = GetPool(input!.PoolId);
+        Assert(State.StakeOnBehalfPermissionMap[poolInfo.DappId], "Permission not granted.");
 
         Assert(input!.Amount >= 0, "Invalid amount.");
         Assert(input.Period >= 0, "Invalid period.");
@@ -251,6 +254,8 @@ public partial class EcoEarnTokensContract
                     Symbol = poolInfo.Config.StakingToken
                 });
         }
+        
+        Join(input.Account);
         
         Context.Fire(new StakedOnBehalf
         {

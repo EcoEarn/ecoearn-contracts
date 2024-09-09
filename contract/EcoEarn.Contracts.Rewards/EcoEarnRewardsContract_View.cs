@@ -34,4 +34,21 @@ public partial class EcoEarnRewardsContract
     {
         return IsHashValid(input) ? State.LiquidityInfoMap[input] : new LiquidityInfo();
     }
+    
+    // PixiePoints
+    public override GetPointsContractConfigOutput GetPointsContractConfig(Empty input)
+    {
+        return new GetPointsContractConfigOutput
+        {
+            PointsContract = State.PointsContract.Value,
+            Config = State.PointsContractConfig.Value
+        };
+    }
+
+    public override BoolValue GetJoinRecord(Address input)
+    {
+        return IsAddressValid(input)
+            ? new BoolValue { Value = State.JoinRecord[input] }
+            : new BoolValue { Value = false };
+    }
 }

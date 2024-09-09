@@ -41,6 +41,8 @@ public partial class EcoEarnTokensContract
         };
 
         State.DappInfoMap[input.DappId] = info;
+        
+        Join(Context.Sender);
 
         Context.Fire(new Registered
         {
@@ -359,6 +361,25 @@ public partial class EcoEarnTokensContract
         return new Empty();
     }
 
+    public override Empty SetStakeOnBehalfPermission(StakeOnBehalfPermission input)
+    {
+        Assert(input != null, "Invalid input.");
+        Assert(IsHashValid(input!.DappId), "Invalid dapp id.");
+        
+        CheckAdminPermission();
+
+        if (State.StakeOnBehalfPermissionMap[input.DappId] == input.Status) return new Empty();
+        State.StakeOnBehalfPermissionMap[input.DappId] = input.Status;
+        
+        Context.Fire(new StakeOnBehalfPermissionSet
+        {
+            DappId = input.DappId,
+            Status = input.Status
+        });
+        
+        return new Empty();
+    }
+
     #endregion
 
     #region private
@@ -442,6 +463,11 @@ public partial class EcoEarnTokensContract
     {
         return new BigIntValue(EcoEarnTokensContractConstants.Ten).Pow(
             EcoEarnTokensContractConstants.MaxDecimals.Sub(decimals));
+    }
+    
+    private void Join(Address registrant)
+    {
+        State.EcoEarnRewardsContract.JoinFor.Send(registrant);
     }
 
     #endregion

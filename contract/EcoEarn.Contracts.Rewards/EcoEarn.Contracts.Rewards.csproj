@@ -20,6 +20,9 @@
         <ContractReference Include="..\..\protobuf\token_contract.proto">
             <Link>Protobuf\Proto\token_contract.proto</Link>
         </ContractReference>
+        <ContractReference Include="..\..\protobuf\points_contract.proto">
+            <Link>Protobuf\Proto\points_contract.proto</Link>
+        </ContractReference>
         <ContractReference Include="..\..\protobuf\ecoearn_points.proto">
             <Link>Protobuf\Proto\ecoearn_points.proto</Link>
         </ContractReference>

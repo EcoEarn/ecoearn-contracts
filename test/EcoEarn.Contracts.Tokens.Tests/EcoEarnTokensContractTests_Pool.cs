@@ -4,6 +4,7 @@ using AElf;
 using AElf.Contracts.MultiToken;
 using AElf.CSharp.Core.Extension;
 using AElf.Types;
+using EcoEarn.Contracts.Rewards;
 using Google.Protobuf.WellKnownTypes;
 using Shouldly;
 using Xunit;
@@ -32,6 +33,20 @@ public partial class EcoEarnTokensContractTests
             PointsContract = PointsContractAddress,
             EcoearnRewardsContract = EcoEarnRewardsContractAddress,
             UpdateAddress = DefaultAddress
+        });
+        await EcoEarnRewardsContractStub.Initialize.SendAsync(new Rewards.InitializeInput
+        {
+            Admin = DefaultAddress,
+            EcoearnPointsContract = EcoEarnPointsContractAddress,
+            EcoearnTokensContract = EcoEarnTokensContractAddress,
+            PointsContract = PointsContractAddress,
+            UpdateAddress = DefaultAddress
+        });
+        await EcoEarnRewardsContractStub.SetPointsContractConfig.SendAsync(new SetPointsContractConfigInput
+        {
+            Admin = DefaultAddress,
+            DappId = _appId,
+            PointsContract = PointsContractAddress
         });
         await EcoEarnPointsContractStub.Register.SendAsync(new Points.RegisterInput
         {
@@ -70,6 +85,20 @@ public partial class EcoEarnTokensContractTests
             PointsContract = PointsContractAddress,
             EcoearnRewardsContract = EcoEarnRewardsContractAddress,
             UpdateAddress = DefaultAddress
+        });
+        await EcoEarnRewardsContractStub.Initialize.SendAsync(new Rewards.InitializeInput
+        {
+            Admin = DefaultAddress,
+            EcoearnPointsContract = EcoEarnPointsContractAddress,
+            EcoearnTokensContract = EcoEarnTokensContractAddress,
+            PointsContract = PointsContractAddress,
+            UpdateAddress = DefaultAddress
+        });
+        await EcoEarnRewardsContractStub.SetPointsContractConfig.SendAsync(new SetPointsContractConfigInput
+        {
+            Admin = DefaultAddress,
+            DappId = _appId,
+            PointsContract = PointsContractAddress
         });
         await EcoEarnPointsContractStub.Register.SendAsync(new Points.RegisterInput
         {
@@ -743,7 +772,14 @@ public partial class EcoEarnTokensContractTests
         {
             EcoearnTokensContract = EcoEarnTokensContractAddress,
             EcoearnPointsContract = EcoEarnPointsContractAddress,
+            PointsContract = PointsContractAddress,
             UpdateAddress = DefaultAddress
+        });
+        await EcoEarnRewardsContractStub.SetPointsContractConfig.SendAsync(new SetPointsContractConfigInput
+        {
+            Admin = DefaultAddress,
+            DappId = _appId,
+            PointsContract = PointsContractAddress
         });
         await EcoEarnPointsContractStub.Register.SendAsync(new Points.RegisterInput
         {
@@ -1070,6 +1106,63 @@ public partial class EcoEarnTokensContractTests
                 PaymentAddress = UserAddress
             }
         });
+        result.TransactionResult.Error.ShouldContain("No permission.");
+    }
+    
+    [Fact]
+    public async Task SetStakeOnBehalfPermissionTests()
+    {
+        await Initialize();
+
+        var output = await EcoEarnTokensContractStub.GetStakeOnBehalfPermission.CallAsync(_appId);
+        output.Value.ShouldBeFalse();
+
+        var result = await EcoEarnTokensContractStub.SetStakeOnBehalfPermission.SendAsync(new StakeOnBehalfPermission
+        {
+            DappId = _appId,
+            Status = true
+        });
+        result.TransactionResult.Status.ShouldBe(TransactionResultStatus.Mined);
+
+        var log = GetLogEvent<StakeOnBehalfPermissionSet>(result.TransactionResult);
+        log.DappId.ShouldBe(_appId);
+        log.Status.ShouldBeTrue();
+
+        output = await EcoEarnTokensContractStub.GetStakeOnBehalfPermission.CallAsync(_appId);
+        output.Value.ShouldBeTrue();
+        
+        result = await EcoEarnTokensContractStub.SetStakeOnBehalfPermission.SendAsync(new StakeOnBehalfPermission
+        {
+            DappId = _appId,
+            Status = true
+        });
+        result.TransactionResult.Logs.Any(l => l.Name == nameof(StakeOnBehalfPermissionSet)).ShouldBeFalse();
+    }
+
+    [Fact]
+    public async Task SetStakeOnBehalfPermissionTests_Fail()
+    {
+        await Initialize();
+
+        var result =
+            await EcoEarnTokensContractStub.SetStakeOnBehalfPermission.SendWithExceptionAsync(
+                new StakeOnBehalfPermission());
+        result.TransactionResult.Error.ShouldContain("Invalid dapp id.");
+        
+        result =
+            await EcoEarnTokensContractStub.SetStakeOnBehalfPermission.SendWithExceptionAsync(
+                new StakeOnBehalfPermission
+                {
+                    DappId = new Hash()
+                });
+        result.TransactionResult.Error.ShouldContain("Invalid dapp id.");
+        
+        result =
+            await EcoEarnTokensContractUserStub.SetStakeOnBehalfPermission.SendWithExceptionAsync(
+                new StakeOnBehalfPermission
+                {
+                    DappId = _appId
+                });
         result.TransactionResult.Error.ShouldContain("No permission.");
     }
 

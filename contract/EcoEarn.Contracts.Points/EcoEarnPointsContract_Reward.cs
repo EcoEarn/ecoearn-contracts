@@ -59,6 +59,8 @@ public partial class EcoEarnPointsContract
         ChargeCommissionFee(poolInfo, input.Amount, out var claimedAmount);
 
         CallRewardsContractClaim(poolInfo, claimedAmount, input.Seed);
+        
+        Join(Context.Sender);
 
         Context.Fire(new Claimed
         {

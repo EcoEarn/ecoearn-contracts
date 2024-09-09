@@ -15,6 +15,7 @@ public partial class EcoEarnRewardsContractTests
     private const string Symbol = "SGR-1";
     private const string DefaultSymbol = "ELF";
     private readonly Hash _appId = HashHelper.ComputeFrom("dapp");
+    private readonly Hash _appIdEcoEarn = HashHelper.ComputeFrom("ecoearn");
 
     [Fact]
     public async Task RegisterTests()

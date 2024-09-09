@@ -37,4 +37,7 @@ public partial class EcoEarnTokensContractState : ContractState
 
     // <StakeId, LastOperationTime, UnlockWindowCount, IsClaimed>
     public MappedState<Hash, Timestamp, long, bool> WindowTermMap { get; set; }
+    
+    // dappId
+    public MappedState<Hash, bool> StakeOnBehalfPermissionMap { get; set; }
 }

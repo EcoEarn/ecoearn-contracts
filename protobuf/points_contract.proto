@@ -7,11 +7,11 @@ import "acs12.proto";
 import "google/protobuf/empty.proto";
 import "google/protobuf/timestamp.proto";
 
-option csharp_namespace = "Points.Contracts.PointsContract";
+option csharp_namespace = "Points.Contracts.Point";
 
 service PointsContract {
     option (aelf.base) = "acs12.proto";
-    option (aelf.csharp_state) = "Points.Contracts.PointsContract.PointsContractState";
+    option (aelf.csharp_state) = "Points.Contracts.Point.PointsContractState";
 
     // Initialize.
     rpc Initialize(InitializeInput) returns (google.protobuf.Empty) {}
@@ -22,7 +22,7 @@ service PointsContract {
     rpc CreatePoint(CreatePointInput) returns (google.protobuf.Empty) {}
     rpc CreatePointList(CreatePointListInput) returns (google.protobuf.Empty) {}
     rpc GetPoint(GetPointInput) returns (PointInfo){ option (aelf.is_view) = true; }
-    
+
     rpc SetMaxApplyDomainCount(google.protobuf.Int32Value) returns (google.protobuf.Empty){}
 
     rpc Join(JoinInput) returns (google.protobuf.Empty) {}
@@ -50,7 +50,7 @@ message InitializeInput {
 }
 
 message JoinInput {
-    aelf.Hash dapp_id = 1; 
+    aelf.Hash dapp_id = 1;
     string domain = 2; // 
     aelf.Address registrant = 3;
 }
@@ -103,7 +103,7 @@ message PointsChangedDetail {
     IncomeSourceType income_source_type = 3;
     string domain = 4;
     string action_name = 5;
-    string points_name = 6;  
+    string points_name = 6;
     int64 increase_amount = 7;
     int64 balance = 8;
     aelf.BigIntValue balance_value = 9;
@@ -162,14 +162,20 @@ message SetDappPointsRulesInput {
     PointsRuleList dapp_points_rules = 2;
 }
 
+message DappPointsRulesSet {
+    option (aelf.is_event) = true;
+    aelf.Hash dapp_id = 1;
+    PointsRuleList dapp_points_rules = 2;
+}
+
 message DappAdded {
     option (aelf.is_event) = true;
-    aelf.Hash dapp_id = 1; 
+    aelf.Hash dapp_id = 1;
     DappInfo dapp_info = 2;
 }
 
 message GetDappInformationInput {
-    aelf.Hash dapp_id = 1; 
+    aelf.Hash dapp_id = 1;
 }
 
 message GetDappInformationOutput {
@@ -186,9 +192,9 @@ message SelfIncreasingPointsRulesChanged {
     option (aelf.is_event) = true;
     aelf.Hash dapp_id = 1;
     string point_name = 2;
-    int64 user_points = 3; 
-    int64 kol_points_percent = 4; 
-    int64 inviter_points_percent = 5; 
+    int64 user_points = 3;
+    int64 kol_points_percent = 4;
+    int64 inviter_points_percent = 5;
     int32 frequency = 6;
     bool enable_proportional_calculation = 7;
 }
@@ -215,12 +221,6 @@ message InviterApplied {
     aelf.Address inviter = 4;
 }
 
-message DappPointsRuleChanged {
-    option (aelf.is_event) = true;
-    string service = 1;
-    PointsRuleList dapp_earning_rules = 2;
-}
-
 message PointInfo {
     string token_name = 1;
     int32 decimals = 2;
@@ -240,8 +240,8 @@ message ReservedDomainList {
 
 message DomainRelationshipInfo {
     string domain = 1;
-    aelf.Address invitee = 2; 
-    aelf.Address inviter = 3; 
+    aelf.Address invitee = 2;
+    aelf.Address inviter = 3;
 }
 
 message CreatePointInput {
