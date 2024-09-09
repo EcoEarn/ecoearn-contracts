@@ -2,7 +2,7 @@ using AElf.Contracts.MultiToken;
 using AElf.Standards.ACS0;
 using EcoEarn.Contracts.Rewards;
 using EcoEarn.Contracts.Tokens;
-using Points.Contracts.PointsContract;
+using Points.Contracts.Point;
 
 namespace EcoEarn.Contracts.Points;
 

@@ -71,6 +71,7 @@ public partial class EcoEarnRewardsContractTests
         {
             EcoearnPointsContract = DefaultAddress,
             EcoearnTokensContract = DefaultAddress,
+            PointsContract = PointsContractAddress,
             UpdateAddress = DefaultAddress
         });
 

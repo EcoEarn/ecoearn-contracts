@@ -15,10 +15,12 @@ public partial class EcoEarnRewardsContract : EcoEarnRewardsContractContainer.Ec
         Assert(input.Admin == null || !input.Admin.Value.IsNullOrEmpty(), "Invalid admin.");
         Assert(IsAddressValid(input.EcoearnPointsContract), "Invalid ecoearn points contract.");
         Assert(IsAddressValid(input.EcoearnTokensContract), "Invalid ecoearn tokens contract.");
-
+        Assert(IsAddressValid(input.PointsContract), "Invalid points contract.");
+        
         State.Admin.Value = input.Admin ?? Context.Sender;
         State.EcoEarnPointsContract.Value = input.EcoearnPointsContract;
         State.EcoEarnTokensContract.Value = input.EcoearnTokensContract;
+        State.PointsContract.Value = input.PointsContract;
         
         Assert(IsAddressValid(input.UpdateAddress), "Invalid update address.");
 

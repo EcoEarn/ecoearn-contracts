@@ -38,12 +38,23 @@ service EcoEarnRewardsContract {
   rpc RemoveLiquidity (RemoveLiquidityInput) returns (google.protobuf.Empty) {}
   rpc StakeLiquidity (StakeLiquidityInput) returns (google.protobuf.Empty) {}
   rpc GetLiquidityInfo (aelf.Hash) returns (LiquidityInfo) {option (aelf.is_view) = true;}
+
+  // points
+  rpc Join(google.protobuf.Empty) returns (google.protobuf.Empty) {}
+  rpc AcceptReferral (AcceptReferralInput) returns (google.protobuf.Empty) {}
+  rpc BatchSettle (BatchSettleInput) returns (google.protobuf.Empty) {}
+  rpc JoinFor(aelf.Address) returns (google.protobuf.Empty) {}
+  rpc SetPointsContractConfig(SetPointsContractConfigInput) returns (google.protobuf.Empty) {}
+  rpc GetPointsContractConfig(google.protobuf.Empty) returns (GetPointsContractConfigOutput) {option (aelf.is_view) = true;}
+  rpc GetJoinRecord(aelf.Address) returns (google.protobuf.BoolValue) {option (aelf.is_view) = true;}
 }
+
 message InitializeInput {
   aelf.Address admin = 1;
   aelf.Address ecoearn_points_contract = 2;
   aelf.Address ecoearn_tokens_contract = 3;
-  aelf.Address update_address = 4;
+  aelf.Address points_contract = 4;
+  aelf.Address update_address = 5;
 }
 
 message Config {
@@ -191,6 +202,36 @@ message LiquidityInfos {
   repeated LiquidityInfo data = 1;
 }
 
+message AcceptReferralInput {
+  aelf.Address referrer = 1;
+}
+
+message BatchSettleInput {
+  string action_name = 1;
+  repeated UserPoints user_points_list = 2;
+}
+
+message UserPoints {
+  aelf.Address user_address = 1;
+  aelf.BigIntValue user_points_value = 2;
+}
+
+message SetPointsContractConfigInput {
+  aelf.Address points_contract = 1;
+  aelf.Hash dapp_id = 2;
+  aelf.Address admin = 3;
+}
+
+message GetPointsContractConfigOutput {
+  aelf.Address points_contract = 1;
+  PointsContractConfig config = 2;
+}
+
+message PointsContractConfig {
+  aelf.Hash dapp_id = 1;
+  aelf.Address admin = 2;
+}
+
 // log event
 message ConfigSet {
   option (aelf.is_event) = true;
@@ -276,4 +317,22 @@ message LiquidityStaked {
   int64 period = 4;
   aelf.Hash stake_id = 5;
   aelf.Hash seed = 6;
+}
+
+message Joined {
+  option (aelf.is_event) = true;
+  string domain = 1;
+  aelf.Address registrant = 2;
+}
+
+message ReferralAccepted {
+  option (aelf.is_event) = true;
+  aelf.Address referrer = 1;
+  aelf.Address invitee = 2;
+}
+
+message PointsContractConfigSet {
+  option (aelf.is_event) = true;
+  aelf.Address points_contract = 1;
+  PointsContractConfig config = 2;
 }

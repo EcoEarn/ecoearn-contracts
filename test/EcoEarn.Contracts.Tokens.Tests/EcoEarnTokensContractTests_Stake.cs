@@ -779,6 +779,12 @@ public partial class EcoEarnTokensContractTests
             PoolId = poolId
         });
         userStakeId.ShouldBe(new Hash());
+
+        await EcoEarnTokensContractStub.SetStakeOnBehalfPermission.SendAsync(new StakeOnBehalfPermission
+        {
+            DappId = _appId,
+            Status = true
+        });
         
         // create position
         {
@@ -925,6 +931,18 @@ public partial class EcoEarnTokensContractTests
             PoolId = HashHelper.ComputeFrom("test")
         });
         result.TransactionResult.Error.ShouldContain("Pool not exists.");
+        
+        result = await EcoEarnTokensContractStub.StakeOnBehalf.SendWithExceptionAsync(new StakeOnBehalfInput
+        {
+            PoolId = poolId
+        });
+        result.TransactionResult.Error.ShouldContain("Permission not granted.");
+
+        await EcoEarnTokensContractStub.SetStakeOnBehalfPermission.SendAsync(new StakeOnBehalfPermission
+        {
+            DappId = _appId,
+            Status = true
+        });
         
         result = await EcoEarnTokensContractStub.StakeOnBehalf.SendWithExceptionAsync(new StakeOnBehalfInput
         {

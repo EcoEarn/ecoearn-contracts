@@ -5,7 +5,7 @@ using AElf.CSharp.Core;
 using AElf.Sdk.CSharp;
 using AElf.Types;
 using Google.Protobuf.WellKnownTypes;
-using Points.Contracts.PointsContract;
+using Points.Contracts.Point;
 
 namespace EcoEarn.Contracts.Points;
 
@@ -43,6 +43,8 @@ public partial class EcoEarnPointsContract
         };
 
         State.DappInfoMap[input.DappId] = dappInfo;
+        
+        Join(Context.Sender);
 
         Context.Fire(new Registered
         {
@@ -369,6 +371,11 @@ public partial class EcoEarnPointsContract
         Assert(poolInfo != null, "Pool not exists.");
 
         return poolInfo;
+    }
+
+    private void Join(Address registrant)
+    {
+        State.EcoEarnRewardsContract.JoinFor.Send(registrant);
     }
 
     #endregion

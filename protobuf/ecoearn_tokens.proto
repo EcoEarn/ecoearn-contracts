@@ -50,6 +50,8 @@ service EcoEarnTokensContract {
   rpc StakeOnBehalf (StakeOnBehalfInput) returns (google.protobuf.Empty) {}
   rpc IsInUnlockWindow (IsInUnlockWindowInput) returns (google.protobuf.BoolValue) {option (aelf.is_view) = true;}
   rpc SetDappConfig (SetDappConfigInput) returns (google.protobuf.Empty) {}
+  rpc SetStakeOnBehalfPermission(StakeOnBehalfPermission) returns (google.protobuf.Empty) {}
+  rpc GetStakeOnBehalfPermission(aelf.Hash) returns (google.protobuf.BoolValue) {option (aelf.is_view) = true;}
 }
 
 message RegisterInput {
@@ -295,6 +297,11 @@ message SetDappConfigInput {
   DappConfig config = 2;
 }
 
+message StakeOnBehalfPermission {
+  aelf.Hash dapp_id = 1;
+  bool status = 2;
+}
+
 // log event
 message Registered {
   option (aelf.is_event) = true;
@@ -422,4 +429,10 @@ message DappConfigSet {
   option (aelf.is_event) = true;
   aelf.Hash dapp_id = 1;
   DappConfig config = 2;
+}
+
+message StakeOnBehalfPermissionSet {
+  option (aelf.is_event) = true;
+  aelf.Hash dapp_id = 1;
+  bool status = 2;
 }

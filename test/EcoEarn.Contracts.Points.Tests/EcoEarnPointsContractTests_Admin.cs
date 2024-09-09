@@ -1,6 +1,7 @@
 using System.Linq;
 using System.Threading.Tasks;
 using AElf.Types;
+using EcoEarn.Contracts.Rewards;
 using Google.Protobuf.WellKnownTypes;
 using Shouldly;
 using Xunit;
@@ -286,11 +287,18 @@ public partial class EcoEarnPointsContractTests : EcoEarnPointsContractTestBase
         {
             EcoearnTokensContract = EcoEarnTokensContractAddress,
             EcoearnPointsContract = EcoEarnPointsContractAddress,
+            PointsContract = PointsContractAddress,
             UpdateAddress = DefaultAddress
         });
         await PointsContractStub.Initialize.SendAsync(new TestPointsContract.InitializeInput
         {
             PointsName = PointsName
+        });
+        await EcoEarnRewardsContractStub.SetPointsContractConfig.SendAsync(new SetPointsContractConfigInput
+        {
+            Admin = DefaultAddress,
+            DappId = _appId,
+            PointsContract = PointsContractAddress
         });
     }
 }
