@@ -35,7 +35,7 @@ public partial class EcoEarnTokensContractState : ContractState
     // <PoolId, User Address, LastClaimTime>
     public MappedState<Hash, Address, Timestamp> ClaimTimeMap { get; set; }
 
-    // <StakeId, LastOperationTime, UnlockWindowCount, IsClaimed>
+    // <StakeId, LastOperationTime, UnstakeWindowCount, IsClaimed>
     public MappedState<Hash, Timestamp, long, bool> WindowTermMap { get; set; }
     
     // dappId
