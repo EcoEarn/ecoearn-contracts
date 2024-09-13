@@ -73,8 +73,8 @@ public partial class EcoEarnTokensContract
         output.StakeInfo = stakeInfo;
         var poolInfo = State.PoolInfoMap[stakeInfo.PoolId];
 
-        output.IsInUnlockWindow = CheckPoolEnabled(poolInfo.Config.EndTime) && IsInUnlockWindow(stakeInfo,
-            CalculateRemainTime(stakeInfo, poolInfo.Config.UnlockWindowDuration));
+        output.IsInUnstakeWindow = CheckPoolEnabled(poolInfo.Config.EndTime) && IsInUnstakeWindow(stakeInfo,
+            CalculateRemainTime(stakeInfo, poolInfo.Config.UnstakeWindowDuration));
 
         return output;
     }
@@ -106,7 +106,7 @@ public partial class EcoEarnTokensContract
         };
     }
 
-    public override BoolValue IsInUnlockWindow(IsInUnlockWindowInput input)
+    public override BoolValue IsInUnstakeWindow(IsInUnstakeWindowInput input)
     {
         var poolInfo = State.PoolInfoMap[input.PoolId];
         if (poolInfo?.PoolId == null) return new BoolValue();
@@ -116,8 +116,8 @@ public partial class EcoEarnTokensContract
 
         var stakeInfo = State.StakeInfoMap[stakeId];
 
-        var remainTime = CalculateRemainTime(stakeInfo, poolInfo.Config.UnlockWindowDuration);
-        if (stakeInfo != null && stakeInfo.UnlockTime == null && IsInUnlockWindow(stakeInfo, remainTime))
+        var remainTime = CalculateRemainTime(stakeInfo, poolInfo.Config.UnstakeWindowDuration);
+        if (stakeInfo != null && stakeInfo.UnstakeTime == null && IsInUnstakeWindow(stakeInfo, remainTime))
             return new BoolValue
             {
                 Value = true
@@ -154,7 +154,7 @@ public partial class EcoEarnTokensContract
 
         rewardInfo.Symbol = poolInfo.Config.RewardToken;
 
-        if (stakeInfo.UnlockTime != null)
+        if (stakeInfo.UnstakeTime != null)
         {
             rewardInfo.Amount = 0;
             return rewardInfo;

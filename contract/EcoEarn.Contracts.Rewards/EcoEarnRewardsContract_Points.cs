@@ -15,8 +15,7 @@ public partial class EcoEarnRewardsContract
         CheckAdminPermission();
         
         Assert(input != null, "Invalid input.");
-        Assert(IsAddressValid(input!.PointsContract), "Invalid points contract.");
-        Assert(IsHashValid(input.DappId), "Invalid dapp id.");
+        Assert(IsHashValid(input!.DappId), "Invalid dapp id.");
         Assert(IsAddressValid(input.Admin), "Invalid admin.");
 
         var config = new PointsContractConfig
@@ -25,17 +24,15 @@ public partial class EcoEarnRewardsContract
             Admin = input.Admin
         };
 
-        if (State.PointsContractConfig.Value != null && State.PointsContractConfig.Value.Equals(config) &&
-            State.PointsContract.Value == input.PointsContract)
+        if (State.PointsContractConfig.Value != null && State.PointsContractConfig.Value.Equals(config))
             return new Empty();
 
-        State.PointsContract.Value = input.PointsContract;
         State.PointsContractConfig.Value = config;
 
         Context.Fire(new PointsContractConfigSet
         {
             Config = config,
-            PointsContract = input.PointsContract
+            PointsContract = State.PointsContract.Value
         });
 
         return new Empty();

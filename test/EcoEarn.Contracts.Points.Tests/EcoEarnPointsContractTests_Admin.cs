@@ -297,8 +297,7 @@ public partial class EcoEarnPointsContractTests : EcoEarnPointsContractTestBase
         await EcoEarnRewardsContractStub.SetPointsContractConfig.SendAsync(new SetPointsContractConfigInput
         {
             Admin = DefaultAddress,
-            DappId = _appId,
-            PointsContract = PointsContractAddress
+            DappId = _appId
         });
     }
 }

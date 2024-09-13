@@ -17,8 +17,7 @@ public partial class EcoEarnRewardsContractTests
         var result = await EcoEarnRewardsContractStub.SetPointsContractConfig.SendAsync(new SetPointsContractConfigInput
         {
             Admin = DefaultAddress,
-            DappId = _appIdEcoEarn,
-            PointsContract = PointsContractAddress
+            DappId = _appIdEcoEarn
         });
         result.TransactionResult.Status.ShouldBe(TransactionResultStatus.Mined);
 
@@ -34,8 +33,7 @@ public partial class EcoEarnRewardsContractTests
         result = await EcoEarnRewardsContractStub.SetPointsContractConfig.SendAsync(new SetPointsContractConfigInput
         {
             Admin = DefaultAddress,
-            DappId = _appIdEcoEarn,
-            PointsContract = PointsContractAddress
+            DappId = _appIdEcoEarn
         });
         result.TransactionResult.Logs.FirstOrDefault(l => l.Name == nameof(PointsContractConfigSet)).ShouldBeNull();
     }
@@ -53,26 +51,11 @@ public partial class EcoEarnRewardsContractTests
         result =
             await EcoEarnRewardsContractStub.SetPointsContractConfig.SendWithExceptionAsync(
                 new SetPointsContractConfigInput());
-        result.TransactionResult.Error.ShouldContain("Invalid points contract.");
-
-        result = await EcoEarnRewardsContractStub.SetPointsContractConfig.SendWithExceptionAsync(
-            new SetPointsContractConfigInput
-            {
-                PointsContract = new Address()
-            });
-        result.TransactionResult.Error.ShouldContain("Invalid points contract.");
-        
-        result = await EcoEarnRewardsContractStub.SetPointsContractConfig.SendWithExceptionAsync(
-            new SetPointsContractConfigInput
-            {
-                PointsContract = DefaultAddress
-            });
         result.TransactionResult.Error.ShouldContain("Invalid dapp id.");
         
         result = await EcoEarnRewardsContractStub.SetPointsContractConfig.SendWithExceptionAsync(
             new SetPointsContractConfigInput
             {
-                PointsContract = DefaultAddress,
                 DappId = new Hash()
             });
         result.TransactionResult.Error.ShouldContain("Invalid dapp id.");
@@ -80,7 +63,6 @@ public partial class EcoEarnRewardsContractTests
         result = await EcoEarnRewardsContractStub.SetPointsContractConfig.SendWithExceptionAsync(
             new SetPointsContractConfigInput
             {
-                PointsContract = DefaultAddress,
                 DappId = _appIdEcoEarn
             });
         result.TransactionResult.Error.ShouldContain("Invalid admin.");
@@ -88,7 +70,6 @@ public partial class EcoEarnRewardsContractTests
         result = await EcoEarnRewardsContractStub.SetPointsContractConfig.SendWithExceptionAsync(
             new SetPointsContractConfigInput
             {
-                PointsContract = DefaultAddress,
                 DappId = _appIdEcoEarn,
                 Admin = new Address()
             });
@@ -125,8 +106,7 @@ public partial class EcoEarnRewardsContractTests
         await EcoEarnRewardsContractStub.SetPointsContractConfig.SendAsync(new SetPointsContractConfigInput
         {
             Admin = DefaultAddress,
-            DappId = _appIdEcoEarn,
-            PointsContract = PointsContractAddress
+            DappId = _appIdEcoEarn
         });
         
         await EcoEarnRewardsContractStub.Join.SendAsync(new Empty());

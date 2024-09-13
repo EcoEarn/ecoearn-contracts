@@ -27,10 +27,10 @@ public partial class EcoEarnTokensContract
         var stakeInfo = State.StakeInfoMap[existId];
         Assert(stakeInfo != null, "Stake info not exists.");
 
-        Assert(IsInUnlockWindow(stakeInfo, CalculateRemainTime(stakeInfo, poolInfo.Config.UnlockWindowDuration)),
-            "Not in unlock window.");
+        Assert(IsInUnstakeWindow(stakeInfo, CalculateRemainTime(stakeInfo, poolInfo.Config.UnstakeWindowDuration)),
+            "Not in unstake window.");
 
-        var term = CalculateWindowTerms(stakeInfo, poolInfo.Config.UnlockWindowDuration);
+        var term = CalculateWindowTerms(stakeInfo, poolInfo.Config.UnstakeWindowDuration);
         Assert(!State.WindowTermMap[stakeInfo!.StakeId][stakeInfo.LastOperationTime][term],
             "Already claimed during this window.");
 
@@ -38,7 +38,7 @@ public partial class EcoEarnTokensContract
 
         var rewards = 0L;
 
-        if (stakeInfo!.UnlockTime == null)
+        if (stakeInfo!.UnstakeTime == null)
         {
             rewards = ProcessRewards(poolInfo, stakeInfo);
             Assert(rewards > 0, "Nothing to claim.");

@@ -20,7 +20,7 @@ service EcoEarnPointsContract {
   rpc SetAdmin (aelf.Address) returns (google.protobuf.Empty) {}
   rpc GetAdmin (google.protobuf.Empty) returns (aelf.Address) {option (aelf.is_view) = true;}
 
-  // Pool
+  // pool
   rpc Register (RegisterInput) returns (google.protobuf.Empty) {}
   rpc SetDappAdmin (SetDappAdminInput) returns (google.protobuf.Empty) {}
   rpc GetDappInfo (aelf.Hash) returns (DappInfo) {option (aelf.is_view) = true;}

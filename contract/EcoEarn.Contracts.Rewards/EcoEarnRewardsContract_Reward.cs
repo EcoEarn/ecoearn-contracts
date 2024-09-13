@@ -87,7 +87,7 @@ public partial class EcoEarnRewardsContract
         return new Empty();
     }
 
-    public override Empty EarlyStake(EarlyStakeInput input)
+    public override Empty StakeRewards(StakeRewardsInput input)
     {
         Assert(input != null, "Invalid input.");
         ValidateStakeInput(input!.StakeInput);
@@ -101,7 +101,7 @@ public partial class EcoEarnRewardsContract
 
         ValidateSignature(input.Signature, stakeInput.ExpirationTime);
         Assert(
-            RecoverAddressFromSignature(ComputeEarlyStakeInputHash(input), input.Signature) ==
+            RecoverAddressFromSignature(ComputeStakeRewardsInputHash(input), input.Signature) ==
             GetUpdateAddress(dappInfo), "Signature not valid.");
 
         var claimInfo = GetClaimInfoFromClaimId(stakeInput.ClaimIds.FirstOrDefault());
@@ -136,7 +136,7 @@ public partial class EcoEarnRewardsContract
             }
         });
 
-        Context.Fire(new EarlyStaked
+        Context.Fire(new RewardsStaked
         {
             ClaimIds = new HashList
             {
@@ -267,9 +267,9 @@ public partial class EcoEarnRewardsContract
         }.ToByteArray());
     }
 
-    private Hash ComputeEarlyStakeInputHash(EarlyStakeInput input)
+    private Hash ComputeStakeRewardsInputHash(StakeRewardsInput input)
     {
-        return HashHelper.ComputeFrom(new EarlyStakeInput
+        return HashHelper.ComputeFrom(new StakeRewardsInput
         {
             StakeInput = input.StakeInput
         }.ToByteArray());
@@ -286,7 +286,7 @@ public partial class EcoEarnRewardsContract
         if (IsHashValid(stakeId))
         {
             var output = State.EcoEarnTokensContract.GetStakeInfo.Call(stakeId);
-            if (output.StakeInfo.UnlockTime == null) return stakeId;
+            if (output.StakeInfo.UnstakeTime == null) return stakeId;
         }
 
         var count = State.EcoEarnTokensContract.GetUserStakeCount.Call(new GetUserStakeCountInput

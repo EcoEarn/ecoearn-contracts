@@ -389,7 +389,7 @@ public partial class EcoEarnRewardsContractTests
     }
 
     [Fact]
-    public async Task EarlyStakeTests()
+    public async Task StakeRewardsTests()
     {
         const long tokenBalance = 5_00000000;
         var seed = HashHelper.ComputeFrom("seed");
@@ -415,10 +415,10 @@ public partial class EcoEarnRewardsContractTests
             LongestReleaseTime = BlockTimeProvider.GetBlockTime().Seconds
         };
 
-        var input = new EarlyStakeInput
+        var input = new StakeRewardsInput
         {
             StakeInput = stakeInput,
-            Signature = GenerateSignature(DefaultAccount.KeyPair.PrivateKey, new EarlyStakeInput
+            Signature = GenerateSignature(DefaultAccount.KeyPair.PrivateKey, new StakeRewardsInput
             {
                 StakeInput = stakeInput
             })
@@ -426,10 +426,10 @@ public partial class EcoEarnRewardsContractTests
 
         SetBlockTime(100);
 
-        var result = await UserEcoEarnRewardsContractStub.EarlyStake.SendAsync(input);
+        var result = await UserEcoEarnRewardsContractStub.StakeRewards.SendAsync(input);
         result.TransactionResult.Status.ShouldBe(TransactionResultStatus.Mined);
 
-        var log = GetLogEvent<EarlyStaked>(result.TransactionResult);
+        var log = GetLogEvent<RewardsStaked>(result.TransactionResult);
         log.ClaimIds.Data.Count.ShouldBe(3);
         log.Account.ShouldBe(UserAddress);
         log.Amount.ShouldBe(1_00000000);
@@ -439,12 +439,12 @@ public partial class EcoEarnRewardsContractTests
         log.StakeId.ShouldNotBeNull();
 
         var stakeInfo = await EcoEarnTokensContractStub.GetStakeInfo.CallAsync(log.StakeId);
-        stakeInfo.IsInUnlockWindow.ShouldBeFalse();
+        stakeInfo.IsInUnstakeWindow.ShouldBeFalse();
         stakeInfo.StakeInfo.StakingPeriod.ShouldBe(110);
     }
 
     [Fact]
-    public async Task EarlyStakeTests_Fail()
+    public async Task StakeRewardsTests_Fail()
     {
         const long tokenBalance = 5_00000000;
         var seed = HashHelper.ComputeFrom("seed");
@@ -455,16 +455,16 @@ public partial class EcoEarnRewardsContractTests
         SetBlockTime(10);
         var claimIds = Claim(poolId).Result.Select(c => c.ClaimId).ToList();
 
-        var result = await UserEcoEarnRewardsContractStub.EarlyStake.SendWithExceptionAsync(new EarlyStakeInput());
+        var result = await UserEcoEarnRewardsContractStub.StakeRewards.SendWithExceptionAsync(new StakeRewardsInput());
         result.TransactionResult.Error.ShouldContain("Invalid stake input.");
 
-        result = await UserEcoEarnRewardsContractStub.EarlyStake.SendWithExceptionAsync(new EarlyStakeInput
+        result = await UserEcoEarnRewardsContractStub.StakeRewards.SendWithExceptionAsync(new StakeRewardsInput
         {
             StakeInput = new StakeInput()
         });
         result.TransactionResult.Error.ShouldContain("Invalid claim ids.");
 
-        result = await UserEcoEarnRewardsContractStub.EarlyStake.SendWithExceptionAsync(new EarlyStakeInput
+        result = await UserEcoEarnRewardsContractStub.StakeRewards.SendWithExceptionAsync(new StakeRewardsInput
         {
             StakeInput = new StakeInput
             {
@@ -473,7 +473,7 @@ public partial class EcoEarnRewardsContractTests
         });
         result.TransactionResult.Error.ShouldContain("Invalid claim ids.");
 
-        result = await UserEcoEarnRewardsContractStub.EarlyStake.SendWithExceptionAsync(new EarlyStakeInput
+        result = await UserEcoEarnRewardsContractStub.StakeRewards.SendWithExceptionAsync(new StakeRewardsInput
         {
             StakeInput = new StakeInput
             {
@@ -482,7 +482,7 @@ public partial class EcoEarnRewardsContractTests
         });
         result.TransactionResult.Error.ShouldContain("Invalid account.");
 
-        result = await UserEcoEarnRewardsContractStub.EarlyStake.SendWithExceptionAsync(new EarlyStakeInput
+        result = await UserEcoEarnRewardsContractStub.StakeRewards.SendWithExceptionAsync(new StakeRewardsInput
         {
             StakeInput = new StakeInput
             {
@@ -492,7 +492,7 @@ public partial class EcoEarnRewardsContractTests
         });
         result.TransactionResult.Error.ShouldContain("Invalid account.");
 
-        result = await UserEcoEarnRewardsContractStub.EarlyStake.SendWithExceptionAsync(new EarlyStakeInput
+        result = await UserEcoEarnRewardsContractStub.StakeRewards.SendWithExceptionAsync(new StakeRewardsInput
         {
             StakeInput = new StakeInput
             {
@@ -502,7 +502,7 @@ public partial class EcoEarnRewardsContractTests
         });
         result.TransactionResult.Error.ShouldContain("Invalid amount.");
 
-        result = await UserEcoEarnRewardsContractStub.EarlyStake.SendWithExceptionAsync(new EarlyStakeInput
+        result = await UserEcoEarnRewardsContractStub.StakeRewards.SendWithExceptionAsync(new StakeRewardsInput
         {
             StakeInput = new StakeInput
             {
@@ -513,7 +513,7 @@ public partial class EcoEarnRewardsContractTests
         });
         result.TransactionResult.Error.ShouldContain("Invalid seed.");
 
-        result = await UserEcoEarnRewardsContractStub.EarlyStake.SendWithExceptionAsync(new EarlyStakeInput
+        result = await UserEcoEarnRewardsContractStub.StakeRewards.SendWithExceptionAsync(new StakeRewardsInput
         {
             StakeInput = new StakeInput
             {
@@ -525,7 +525,7 @@ public partial class EcoEarnRewardsContractTests
         });
         result.TransactionResult.Error.ShouldContain("Invalid seed.");
 
-        result = await UserEcoEarnRewardsContractStub.EarlyStake.SendWithExceptionAsync(new EarlyStakeInput
+        result = await UserEcoEarnRewardsContractStub.StakeRewards.SendWithExceptionAsync(new StakeRewardsInput
         {
             StakeInput = new StakeInput
             {
@@ -537,7 +537,7 @@ public partial class EcoEarnRewardsContractTests
         });
         result.TransactionResult.Error.ShouldContain("Invalid pool id.");
 
-        result = await UserEcoEarnRewardsContractStub.EarlyStake.SendWithExceptionAsync(new EarlyStakeInput
+        result = await UserEcoEarnRewardsContractStub.StakeRewards.SendWithExceptionAsync(new StakeRewardsInput
         {
             StakeInput = new StakeInput
             {
@@ -550,7 +550,7 @@ public partial class EcoEarnRewardsContractTests
         });
         result.TransactionResult.Error.ShouldContain("Invalid pool id.");
 
-        result = await UserEcoEarnRewardsContractStub.EarlyStake.SendWithExceptionAsync(new EarlyStakeInput
+        result = await UserEcoEarnRewardsContractStub.StakeRewards.SendWithExceptionAsync(new StakeRewardsInput
         {
             StakeInput = new StakeInput
             {
@@ -563,7 +563,7 @@ public partial class EcoEarnRewardsContractTests
         });
         result.TransactionResult.Error.ShouldContain("Invalid period.");
 
-        result = await UserEcoEarnRewardsContractStub.EarlyStake.SendWithExceptionAsync(new EarlyStakeInput
+        result = await UserEcoEarnRewardsContractStub.StakeRewards.SendWithExceptionAsync(new StakeRewardsInput
         {
             StakeInput = new StakeInput
             {
@@ -577,7 +577,7 @@ public partial class EcoEarnRewardsContractTests
         });
         result.TransactionResult.Error.ShouldContain("Invalid dapp id.");
 
-        result = await UserEcoEarnRewardsContractStub.EarlyStake.SendWithExceptionAsync(new EarlyStakeInput
+        result = await UserEcoEarnRewardsContractStub.StakeRewards.SendWithExceptionAsync(new StakeRewardsInput
         {
             StakeInput = new StakeInput
             {
@@ -592,7 +592,7 @@ public partial class EcoEarnRewardsContractTests
         });
         result.TransactionResult.Error.ShouldContain("Invalid dapp id.");
 
-        result = await UserEcoEarnRewardsContractStub.EarlyStake.SendWithExceptionAsync(new EarlyStakeInput
+        result = await UserEcoEarnRewardsContractStub.StakeRewards.SendWithExceptionAsync(new StakeRewardsInput
         {
             StakeInput = new StakeInput
             {
@@ -607,7 +607,7 @@ public partial class EcoEarnRewardsContractTests
         });
         result.TransactionResult.Error.ShouldContain("Invalid longest release time.");
 
-        result = await UserEcoEarnRewardsContractStub.EarlyStake.SendWithExceptionAsync(new EarlyStakeInput
+        result = await UserEcoEarnRewardsContractStub.StakeRewards.SendWithExceptionAsync(new StakeRewardsInput
         {
             StakeInput = new StakeInput
             {
@@ -623,7 +623,7 @@ public partial class EcoEarnRewardsContractTests
         });
         result.TransactionResult.Error.ShouldContain("No permission.");
 
-        result = await UserEcoEarnRewardsContractStub.EarlyStake.SendWithExceptionAsync(new EarlyStakeInput
+        result = await UserEcoEarnRewardsContractStub.StakeRewards.SendWithExceptionAsync(new StakeRewardsInput
         {
             StakeInput = new StakeInput
             {
@@ -639,7 +639,7 @@ public partial class EcoEarnRewardsContractTests
         });
         result.TransactionResult.Error.ShouldContain("Dapp id not exists.");
 
-        result = await UserEcoEarnRewardsContractStub.EarlyStake.SendWithExceptionAsync(new EarlyStakeInput
+        result = await UserEcoEarnRewardsContractStub.StakeRewards.SendWithExceptionAsync(new StakeRewardsInput
         {
             StakeInput = new StakeInput
             {
@@ -655,7 +655,7 @@ public partial class EcoEarnRewardsContractTests
         });
         result.TransactionResult.Error.ShouldContain("Invalid expiration time.");
 
-        result = await UserEcoEarnRewardsContractStub.EarlyStake.SendWithExceptionAsync(new EarlyStakeInput
+        result = await UserEcoEarnRewardsContractStub.StakeRewards.SendWithExceptionAsync(new StakeRewardsInput
         {
             StakeInput = new StakeInput
             {
@@ -672,7 +672,7 @@ public partial class EcoEarnRewardsContractTests
         });
         result.TransactionResult.Error.ShouldContain("Invalid signature.");
 
-        result = await UserEcoEarnRewardsContractStub.EarlyStake.SendWithExceptionAsync(new EarlyStakeInput
+        result = await UserEcoEarnRewardsContractStub.StakeRewards.SendWithExceptionAsync(new StakeRewardsInput
         {
             StakeInput = new StakeInput
             {
@@ -690,7 +690,7 @@ public partial class EcoEarnRewardsContractTests
         });
         result.TransactionResult.Error.ShouldContain("Signature expired.");
 
-        result = await UserEcoEarnRewardsContractStub.EarlyStake.SendWithExceptionAsync(new EarlyStakeInput
+        result = await UserEcoEarnRewardsContractStub.StakeRewards.SendWithExceptionAsync(new StakeRewardsInput
         {
             StakeInput = new StakeInput
             {
@@ -721,10 +721,10 @@ public partial class EcoEarnRewardsContractTests
             ExpirationTime = BlockTimeProvider.GetBlockTime().AddDays(1).Seconds
         };
         
-        result = await UserEcoEarnRewardsContractStub.EarlyStake.SendWithExceptionAsync(new EarlyStakeInput
+        result = await UserEcoEarnRewardsContractStub.StakeRewards.SendWithExceptionAsync(new StakeRewardsInput
         {
             StakeInput = stakeInput,
-            Signature = GenerateSignature(DefaultKeyPair.PrivateKey, new EarlyStakeInput { StakeInput = stakeInput })
+            Signature = GenerateSignature(DefaultKeyPair.PrivateKey, new StakeRewardsInput { StakeInput = stakeInput })
         });
         result.TransactionResult.Error.ShouldContain("Invalid claim id.");
         
@@ -741,10 +741,10 @@ public partial class EcoEarnRewardsContractTests
             ExpirationTime = BlockTimeProvider.GetBlockTime().AddDays(1).Seconds
         };
         
-        result = await UserEcoEarnRewardsContractStub.EarlyStake.SendWithExceptionAsync(new EarlyStakeInput
+        result = await UserEcoEarnRewardsContractStub.StakeRewards.SendWithExceptionAsync(new StakeRewardsInput
         {
             StakeInput = stakeInput,
-            Signature = GenerateSignature(DefaultKeyPair.PrivateKey, new EarlyStakeInput { StakeInput = stakeInput })
+            Signature = GenerateSignature(DefaultKeyPair.PrivateKey, new StakeRewardsInput { StakeInput = stakeInput })
         });
         result.TransactionResult.Error.ShouldContain("Claim id not exists.");
         
@@ -761,10 +761,10 @@ public partial class EcoEarnRewardsContractTests
             ExpirationTime = BlockTimeProvider.GetBlockTime().AddDays(1).Seconds
         };
         
-        result = await UserEcoEarnRewardsContractStub.EarlyStake.SendWithExceptionAsync(new EarlyStakeInput
+        result = await UserEcoEarnRewardsContractStub.StakeRewards.SendWithExceptionAsync(new StakeRewardsInput
         {
             StakeInput = stakeInput,
-            Signature = GenerateSignature(DefaultKeyPair.PrivateKey, new EarlyStakeInput { StakeInput = stakeInput })
+            Signature = GenerateSignature(DefaultKeyPair.PrivateKey, new StakeRewardsInput { StakeInput = stakeInput })
         });
         result.TransactionResult.Error.ShouldContain("Amount too much.");
     }
@@ -795,7 +795,7 @@ public partial class EcoEarnRewardsContractTests
             RewardTokenContract = TokenContractAddress,
             StakeTokenContract = TokenContractAddress,
             MinimumStakeDuration = 1,
-            UnlockWindowDuration = 100,
+            UnstakeWindowDuration = 100,
             ReleasePeriods = { 10, 20, 30 }
         };
         var result = await EcoEarnTokensContractStub.CreateTokensPool.SendAsync(input);
@@ -860,9 +860,9 @@ public partial class EcoEarnRewardsContractTests
         return ByteStringHelper.FromHexString(signature.ToHex());
     }
 
-    private ByteString GenerateSignature(byte[] privateKey, EarlyStakeInput input)
+    private ByteString GenerateSignature(byte[] privateKey, StakeRewardsInput input)
     {
-        var data = new EarlyStakeInput
+        var data = new StakeRewardsInput
         {
             StakeInput = input.StakeInput
         };

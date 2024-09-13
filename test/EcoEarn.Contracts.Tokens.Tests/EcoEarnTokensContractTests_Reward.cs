@@ -67,7 +67,7 @@ public partial class EcoEarnTokensContractTests
         result.TransactionResult.Error.ShouldContain("Not staked before.");
 
         result = await EcoEarnTokensContractUserStub.Claim.SendWithExceptionAsync(poolId);
-        result.TransactionResult.Error.ShouldContain("Not in unlock window.");
+        result.TransactionResult.Error.ShouldContain("Not in unstake window.");
 
         SetBlockTime(500);
         await EcoEarnTokensContractUserStub.Claim.SendAsync(poolId);

@@ -111,11 +111,12 @@ public partial class EcoEarnTokensContract
                 Seconds = input.EndTime
             },
             RewardPerSecond = input.RewardPerSecond,
-            UnlockWindowDuration = input.UnlockWindowDuration,
+            UnstakeWindowDuration = input.UnstakeWindowDuration,
             ReleasePeriods = { input.ReleasePeriods.Distinct().OrderBy(n => n) },
             MinimumAddLiquidityAmount = input.MinimumAddLiquidityAmount,
             SwapContract = input.SwapContract,
-            MergeInterval = input.MergeInterval
+            MergeInterval = input.MergeInterval,
+            LpRate = input.LpRate
         };
 
         var poolInfo = new PoolInfo
@@ -296,23 +297,23 @@ public partial class EcoEarnTokensContract
         return new Empty();
     }
 
-    public override Empty SetTokensPoolUnlockWindowDuration(SetTokensPoolUnlockWindowDurationInput input)
+    public override Empty SetTokensPoolUnstakeWindowDuration(SetTokensPoolUnstakeWindowDurationInput input)
     {
         Assert(input != null, "Invalid input.");
-        Assert(input!.UnlockWindowDuration > 0, "Invalid unlock window duration.");
+        Assert(input!.UnstakeWindowDuration > 0, "Invalid unstake window duration.");
 
         var poolInfo = GetPool(input.PoolId);
 
         GetAndCheckDAppAdminPermission(poolInfo.DappId);
 
-        if (poolInfo.Config.UnlockWindowDuration == input.UnlockWindowDuration) return new Empty();
+        if (poolInfo.Config.UnstakeWindowDuration == input.UnstakeWindowDuration) return new Empty();
 
-        poolInfo.Config.UnlockWindowDuration = input.UnlockWindowDuration;
+        poolInfo.Config.UnstakeWindowDuration = input.UnstakeWindowDuration;
 
-        Context.Fire(new TokensPoolUnlockWindowDurationSet
+        Context.Fire(new TokensPoolUnstakeWindowDurationSet
         {
             PoolId = input.PoolId,
-            UnlockWindowDuration = input.UnlockWindowDuration
+            UnstakeWindowDuration = input.UnstakeWindowDuration
         });
 
         return new Empty();
@@ -401,7 +402,7 @@ public partial class EcoEarnTokensContract
         Assert(input.MinimumClaimAmount >= 0, "Invalid minimum claim amount.");
         Assert(input.MinimumAddLiquidityAmount >= 0, "Invalid minimum add liquidity amount.");
         Assert(input.MinimumStakeDuration > 0, "Invalid minimum stake duration.");
-        Assert(input.UnlockWindowDuration > 0, "Invalid unlock window duration.");
+        Assert(input.UnstakeWindowDuration > 0, "Invalid unstake window duration.");
         Assert(input.ReleasePeriods != null && input.ReleasePeriods.Count > 0 && input.ReleasePeriods.All(p => p >= 0),
             "Invalid release periods.");
         Assert(input.MergeInterval >= 0, "Invalid merge interval.");

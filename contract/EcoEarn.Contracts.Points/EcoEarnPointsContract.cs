@@ -9,7 +9,7 @@ public partial class EcoEarnPointsContract : EcoEarnPointsContractContainer.EcoE
 {
     public override Empty Initialize(InitializeInput input)
     {
-        Assert(!State.Initialized.Value, "Already initialized.");
+        Assert(!State.Initialized.Value, "Already initialized.");    
         State.GenesisContract.Value = Context.GetZeroSmartContractAddress();
         Assert(State.GenesisContract.GetContractAuthor.Call(Context.Self) == Context.Sender, "No permission.");
         Assert(input.Admin == null || !input.Admin.Value.IsNullOrEmpty(), "Invalid admin.");
