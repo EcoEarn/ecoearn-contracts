@@ -21,6 +21,17 @@ public partial class EcoEarnTokensContractTests
 
         return logEvent;
     }
+    
+    private T GetLogEvent<T>(TransactionResult transactionResult, int index) where T : IEvent<T>, new()
+    {
+        var logs = transactionResult.Logs.Where(l => l.Name == typeof(T).Name).ToList();
+        logs.Count.ShouldNotBe(0);
+        
+        var logEvent = new T();
+        logEvent.MergeFrom(logs[index].NonIndexed);
+
+        return logEvent;
+    }
 
     private async Task<long> GetTokenBalance(string token, Address address)
     {

@@ -149,7 +149,7 @@ public partial class EcoEarnPointsContractTests : EcoEarnPointsContractTestBase
         result.TransactionResult.Error.ShouldContain("Invalid update address.");
 
         // sender != author
-        result = await EcoEarnPointsContractUserStub.Initialize.SendWithExceptionAsync(new InitializeInput
+        result = await UserEcoEarnPointsContractStub.Initialize.SendWithExceptionAsync(new InitializeInput
         {
             Admin = UserAddress,
         });
@@ -183,7 +183,7 @@ public partial class EcoEarnPointsContractTests : EcoEarnPointsContractTestBase
         var result = await EcoEarnPointsContractStub.SetAdmin.SendWithExceptionAsync(new Address());
         result.TransactionResult.Error.ShouldContain("Invalid input.");
 
-        result = await EcoEarnPointsContractUserStub.SetAdmin.SendWithExceptionAsync(UserAddress);
+        result = await UserEcoEarnPointsContractStub.SetAdmin.SendWithExceptionAsync(UserAddress);
         result.TransactionResult.Error.ShouldContain("No permission.");
     }
 
@@ -235,7 +235,7 @@ public partial class EcoEarnPointsContractTests : EcoEarnPointsContractTestBase
         await Initialize();
 
         {
-            var result = await EcoEarnPointsContractUserStub.SetConfig.SendWithExceptionAsync(new Config());
+            var result = await UserEcoEarnPointsContractStub.SetConfig.SendWithExceptionAsync(new Config());
             result.TransactionResult.Error.ShouldContain("No permission.");
         }
         {

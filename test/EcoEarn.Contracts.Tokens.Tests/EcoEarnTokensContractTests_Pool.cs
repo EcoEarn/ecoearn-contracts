@@ -134,7 +134,7 @@ public partial class EcoEarnTokensContractTests
         });
         result.TransactionResult.Error.ShouldContain("Invalid payment address.");
 
-        result = await EcoEarnTokensContractUserStub.Register.SendWithExceptionAsync(new RegisterInput
+        result = await UserEcoEarnTokensContractStub.Register.SendWithExceptionAsync(new RegisterInput
         {
             DappId = _appId,
             Admin = UserAddress
@@ -209,7 +209,7 @@ public partial class EcoEarnTokensContractTests
         });
         result.TransactionResult.Error.ShouldContain("Invalid admin.");
 
-        result = await EcoEarnTokensContractUserStub.SetDappAdmin.SendWithExceptionAsync(new SetDappAdminInput
+        result = await UserEcoEarnTokensContractStub.SetDappAdmin.SendWithExceptionAsync(new SetDappAdminInput
         {
             DappId = _appId,
             Admin = UserAddress
@@ -309,7 +309,7 @@ public partial class EcoEarnTokensContractTests
         });
         result.TransactionResult.Error.ShouldContain("No permission.");
 
-        result = await EcoEarnTokensContractUserStub.CreateTokensPool.SendWithExceptionAsync(new CreateTokensPoolInput
+        result = await UserEcoEarnTokensContractStub.CreateTokensPool.SendWithExceptionAsync(new CreateTokensPoolInput
         {
             DappId = _appId
         });
@@ -445,7 +445,7 @@ public partial class EcoEarnTokensContractTests
             });
         result.TransactionResult.Error.ShouldContain("Invalid end time.");
 
-        result = await EcoEarnTokensContractUserStub.SetTokensPoolEndTime.SendWithExceptionAsync(
+        result = await UserEcoEarnTokensContractStub.SetTokensPoolEndTime.SendWithExceptionAsync(
             new SetTokensPoolEndTimeInput
             {
                 PoolId = poolId
@@ -517,7 +517,7 @@ public partial class EcoEarnTokensContractTests
             });
         result.TransactionResult.Error.ShouldContain("Pool not exists.");
 
-        result = await EcoEarnTokensContractUserStub.SetTokensPoolStakeConfig.SendWithExceptionAsync(
+        result = await UserEcoEarnTokensContractStub.SetTokensPoolStakeConfig.SendWithExceptionAsync(
             new SetTokensPoolStakeConfigInput
             {
                 PoolId = poolId
@@ -631,7 +631,7 @@ public partial class EcoEarnTokensContractTests
             });
         result.TransactionResult.Error.ShouldContain("Pool not exists.");
 
-        result = await EcoEarnTokensContractUserStub.SetTokensPoolFixedBoostFactor.SendWithExceptionAsync(
+        result = await UserEcoEarnTokensContractStub.SetTokensPoolFixedBoostFactor.SendWithExceptionAsync(
             new SetTokensPoolFixedBoostFactorInput
             {
                 PoolId = poolId,
@@ -746,7 +746,7 @@ public partial class EcoEarnTokensContractTests
             });
         result.TransactionResult.Error.ShouldContain("Invalid reward per second.");
 
-        result = await EcoEarnTokensContractUserStub.SetTokensPoolRewardPerSecond.SendWithExceptionAsync(
+        result = await UserEcoEarnTokensContractStub.SetTokensPoolRewardPerSecond.SendWithExceptionAsync(
             new SetTokensPoolRewardPerSecondInput
             {
                 PoolId = poolId,
@@ -786,6 +786,10 @@ public partial class EcoEarnTokensContractTests
             DappId = _appId
         });
         await EcoEarnTokensContractStub.Register.SendAsync(new RegisterInput
+        {
+            DappId = _appId
+        });
+        await EcoEarnRewardsContractStub.Register.SendAsync(new Rewards.RegisterInput
         {
             DappId = _appId
         });
@@ -852,7 +856,7 @@ public partial class EcoEarnTokensContractTests
             });
         result.TransactionResult.Error.ShouldContain("Pool not exists.");
 
-        result = await EcoEarnTokensContractUserStub.SetTokensPoolUnstakeWindowDuration.SendWithExceptionAsync(
+        result = await UserEcoEarnTokensContractStub.SetTokensPoolUnstakeWindowDuration.SendWithExceptionAsync(
             new SetTokensPoolUnstakeWindowDurationInput
             {
                 PoolId = poolId,
@@ -929,7 +933,7 @@ public partial class EcoEarnTokensContractTests
             });
         result.TransactionResult.Error.ShouldContain("Invalid release periods.");
 
-        result = await EcoEarnTokensContractUserStub.SetTokensPoolRewardConfig.SendWithExceptionAsync(
+        result = await UserEcoEarnTokensContractStub.SetTokensPoolRewardConfig.SendWithExceptionAsync(
             new SetTokensPoolRewardConfigInput
             {
                 PoolId = poolId,
@@ -997,7 +1001,7 @@ public partial class EcoEarnTokensContractTests
             });
         result.TransactionResult.Error.ShouldContain("Pool not exists.");
 
-        result = await EcoEarnTokensContractUserStub.SetTokensPoolMergeInterval.SendWithExceptionAsync(
+        result = await UserEcoEarnTokensContractStub.SetTokensPoolMergeInterval.SendWithExceptionAsync(
             new SetTokensPoolMergeIntervalInput
             {
                 PoolId = poolId
@@ -1098,7 +1102,7 @@ public partial class EcoEarnTokensContractTests
         });
         result.TransactionResult.Error.ShouldContain("No permission.");
         
-        result = await EcoEarnTokensContractUserStub.SetDappConfig.SendWithExceptionAsync(new SetDappConfigInput
+        result = await UserEcoEarnTokensContractStub.SetDappConfig.SendWithExceptionAsync(new SetDappConfigInput
         {
             DappId = _appId,
             Config = new DappConfig
@@ -1158,7 +1162,7 @@ public partial class EcoEarnTokensContractTests
         result.TransactionResult.Error.ShouldContain("Invalid dapp id.");
         
         result =
-            await EcoEarnTokensContractUserStub.SetStakeOnBehalfPermission.SendWithExceptionAsync(
+            await UserEcoEarnTokensContractStub.SetStakeOnBehalfPermission.SendWithExceptionAsync(
                 new StakeOnBehalfPermission
                 {
                     DappId = _appId

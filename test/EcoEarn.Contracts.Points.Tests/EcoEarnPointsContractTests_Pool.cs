@@ -79,7 +79,7 @@ public partial class EcoEarnPointsContractTests
         }
 
         {
-            var result = await EcoEarnPointsContractUserStub.Register.SendWithExceptionAsync(new RegisterInput
+            var result = await UserEcoEarnPointsContractStub.Register.SendWithExceptionAsync(new RegisterInput
             {
                 DappId = _appId,
                 Admin = UserAddress
@@ -168,7 +168,7 @@ public partial class EcoEarnPointsContractTests
         });
         result.TransactionResult.Error.ShouldContain("Dapp not exists.");
 
-        result = await EcoEarnPointsContractUserStub.SetDappAdmin.SendWithExceptionAsync(new SetDappAdminInput
+        result = await UserEcoEarnPointsContractStub.SetDappAdmin.SendWithExceptionAsync(new SetDappAdminInput
         {
             DappId = _appId,
             Admin = UserAddress
@@ -319,7 +319,7 @@ public partial class EcoEarnPointsContractTests
         result.TransactionResult.Error.ShouldContain("Points name taken.");
 
         result =
-            await EcoEarnPointsContractUserStub.CreatePointsPool.SendWithExceptionAsync(new CreatePointsPoolInput
+            await UserEcoEarnPointsContractStub.CreatePointsPool.SendWithExceptionAsync(new CreatePointsPoolInput
             {
                 DappId = _appId
             });
@@ -427,7 +427,7 @@ public partial class EcoEarnPointsContractTests
             });
         result.TransactionResult.Error.ShouldContain("Invalid end time.");
 
-        result = await EcoEarnPointsContractUserStub.SetPointsPoolEndTime.SendWithExceptionAsync(
+        result = await UserEcoEarnPointsContractStub.SetPointsPoolEndTime.SendWithExceptionAsync(
             new SetPointsPoolEndTimeInput
             {
                 PoolId = poolId
@@ -555,7 +555,7 @@ public partial class EcoEarnPointsContractTests
 
         SetBlockTime(100);
 
-        result = await EcoEarnPointsContractUserStub.RestartPointsPool.SendWithExceptionAsync(
+        result = await UserEcoEarnPointsContractStub.RestartPointsPool.SendWithExceptionAsync(
             new RestartPointsPoolInput
             {
                 UpdateAddress = UserAddress,
@@ -672,7 +672,7 @@ public partial class EcoEarnPointsContractTests
             });
         result.TransactionResult.Error.ShouldContain("Invalid reward per second.");
 
-        result = await EcoEarnPointsContractUserStub.SetPointsPoolRewardPerSecond.SendWithExceptionAsync(
+        result = await UserEcoEarnPointsContractStub.SetPointsPoolRewardPerSecond.SendWithExceptionAsync(
             new SetPointsPoolRewardPerSecondInput
             {
                 PoolId = poolId,
@@ -770,7 +770,7 @@ public partial class EcoEarnPointsContractTests
             });
         result.TransactionResult.Error.ShouldContain("Invalid claim interval.");
 
-        result = await EcoEarnPointsContractUserStub.SetPointsPoolRewardConfig.SendWithExceptionAsync(
+        result = await UserEcoEarnPointsContractStub.SetPointsPoolRewardConfig.SendWithExceptionAsync(
             new SetPointsPoolRewardConfigInput
             {
                 PoolId = poolId,
@@ -861,7 +861,7 @@ public partial class EcoEarnPointsContractTests
         });
         result.TransactionResult.Error.ShouldContain("No permission.");
         
-        result = await EcoEarnPointsContractUserStub.SetDappConfig.SendWithExceptionAsync(new SetDappConfigInput
+        result = await UserEcoEarnPointsContractStub.SetDappConfig.SendWithExceptionAsync(new SetDappConfigInput
         {
             DappId = _appId,
             Config = new DappConfig
