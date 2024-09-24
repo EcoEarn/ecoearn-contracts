@@ -13,6 +13,17 @@ service EcoEarnTokensContract {
   option (aelf.base) = "acs12.proto";
   option (aelf.csharp_state) = "EcoEarn.Contracts.Tokens.EcoEarnTokensContractState";
 
+  // contract
+  rpc Initialize (InitializeInput) returns (google.protobuf.Empty) {}
+  rpc SetConfig (Config) returns (google.protobuf.Empty) {}
+  rpc GetConfig (google.protobuf.Empty) returns (Config) {option (aelf.is_view) = true;}
+  rpc SetAdmin (aelf.Address) returns (google.protobuf.Empty) {}
+  rpc GetAdmin (google.protobuf.Empty) returns (aelf.Address) {option (aelf.is_view) = true;}
+  rpc SetDappConfig (SetDappConfigInput) returns (google.protobuf.Empty) {}
+  rpc SetStakeOnBehalfPermission(StakeOnBehalfPermission) returns (google.protobuf.Empty) {}
+  rpc GetStakeOnBehalfPermission(aelf.Hash) returns (google.protobuf.BoolValue) {option (aelf.is_view) = true;}
+
+  // pool
   rpc Register (RegisterInput) returns (google.protobuf.Empty) {}
   rpc SetDappAdmin (SetDappAdminInput) returns (google.protobuf.Empty) {}
   rpc GetDappInfo (aelf.Hash) returns (DappInfo) {option (aelf.is_view) = true;}
@@ -26,32 +37,22 @@ service EcoEarnTokensContract {
   rpc GetPoolCount (aelf.Hash) returns (google.protobuf.Int64Value) {option (aelf.is_view) = true;}
   rpc SetTokensPoolFixedBoostFactor (SetTokensPoolFixedBoostFactorInput) returns (google.protobuf.Empty) {}
   rpc SetTokensPoolRewardPerSecond (SetTokensPoolRewardPerSecondInput) returns (google.protobuf.Empty) {}
-  rpc SetTokensPoolUnlockWindowDuration (SetTokensPoolUnlockWindowDurationInput) returns (google.protobuf.Empty) {}
+  rpc SetTokensPoolUnstakeWindowDuration (SetTokensPoolUnstakeWindowDurationInput) returns (google.protobuf.Empty) {}
   rpc SetTokensPoolMergeInterval (SetTokensPoolMergeIntervalInput) returns (google.protobuf.Empty) {}
+  rpc RecoverToken (RecoverTokenInput) returns (google.protobuf.Empty) {}
 
+  // stake  
   rpc Stake (StakeInput) returns (google.protobuf.Empty) {}
   rpc StakeFor (StakeForInput) returns (google.protobuf.Empty) {}
   rpc Renew (RenewInput) returns (google.protobuf.Empty) {}
   rpc GetStakeInfo (aelf.Hash) returns (GetStakeInfoOutput) {option (aelf.is_view) = true;}
   rpc GetReward (GetRewardInput) returns (GetRewardOutput) {option (aelf.is_view) = true;}
-  rpc Unlock (aelf.Hash) returns (google.protobuf.Empty) {}
+  rpc Unstake (aelf.Hash) returns (google.protobuf.Empty) {}
   rpc GetUserStakeId (GetUserStakeIdInput) returns (aelf.Hash) {option (aelf.is_view) = true;}
   rpc GetUserStakeCount (GetUserStakeCountInput) returns (google.protobuf.Int64Value) {option (aelf.is_view) = true;}
-
   rpc Claim (aelf.Hash) returns (google.protobuf.Empty) {}
-  rpc RecoverToken (RecoverTokenInput) returns (google.protobuf.Empty) {}
-
-  rpc Initialize (InitializeInput) returns (google.protobuf.Empty) {}
-  rpc SetConfig (Config) returns (google.protobuf.Empty) {}
-  rpc GetConfig (google.protobuf.Empty) returns (Config) {option (aelf.is_view) = true;}
-  rpc SetAdmin (aelf.Address) returns (google.protobuf.Empty) {}
-  rpc GetAdmin (google.protobuf.Empty) returns (aelf.Address) {option (aelf.is_view) = true;}
-  
   rpc StakeOnBehalf (StakeOnBehalfInput) returns (google.protobuf.Empty) {}
-  rpc IsInUnlockWindow (IsInUnlockWindowInput) returns (google.protobuf.BoolValue) {option (aelf.is_view) = true;}
-  rpc SetDappConfig (SetDappConfigInput) returns (google.protobuf.Empty) {}
-  rpc SetStakeOnBehalfPermission(StakeOnBehalfPermission) returns (google.protobuf.Empty) {}
-  rpc GetStakeOnBehalfPermission(aelf.Hash) returns (google.protobuf.BoolValue) {option (aelf.is_view) = true;}
+  rpc IsInUnstakeWindow (IsInUnstakeWindowInput) returns (google.protobuf.BoolValue) {option (aelf.is_view) = true;}
 }
 
 message RegisterInput {
@@ -85,10 +86,11 @@ message CreateTokensPoolInput {
   int64 minimum_add_liquidity_amount = 12;
   aelf.Address reward_token_contract = 13;
   aelf.Address stake_token_contract = 14;
-  aelf.Address swap_contract = 15;
-  int64 unlock_window_duration = 16;
-  repeated int64 release_periods = 17;
-  int64 merge_interval = 18;
+  int64 unstake_window_duration = 15;
+  repeated int64 release_periods = 16;
+  int64 merge_interval = 17;
+  aelf.Address swap_contract = 18;
+  int64 lp_rate = 19;
 }
 
 message TokensPoolConfig {
@@ -105,10 +107,11 @@ message TokensPoolConfig {
   int64 minimum_add_liquidity_amount = 11;
   aelf.Address reward_token_contract = 12;
   aelf.Address stake_token_contract = 13;
-  aelf.Address swap_contract = 14;
-  int64 unlock_window_duration = 15;
-  repeated int64 release_periods = 16;
-  int64 merge_interval = 17;
+  int64 unstake_window_duration = 14;
+  repeated int64 release_periods = 15;
+  int64 merge_interval = 16;
+  aelf.Address swap_contract = 17;
+  int64 lp_rate = 18;
 }
 
 message SetTokensPoolEndTimeInput {
@@ -144,9 +147,9 @@ message SetTokensPoolRewardPerSecondInput {
   int64 reward_per_second = 2;
 }
 
-message SetTokensPoolUnlockWindowDurationInput {
+message SetTokensPoolUnstakeWindowDurationInput {
   aelf.Hash pool_id = 1;
-  int64 unlock_window_duration = 2;
+  int64 unstake_window_duration = 2;
 }
 
 message SetTokensPoolMergeIntervalInput {
@@ -185,7 +188,7 @@ message StakeInfo {
   aelf.Address account = 3;
   string staking_token = 4;
   int64 staking_period = 5;
-  google.protobuf.Timestamp unlock_time = 6;
+  google.protobuf.Timestamp unstake_time = 6;
   google.protobuf.Timestamp last_operation_time = 7;
   repeated SubStakeInfo sub_stake_infos = 8;
 }
@@ -193,7 +196,7 @@ message StakeInfo {
 message SubStakeInfo {
   aelf.Hash sub_stake_id = 1;
   int64 staked_amount = 2;
-  int64 early_staked_amount = 3;
+  int64 rewards_staked_amount = 3;
   int64 staked_block_number = 4;
   google.protobuf.Timestamp staked_time = 5;
   int64 period = 6;
@@ -234,7 +237,7 @@ message RewardInfo {
 
 message GetStakeInfoOutput {
   StakeInfo stake_info = 1;
-  bool is_in_unlock_window = 2;
+  bool is_in_unstake_window = 2;
 }
 
 message RecoverTokenInput {
@@ -287,7 +290,7 @@ message StakeOnBehalfInput {
   aelf.Address account = 4;
 }
 
-message IsInUnlockWindowInput {
+message IsInUnstakeWindowInput {
   aelf.Hash pool_id = 1;
   aelf.Address account = 2;
 }
@@ -348,7 +351,7 @@ message Staked {
   PoolData pool_data = 2;
 }
 
-message Unlocked {
+message Unstaked {
   option (aelf.is_event) = true;
   aelf.Hash pool_id = 1;
   StakeInfo stake_info = 2;
@@ -400,10 +403,10 @@ message TokensPoolRewardPerSecondSet {
   PoolData pool_data = 3;
 }
 
-message TokensPoolUnlockWindowDurationSet {
+message TokensPoolUnstakeWindowDurationSet {
   option (aelf.is_event) = true;
   aelf.Hash pool_id = 1;
-  int64 unlock_window_duration = 2;
+  int64 unstake_window_duration = 2;
 }
 
 message TokensPoolMergeIntervalSet {

@@ -31,7 +31,7 @@ service EcoEarnRewardsContract {
   rpc Claim (ClaimInput) returns (google.protobuf.Empty) {}
   rpc GetClaimInfo (aelf.Hash) returns (ClaimInfo) {option (aelf.is_view) = true;}
   rpc Withdraw (WithdrawInput) returns (google.protobuf.Empty) {}
-  rpc EarlyStake (EarlyStakeInput) returns (google.protobuf.Empty) {}
+  rpc StakeRewards (StakeRewardsInput) returns (google.protobuf.Empty) {}
   
   // lp
   rpc AddLiquidityAndStake (AddLiquidityAndStakeInput) returns (google.protobuf.Empty) {}
@@ -131,7 +131,7 @@ message StakeInput {
   int64 longest_release_time = 9;
 }
 
-message EarlyStakeInput {
+message StakeRewardsInput {
   StakeInput stake_input = 1;
   bytes signature = 10000;
 }
@@ -217,9 +217,8 @@ message UserPoints {
 }
 
 message SetPointsContractConfigInput {
-  aelf.Address points_contract = 1;
-  aelf.Hash dapp_id = 2;
-  aelf.Address admin = 3;
+  aelf.Hash dapp_id = 1;
+  aelf.Address admin = 2;
 }
 
 message GetPointsContractConfigOutput {
@@ -276,7 +275,7 @@ message Withdrawn {
   aelf.Hash dapp_id = 5;
 }
 
-message EarlyStaked {
+message RewardsStaked {
   option (aelf.is_event) = true;
   HashList claim_ids = 1;
   aelf.Address account = 2;

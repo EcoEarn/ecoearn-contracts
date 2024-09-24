@@ -29,7 +29,7 @@ public partial class EcoEarnTokensContractTests
         var addressInfo = await EcoEarnTokensContractStub.GetPoolAddressInfo.CallAsync(poolId);
         var balance = await GetTokenBalance(Symbol, addressInfo.RewardAddress);
 
-        var result = await EcoEarnTokensContractUserStub.Claim.SendAsync(poolId);
+        var result = await UserEcoEarnTokensContractStub.Claim.SendAsync(poolId);
         result.TransactionResult.Status.ShouldBe(TransactionResultStatus.Mined);
 
         var log = GetLogEvent<Claimed>(result.TransactionResult);
@@ -66,17 +66,17 @@ public partial class EcoEarnTokensContractTests
         result = await EcoEarnTokensContractStub.Claim.SendWithExceptionAsync(poolId);
         result.TransactionResult.Error.ShouldContain("Not staked before.");
 
-        result = await EcoEarnTokensContractUserStub.Claim.SendWithExceptionAsync(poolId);
-        result.TransactionResult.Error.ShouldContain("Not in unlock window.");
+        result = await UserEcoEarnTokensContractStub.Claim.SendWithExceptionAsync(poolId);
+        result.TransactionResult.Error.ShouldContain("Not in unstake window.");
 
         SetBlockTime(500);
-        await EcoEarnTokensContractUserStub.Claim.SendAsync(poolId);
-        result = await EcoEarnTokensContractUserStub.Claim.SendWithExceptionAsync(poolId);
+        await UserEcoEarnTokensContractStub.Claim.SendAsync(poolId);
+        result = await UserEcoEarnTokensContractStub.Claim.SendWithExceptionAsync(poolId);
         result.TransactionResult.Error.ShouldContain("Already claimed during this window.");
 
         SetBlockTime(-501);
 
-        result = await EcoEarnTokensContractUserStub.Claim.SendWithExceptionAsync(poolId);
+        result = await UserEcoEarnTokensContractStub.Claim.SendWithExceptionAsync(poolId);
         result.TransactionResult.Error.ShouldContain("Pool not start.");
     }
 
@@ -171,7 +171,7 @@ public partial class EcoEarnTokensContractTests
         });
         result.TransactionResult.Error.ShouldContain("Invalid recipient.");
 
-        result = await EcoEarnTokensContractUserStub.RecoverToken.SendWithExceptionAsync(new RecoverTokenInput
+        result = await UserEcoEarnTokensContractStub.RecoverToken.SendWithExceptionAsync(new RecoverTokenInput
         {
             PoolId = poolId,
             Token = Symbol,

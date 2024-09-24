@@ -235,7 +235,7 @@ public partial class EcoEarnRewardsContractTests
             StakeTokenContract = AwakenContractAddress,
             SwapContract = AwakenContractAddress,
             MinimumStakeDuration = 1,
-            UnlockWindowDuration = 100,
+            UnstakeWindowDuration = 100,
             ReleasePeriods = { 10, 20, 30 },
             MinimumAddLiquidityAmount = 1_00000000
         };

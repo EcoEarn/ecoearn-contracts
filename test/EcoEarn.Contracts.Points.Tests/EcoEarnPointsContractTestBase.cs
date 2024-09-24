@@ -24,8 +24,8 @@ public class EcoEarnPointsContractTestBase : DAppContractTestBase<EcoEarnPointsC
     internal Address EcoEarnTokensContractAddress { get; set; }
     internal Address EcoEarnRewardsContractAddress { get; set; }
     internal EcoEarnPointsContractContainer.EcoEarnPointsContractStub EcoEarnPointsContractStub { get; set; }
-    internal EcoEarnPointsContractContainer.EcoEarnPointsContractStub EcoEarnPointsContractUserStub { get; set; }
-    internal EcoEarnPointsContractContainer.EcoEarnPointsContractStub EcoEarnPointsContractUser2Stub { get; set; }
+    internal EcoEarnPointsContractContainer.EcoEarnPointsContractStub UserEcoEarnPointsContractStub { get; set; }
+    internal EcoEarnPointsContractContainer.EcoEarnPointsContractStub User2EcoEarnPointsContractStub { get; set; }
     internal EcoEarnTokensContractContainer.EcoEarnTokensContractStub EcoEarnTokensContractStub { get; set; }
     internal EcoEarnRewardsContractContainer.EcoEarnRewardsContractStub EcoEarnRewardsContractStub { get; set; }
     internal TestPointsContractContainer.TestPointsContractStub PointsContractStub { get; set; }
@@ -60,10 +60,10 @@ public class EcoEarnPointsContractTestBase : DAppContractTestBase<EcoEarnPointsC
         EcoEarnPointsContractStub =
             GetContractStub<EcoEarnPointsContractContainer.EcoEarnPointsContractStub>(EcoEarnPointsContractAddress,
                 DefaultKeyPair);
-        EcoEarnPointsContractUserStub =
+        UserEcoEarnPointsContractStub =
             GetContractStub<EcoEarnPointsContractContainer.EcoEarnPointsContractStub>(EcoEarnPointsContractAddress,
                 UserKeyPair);
-        EcoEarnPointsContractUser2Stub =
+        User2EcoEarnPointsContractStub =
             GetContractStub<EcoEarnPointsContractContainer.EcoEarnPointsContractStub>(EcoEarnPointsContractAddress,
                 User2KeyPair);
 

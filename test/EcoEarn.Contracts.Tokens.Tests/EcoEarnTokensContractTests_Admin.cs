@@ -120,7 +120,7 @@ public partial class EcoEarnTokensContractTests : EcoEarnTokensContractTestBase
         result.TransactionResult.Error.ShouldContain("Invalid maximum position count.");
 
         // sender != author
-        result = await EcoEarnTokensContractUserStub.Initialize.SendWithExceptionAsync(new InitializeInput
+        result = await UserEcoEarnTokensContractStub.Initialize.SendWithExceptionAsync(new InitializeInput
         {
             Admin = UserAddress,
         });
@@ -156,7 +156,7 @@ public partial class EcoEarnTokensContractTests : EcoEarnTokensContractTestBase
                 new Address());
         result.TransactionResult.Error.ShouldContain("Invalid input.");
 
-        result = await EcoEarnTokensContractUserStub.SetAdmin.SendWithExceptionAsync(UserAddress);
+        result = await UserEcoEarnTokensContractStub.SetAdmin.SendWithExceptionAsync(UserAddress);
         result.TransactionResult.Error.ShouldContain("No permission.");
     }
 
@@ -210,7 +210,7 @@ public partial class EcoEarnTokensContractTests : EcoEarnTokensContractTestBase
         await Initialize();
 
         {
-            var result = await EcoEarnTokensContractUserStub.SetConfig.SendWithExceptionAsync(new Config());
+            var result = await UserEcoEarnTokensContractStub.SetConfig.SendWithExceptionAsync(new Config());
             result.TransactionResult.Error.ShouldContain("No permission.");
         }
         {
