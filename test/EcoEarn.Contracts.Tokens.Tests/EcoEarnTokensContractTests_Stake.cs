@@ -599,19 +599,30 @@ public partial class EcoEarnTokensContractTests
         });
         rewardOutput.RewardInfos.First().Amount.ShouldBe(0);
     
-        SetBlockTime(500);
+        SetBlockTime(250);
         
         rewardOutput = await EcoEarnTokensContractStub.GetReward.CallAsync(new GetRewardInput
         {
             StakeIds = { stakeInfo.StakeId }
         });
-        rewardOutput.RewardInfos.First().Amount.ShouldNotBe(0);
+        rewardOutput.RewardInfos.Sum(r => r.Amount).ShouldBe(250 * 100_00000000 / 10000 * 9900);
+        
+        stakeInfo = await Stake(poolId, tokenBalance);
+        stakeInfo.SubStakeInfos.Sum(s => s.StakedAmount).ShouldBe(tokenBalance * 2);
     
+        SetBlockTime(750);
+        
+        rewardOutput = await EcoEarnTokensContractStub.GetReward.CallAsync(new GetRewardInput
+        {
+            StakeIds = { stakeInfo.StakeId }
+        });
+        rewardOutput.RewardInfos.Sum(r => r.Amount).ShouldBe(1000 * 100_00000000 / 10000 * 9900);
+        
         var result = await EcoEarnTokensContractUserStub.Unstake.SendAsync(poolId);
         result.TransactionResult.Status.ShouldBe(TransactionResultStatus.Mined);
     
         balance = await GetTokenBalance(Symbol, UserAddress);
-        balance.ShouldBe(tokenBalance);
+        balance.ShouldBe(tokenBalance * 2);
     
         var log = GetLogEvent<Unstaked>(result.TransactionResult);
         log.StakeInfo.StakeId.ShouldBe(stakeInfo.StakeId);
