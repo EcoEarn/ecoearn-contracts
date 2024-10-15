@@ -116,7 +116,8 @@ public partial class EcoEarnTokensContract
             MinimumAddLiquidityAmount = input.MinimumAddLiquidityAmount,
             SwapContract = input.SwapContract,
             MergeInterval = input.MergeInterval,
-            LpRate = input.LpRate
+            LpRate = input.LpRate,
+            MinimumAdditionalStakeAmount = input.MinimumAdditionalStakeAmount
         };
 
         var poolInfo = new PoolInfo
@@ -218,15 +219,17 @@ public partial class EcoEarnTokensContract
 
         Assert(input.MinimumAmount > 0, "Invalid minimum amount.");
         Assert(input.MaximumStakeDuration > 0, "Invalid maximum stake duration.");
-        Assert(input.MinimumClaimAmount > 0, "Invalid minimum claim amount.");
+        Assert(input.MinimumClaimAmount >= 0, "Invalid minimum claim amount.");
         Assert(input.MinimumStakeDuration > 0, "Invalid minimum stake duration.");
         Assert(input.MinimumAddLiquidityAmount > 0, "Invalid minimum add liquidity amount.");
+        Assert(input.MinimumAdditionalStakeAmount > 0, "Invalid minimum additional stake amount.");
 
         if (poolInfo.Config.MinimumAmount == input.MinimumAmount &&
             poolInfo.Config.MaximumStakeDuration == input.MaximumStakeDuration &&
             poolInfo.Config.MinimumClaimAmount == input.MinimumClaimAmount &&
             poolInfo.Config.MinimumStakeDuration == input.MinimumStakeDuration &&
-            poolInfo.Config.MinimumAddLiquidityAmount == input.MinimumAddLiquidityAmount)
+            poolInfo.Config.MinimumAddLiquidityAmount == input.MinimumAddLiquidityAmount &&
+            poolInfo.Config.MinimumAdditionalStakeAmount == input.MinimumAdditionalStakeAmount)
         {
             return new Empty();
         }
@@ -236,6 +239,7 @@ public partial class EcoEarnTokensContract
         poolInfo.Config.MinimumClaimAmount = input.MinimumClaimAmount;
         poolInfo.Config.MinimumStakeDuration = input.MinimumStakeDuration;
         poolInfo.Config.MinimumAddLiquidityAmount = input.MinimumAddLiquidityAmount;
+        poolInfo.Config.MinimumAdditionalStakeAmount = input.MinimumAdditionalStakeAmount;
 
         Context.Fire(new TokensPoolStakeConfigSet
         {
@@ -244,7 +248,8 @@ public partial class EcoEarnTokensContract
             MaximumStakeDuration = input.MaximumStakeDuration,
             MinimumAmount = input.MinimumAmount,
             MinimumStakeDuration = input.MinimumStakeDuration,
-            MinimumAddLiquidityAmount = input.MinimumAddLiquidityAmount
+            MinimumAddLiquidityAmount = input.MinimumAddLiquidityAmount,
+            MinimumAdditionalStakeAmount = input.MinimumAdditionalStakeAmount
         });
 
         return new Empty();
@@ -397,15 +402,17 @@ public partial class EcoEarnTokensContract
         Assert(input.EndTime > input.StartTime, "Invalid end time.");
         Assert(input.RewardPerSecond > 0, "Invalid reward per second.");
         Assert(input.FixedBoostFactor > 0, "Invalid fixed boost factor.");
-        Assert(input.MinimumAmount >= 0, "Invalid minimum amount.");
+        Assert(input.MinimumAmount > 0, "Invalid minimum amount.");
         Assert(input.MaximumStakeDuration > 0, "Invalid maximum stake duration.");
         Assert(input.MinimumClaimAmount >= 0, "Invalid minimum claim amount.");
-        Assert(input.MinimumAddLiquidityAmount >= 0, "Invalid minimum add liquidity amount.");
+        Assert(input.MinimumAddLiquidityAmount > 0, "Invalid minimum add liquidity amount.");
         Assert(input.MinimumStakeDuration > 0, "Invalid minimum stake duration.");
         Assert(input.UnstakeWindowDuration > 0, "Invalid unstake window duration.");
         Assert(input.ReleasePeriods != null && input.ReleasePeriods.Count > 0 && input.ReleasePeriods.All(p => p >= 0),
             "Invalid release periods.");
         Assert(input.MergeInterval >= 0, "Invalid merge interval.");
+        Assert(input.LpRate >= 0, "Invalid lp rate.");
+        Assert(input.MinimumAdditionalStakeAmount > 0, "Invalid minimum additional stake amount.");
 
         if (input.StakeTokenContract != null && input.StakeTokenContract != State.TokenContract.Value)
         {
