@@ -404,7 +404,7 @@ public partial class EcoEarnTokensContract
         Assert(input.MinimumStakeDuration > 0, "Invalid minimum stake duration.");
         Assert(input.UnstakeWindowDuration > 0, "Invalid unstake window duration.");
         Assert(input.ReleasePeriods != null && input.ReleasePeriods.Count > 0 && input.ReleasePeriods.All(p => p >= 0),
-            "Invalid release periods.");
+            "Invalid release periods.");   
         Assert(input.MergeInterval >= 0, "Invalid merge interval.");
 
         if (input.StakeTokenContract != null && input.StakeTokenContract != State.TokenContract.Value)

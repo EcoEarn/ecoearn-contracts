@@ -363,7 +363,7 @@ public partial class EcoEarnPointsContract
         return Context.ConvertVirtualAddressToContractAddress(id);
     }
 
-    private PoolInfo GetPool(Hash poolId)
+    private PoolInfo GetPool(Hash poolId)  
     {
         Assert(IsHashValid(poolId), "Invalid pool id.");
 

@@ -108,7 +108,7 @@ public partial class EcoEarnRewardsContract
             IsLiquidity = true
         });
 
-        Context.Fire(new LiquidityAdded
+        Context.Fire(new LiquidityAdded  
         {
             ClaimIds = new HashList
             {
