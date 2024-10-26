@@ -237,7 +237,8 @@ public partial class EcoEarnRewardsContractTests
             MinimumStakeDuration = 1,
             UnstakeWindowDuration = 100,
             ReleasePeriods = { 10, 20, 30 },
-            MinimumAddLiquidityAmount = 1_00000000
+            MinimumAddLiquidityAmount = 1_00000000,
+            MinimumAdditionalStakeAmount = 1
         };
         var result = await EcoEarnTokensContractStub.CreateTokensPool.SendAsync(input);
         var log = GetLogEvent<TokensPoolCreated>(result.TransactionResult);

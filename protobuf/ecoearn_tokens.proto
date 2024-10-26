@@ -91,6 +91,7 @@ message CreateTokensPoolInput {
   int64 merge_interval = 17;
   aelf.Address swap_contract = 18;
   int64 lp_rate = 19;
+  int64 minimum_additional_stake_amount = 20;
 }
 
 message TokensPoolConfig {
@@ -112,6 +113,7 @@ message TokensPoolConfig {
   int64 merge_interval = 16;
   aelf.Address swap_contract = 17;
   int64 lp_rate = 18;
+  int64 minimum_additional_stake_amount = 19;
 }
 
 message SetTokensPoolEndTimeInput {
@@ -135,6 +137,7 @@ message SetTokensPoolStakeConfigInput {
   int64 minimum_claim_amount = 4;
   int64 minimum_stake_duration = 5;
   int64 minimum_add_liquidity_amount = 6;
+  int64 minimum_additional_stake_amount = 7;
 }
 
 message SetTokensPoolFixedBoostFactorInput {
@@ -343,6 +346,7 @@ message TokensPoolStakeConfigSet {
   int64 minimum_claim_amount = 4;
   int64 minimum_stake_duration = 5;
   int64 minimum_add_liquidity_amount = 6;
+  int64 minimum_additional_stake_amount = 7;
 }
 
 message Staked {
