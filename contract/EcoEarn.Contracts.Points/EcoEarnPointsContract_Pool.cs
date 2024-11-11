@@ -4,6 +4,7 @@ using AElf.Contracts.MultiToken;
 using AElf.CSharp.Core;
 using AElf.Sdk.CSharp;
 using AElf.Types;
+using EcoEarn.Contracts.Rewards;
 using Google.Protobuf.WellKnownTypes;
 using Points.Contracts.Point;
 
@@ -44,7 +45,7 @@ public partial class EcoEarnPointsContract
 
         State.DappInfoMap[input.DappId] = dappInfo;
         
-        Join(Context.Sender);
+        Join(Context.Sender, input.Domain);
 
         Context.Fire(new Registered
         {
@@ -373,9 +374,13 @@ public partial class EcoEarnPointsContract
         return poolInfo;
     }
 
-    private void Join(Address registrant)
+    private void Join(Address registrant, string domain)
     {
-        State.EcoEarnRewardsContract.JoinFor.Send(registrant);
+        State.EcoEarnRewardsContract.JoinFor.Send(new JoinForInput
+        {
+            Registrant = registrant,
+            Domain = domain
+        });
     }
 
     #endregion

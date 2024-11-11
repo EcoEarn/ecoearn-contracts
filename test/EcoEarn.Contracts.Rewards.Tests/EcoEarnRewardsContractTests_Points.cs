@@ -84,11 +84,14 @@ public partial class EcoEarnRewardsContractTests
         var output = await EcoEarnRewardsContractStub.GetJoinRecord.CallAsync(UserAddress);
         output.Value.ShouldBe(false);
 
-        var result = await UserEcoEarnRewardsContractStub.Join.SendAsync(new Empty());
+        var result = await UserEcoEarnRewardsContractStub.Join.SendAsync(new JoinInput
+        {
+            Domain = "test"
+        });
         result.TransactionResult.Status.ShouldBe(TransactionResultStatus.Mined);
 
         var log = GetLogEvent<Joined>(result.TransactionResult);
-        log.Domain.ShouldBe("domain");
+        log.Domain.ShouldBe("test");
         log.Registrant.ShouldBe(UserAddress);
 
         output = await EcoEarnRewardsContractStub.GetJoinRecord.CallAsync(UserAddress);
@@ -100,7 +103,7 @@ public partial class EcoEarnRewardsContractTests
     {
         await InitializeWithoutRegister();
         
-        var result = await EcoEarnRewardsContractStub.Join.SendWithExceptionAsync(new Empty());
+        var result = await EcoEarnRewardsContractStub.Join.SendWithExceptionAsync(new JoinInput());
         result.TransactionResult.Error.ShouldContain("Points contract config not set.");
         
         await EcoEarnRewardsContractStub.SetPointsContractConfig.SendAsync(new SetPointsContractConfigInput
@@ -109,16 +112,22 @@ public partial class EcoEarnRewardsContractTests
             DappId = _appIdEcoEarn
         });
         
-        await EcoEarnRewardsContractStub.Join.SendAsync(new Empty());
+        await EcoEarnRewardsContractStub.Join.SendAsync(new JoinInput());
         
-        result = await EcoEarnRewardsContractStub.Join.SendWithExceptionAsync(new Empty());
+        result = await EcoEarnRewardsContractStub.Join.SendWithExceptionAsync(new JoinInput());
         result.TransactionResult.Error.ShouldContain("Already joined.");
     }
 
     [Fact]
     public async Task JoinForTests_Fail()
     {
-        var result = await EcoEarnRewardsContractStub.JoinFor.SendWithExceptionAsync(DefaultAddress);
+        var result = await EcoEarnRewardsContractStub.JoinFor.SendWithExceptionAsync(new JoinForInput());
+        result.TransactionResult.Error.ShouldContain("Invalid registrant.");
+        
+        result = await EcoEarnRewardsContractStub.JoinFor.SendWithExceptionAsync(new JoinForInput
+        {
+            Registrant = UserAddress
+        });
         result.TransactionResult.Error.ShouldContain("No permission.");
     }
 
