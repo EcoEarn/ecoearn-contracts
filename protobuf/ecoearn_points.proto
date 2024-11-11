@@ -61,6 +61,7 @@ message RegisterInput {
   aelf.Hash dapp_id = 1;
   aelf.Address admin = 2;
   aelf.Address update_address = 3;
+  string domain = 4;
 }
 
 message DappInfo {
@@ -138,6 +139,7 @@ message ClaimInput {
   int64 amount = 3;
   aelf.Hash seed = 4;
   int64 expiration_time = 5;
+  string domain = 6;
   bytes signature = 10000;
 }
 

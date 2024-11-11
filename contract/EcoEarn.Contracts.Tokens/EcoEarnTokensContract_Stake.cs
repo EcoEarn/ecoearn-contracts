@@ -51,7 +51,7 @@ public partial class EcoEarnTokensContract
                 });
         }
         
-        Join(Context.Sender);
+        Join(Context.Sender, input.Domain);
         
         Context.Fire(new Staked
         {
@@ -255,7 +255,7 @@ public partial class EcoEarnTokensContract
                 });
         }
         
-        Join(input.Account);
+        Join(input.Account, input.Domain);
         
         Context.Fire(new StakedOnBehalf
         {
@@ -382,7 +382,7 @@ public partial class EcoEarnTokensContract
         stakeInfo.StakingPeriod = stakingPeriod;
         stakeInfo.LastOperationTime = Context.CurrentBlockTime;
 
-        // extends 
+        // extends
         ProcessSubStakeInfos(stakeInfo, poolInfo, poolData, period, false);
 
         AddOrMergeSubStakeInfo(stakeInfo, poolInfo, poolData, stakedAmount, rewardsStakedAmount, remainTime.Add(period));

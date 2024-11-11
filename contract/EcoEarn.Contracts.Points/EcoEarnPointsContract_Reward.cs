@@ -60,7 +60,7 @@ public partial class EcoEarnPointsContract
 
         CallRewardsContractClaim(poolInfo, claimedAmount, input.Seed);
         
-        Join(Context.Sender);
+        Join(Context.Sender, input.Domain);
 
         Context.Fire(new Claimed
         {
@@ -133,7 +133,8 @@ public partial class EcoEarnPointsContract
             Account = input.Account,
             Amount = input.Amount,
             Seed = input.Seed,
-            ExpirationTime = input.ExpirationTime
+            ExpirationTime = input.ExpirationTime,
+            Domain = input.Domain
         }.ToByteArray());
     }
 

@@ -38,24 +38,25 @@ public partial class EcoEarnRewardsContract
         return new Empty();
     }
 
-    public override Empty Join(Empty input)
+    public override Empty Join(JoinInput input)
     {
         Assert(!State.JoinRecord[Context.Sender], "Already joined.");
 
-        Join(Context.Sender);
+        Join(Context.Sender, input.Domain);
 
         return new Empty();
     }
 
-    public override Empty JoinFor(Address input)
+    public override Empty JoinFor(JoinForInput input)
     {
+        Assert(input != null, "Invalid input.");
+        Assert(IsAddressValid(input!.Registrant), "Invalid registrant.");
+        
         Assert(
             Context.Sender == State.EcoEarnTokensContract.Value || Context.Sender == State.EcoEarnPointsContract.Value,
             "No permission.");
-        
-        Assert(IsAddressValid(input), "Invalid input.");
 
-        Join(input);
+        Join(input.Registrant, input.Domain);
 
         return new Empty();
     }
@@ -91,7 +92,7 @@ public partial class EcoEarnRewardsContract
         Assert(input != null, "Invalid input.");
         Assert(IsStringValid(input!.ActionName), "Invalid action name.");
         Assert(input.UserPointsList != null && input.UserPointsList.Count > 0, "Invalid user points list.");
-
+ 
         var config = GetPointsContractConfig();
         Assert(Context.Sender == config.Admin, "No permission.");
 
@@ -135,11 +136,14 @@ public partial class EcoEarnRewardsContract
 
         var config = GetPointsContractConfig();
 
-        domain ??= GetOfficialDomain(config);
+        if (!IsStringValid(domain))
+        {
+            domain = GetOfficialDomain(config);
+        }
 
         State.JoinRecord[registrant] = true;
 
-        State.PointsContract.Join.Send(new JoinInput
+        State.PointsContract.Join.Send(new global::Points.Contracts.Point.JoinInput
         {
             Registrant = registrant,
             DappId = config.DappId,

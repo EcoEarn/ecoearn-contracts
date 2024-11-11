@@ -40,10 +40,10 @@ service EcoEarnRewardsContract {
   rpc GetLiquidityInfo (aelf.Hash) returns (LiquidityInfo) {option (aelf.is_view) = true;}
 
   // points
-  rpc Join(google.protobuf.Empty) returns (google.protobuf.Empty) {}
+  rpc Join(JoinInput) returns (google.protobuf.Empty) {}
   rpc AcceptReferral (AcceptReferralInput) returns (google.protobuf.Empty) {}
   rpc BatchSettle (BatchSettleInput) returns (google.protobuf.Empty) {}
-  rpc JoinFor(aelf.Address) returns (google.protobuf.Empty) {}
+  rpc JoinFor(JoinForInput) returns (google.protobuf.Empty) {}
   rpc SetPointsContractConfig(SetPointsContractConfigInput) returns (google.protobuf.Empty) {}
   rpc GetPointsContractConfig(google.protobuf.Empty) returns (GetPointsContractConfigOutput) {option (aelf.is_view) = true;}
   rpc GetJoinRecord(aelf.Address) returns (google.protobuf.BoolValue) {option (aelf.is_view) = true;}
@@ -65,6 +65,7 @@ message RegisterInput {
   aelf.Hash dapp_id = 1;
   aelf.Address admin = 2;
   aelf.Address update_address = 3;
+  string domain = 4;
 }
 
 message DappConfig {
@@ -229,6 +230,15 @@ message GetPointsContractConfigOutput {
 message PointsContractConfig {
   aelf.Hash dapp_id = 1;
   aelf.Address admin = 2;
+}
+
+message JoinInput {
+  string domain = 1;
+}
+
+message JoinForInput {
+  string domain = 1;
+  aelf.Address registrant = 2;
 }
 
 // log event
